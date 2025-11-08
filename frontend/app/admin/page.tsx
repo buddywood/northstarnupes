@@ -6,21 +6,25 @@ import { useRouter } from 'next/navigation';
 import {
   fetchPendingSellers,
   updateSellerStatus,
+  fetchPendingPromoters,
+  updatePromoterStatus,
   fetchOrders,
   fetchDonations,
 } from '@/lib/api';
-import type { Seller, Order } from '@/lib/api';
+import type { Seller, Promoter, Order } from '@/lib/api';
 import Link from 'next/link';
 
 export default function AdminDashboard() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'sellers' | 'orders' | 'donations'>('sellers');
+  const [activeTab, setActiveTab] = useState<'sellers' | 'promoters' | 'orders' | 'donations'>('sellers');
   const [sellers, setSellers] = useState<Seller[]>([]);
+  const [promoters, setPromoters] = useState<Promoter[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [donations, setDonations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState<number | null>(null);
+  const [processingType, setProcessingType] = useState<'seller' | 'promoter' | null>(null);
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -47,6 +51,9 @@ export default function AdminDashboard() {
       if (activeTab === 'sellers') {
         const data = await fetchPendingSellers(adminKey);
         setSellers(data);
+      } else if (activeTab === 'promoters') {
+        const data = await fetchPendingPromoters(adminKey);
+        setPromoters(data);
       } else if (activeTab === 'orders') {
         const data = await fetchOrders(adminKey);
         setOrders(data);
@@ -71,6 +78,7 @@ export default function AdminDashboard() {
     const adminKey = localStorage.getItem('adminKey') || '';
     
     setProcessing(sellerId);
+    setProcessingType('seller');
     try {
       await updateSellerStatus(sellerId, 'APPROVED', adminKey);
       await loadData();
@@ -79,6 +87,7 @@ export default function AdminDashboard() {
       alert('Failed to approve seller');
     } finally {
       setProcessing(null);
+      setProcessingType(null);
     }
   };
 
@@ -87,6 +96,7 @@ export default function AdminDashboard() {
     const adminKey = localStorage.getItem('adminKey') || '';
     
     setProcessing(sellerId);
+    setProcessingType('seller');
     try {
       await updateSellerStatus(sellerId, 'REJECTED', adminKey);
       await loadData();
@@ -95,6 +105,43 @@ export default function AdminDashboard() {
       alert('Failed to reject seller');
     } finally {
       setProcessing(null);
+      setProcessingType(null);
+    }
+  };
+
+  const handleApprovePromoter = async (promoterId: number) => {
+    if (!session) return;
+    const adminKey = localStorage.getItem('adminKey') || '';
+    
+    setProcessing(promoterId);
+    setProcessingType('promoter');
+    try {
+      await updatePromoterStatus(promoterId, 'APPROVED', adminKey);
+      await loadData();
+    } catch (error) {
+      console.error('Error approving promoter:', error);
+      alert('Failed to approve promoter');
+    } finally {
+      setProcessing(null);
+      setProcessingType(null);
+    }
+  };
+
+  const handleRejectPromoter = async (promoterId: number) => {
+    if (!session) return;
+    const adminKey = localStorage.getItem('adminKey') || '';
+    
+    setProcessing(promoterId);
+    setProcessingType('promoter');
+    try {
+      await updatePromoterStatus(promoterId, 'REJECTED', adminKey);
+      await loadData();
+    } catch (error) {
+      console.error('Error rejecting promoter:', error);
+      alert('Failed to reject promoter');
+    } finally {
+      setProcessing(null);
+      setProcessingType(null);
     }
   };
 
@@ -160,6 +207,16 @@ export default function AdminDashboard() {
                 Pending Sellers
               </button>
               <button
+                onClick={() => setActiveTab('promoters')}
+                className={`px-6 py-4 font-semibold ${
+                  activeTab === 'promoters'
+                    ? 'border-b-2 border-crimson text-crimson'
+                    : 'text-midnight-navy/70 hover:text-crimson'
+                }`}
+              >
+                Pending Promoters
+              </button>
+              <button
                 onClick={() => setActiveTab('orders')}
                 className={`px-6 py-4 font-semibold ${
                   activeTab === 'orders'
@@ -214,17 +271,63 @@ export default function AdminDashboard() {
                       <div className="flex space-x-2">
                         <button
                           onClick={() => handleApprove(seller.id)}
-                          disabled={processing === seller.id}
+                          disabled={processing === seller.id && processingType === 'seller'}
                           className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:opacity-50"
                         >
-                          {processing === seller.id ? 'Processing...' : 'Approve'}
+                          {processing === seller.id && processingType === 'seller' ? 'Processing...' : 'Approve'}
                         </button>
                         <button
                           onClick={() => handleReject(seller.id)}
-                          disabled={processing === seller.id}
+                          disabled={processing === seller.id && processingType === 'seller'}
                           className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 disabled:opacity-50"
                         >
-                          {processing === seller.id ? 'Processing...' : 'Reject'}
+                          {processing === seller.id && processingType === 'seller' ? 'Processing...' : 'Reject'}
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            ) : activeTab === 'promoters' ? (
+              <div className="space-y-4">
+                {promoters.length === 0 ? (
+                  <p className="text-center py-8 text-midnight-navy/70">No pending promoters</p>
+                ) : (
+                  promoters.map((promoter) => (
+                    <div
+                      key={promoter.id}
+                      className="border border-frost-gray rounded-lg p-4 flex items-center justify-between"
+                    >
+                      <div className="flex items-center space-x-4">
+                        {promoter.headshot_url && (
+                          <img
+                            src={promoter.headshot_url}
+                            alt={promoter.name}
+                            className="w-16 h-16 rounded-full object-cover"
+                          />
+                        )}
+                        <div>
+                          <h3 className="font-semibold">{promoter.name}</h3>
+                          <p className="text-sm text-gray-600">{promoter.email}</p>
+                          <p className="text-sm text-gray-600">
+                            Membership #: {promoter.membership_number}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={() => handleApprovePromoter(promoter.id)}
+                          disabled={processing === promoter.id && processingType === 'promoter'}
+                          className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:opacity-50"
+                        >
+                          {processing === promoter.id && processingType === 'promoter' ? 'Processing...' : 'Approve'}
+                        </button>
+                        <button
+                          onClick={() => handleRejectPromoter(promoter.id)}
+                          disabled={processing === promoter.id && processingType === 'promoter'}
+                          className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 disabled:opacity-50"
+                        >
+                          {processing === promoter.id && processingType === 'promoter' ? 'Processing...' : 'Reject'}
                         </button>
                       </div>
                     </div>

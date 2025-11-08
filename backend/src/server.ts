@@ -4,8 +4,10 @@ import dotenv from 'dotenv';
 import path from 'path';
 import chaptersRouter from './routes/chapters';
 import sellersRouter from './routes/sellers';
+import promotersRouter from './routes/promoters';
 import adminRouter from './routes/admin';
 import productsRouter from './routes/products';
+import eventsRouter from './routes/events';
 import checkoutRouter from './routes/checkout';
 import webhookRouter from './routes/webhook';
 import { initializeDatabase } from './db/migrations';
@@ -41,8 +43,10 @@ app.get('/api/health', (req: Request, res: Response) => {
 
 app.use('/api/chapters', chaptersRouter);
 app.use('/api/sellers', sellersRouter);
+app.use('/api/promoters', promotersRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/products', productsRouter);
+app.use('/api/events', eventsRouter);
 app.use('/api/checkout', checkoutRouter);
 
 // Initialize database on startup

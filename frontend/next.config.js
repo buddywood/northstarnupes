@@ -2,7 +2,6 @@
 const nextConfig = {
   reactStrictMode: true,
   images: {
-    domains: ['localhost'],
     remotePatterns: [
       {
         protocol: 'https',
@@ -15,6 +14,11 @@ const nextConfig = {
       {
         protocol: 'https',
         hostname: '**.s3.**.amazonaws.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'ui-avatars.com',
+        pathname: '/api/**',
       },
     ],
   },

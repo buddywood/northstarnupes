@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { getPendingSellers, updateSellerStatus, getAllOrders, getChapterDonations, getSellerById } from '../db/queries';
+import { getPendingSellers, updateSellerStatus, getAllOrders, getChapterDonations, getSellerById, getPendingPromoters, updatePromoterStatus, getPromoterById } from '../db/queries';
 import { createConnectAccount } from '../services/stripe';
 import { z } from 'zod';
 
@@ -78,6 +78,48 @@ router.get('/donations', async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Error fetching donations:', error);
     res.status(500).json({ error: 'Failed to fetch donations' });
+  }
+});
+
+// Promoter admin routes
+router.get('/promoters/pending', async (req: Request, res: Response) => {
+  try {
+    const promoters = await getPendingPromoters();
+    res.json(promoters);
+  } catch (error) {
+    console.error('Error fetching pending promoters:', error);
+    res.status(500).json({ error: 'Failed to fetch pending promoters' });
+  }
+});
+
+router.put('/promoters/:id', async (req: Request, res: Response) => {
+  try {
+    const promoterId = parseInt(req.params.id);
+    const body = approveSellerSchema.parse(req.body);
+    
+    let stripeAccountId: string | undefined;
+    
+    // If approving, create Stripe Connect account
+    if (body.status === 'APPROVED') {
+      const promoter = await getPromoterById(promoterId);
+      
+      if (!promoter) {
+        return res.status(404).json({ error: 'Promoter not found' });
+      }
+
+      const account = await createConnectAccount(promoter.email);
+      stripeAccountId = account.id;
+    }
+
+    const updatedPromoter = await updatePromoterStatus(promoterId, body.status, stripeAccountId);
+    res.json(updatedPromoter);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ error: 'Validation error', details: error.errors });
+      return;
+    }
+    console.error('Error updating promoter status:', error);
+    res.status(500).json({ error: 'Failed to update promoter status' });
   }
 });
 

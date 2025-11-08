@@ -4,10 +4,12 @@ export interface Chapter {
   id: number;
   name: string;
   type: string;
-  province: string;
-  city: string;
-  state: string;
-  contact_email: string;
+  status: string | null;
+  chartered: number | null;
+  province: string | null;
+  city: string | null;
+  state: string | null;
+  contact_email: string | null;
 }
 
 export interface Product {
@@ -27,10 +29,40 @@ export interface Seller {
   name: string;
   membership_number: string;
   initiated_chapter_id: number;
+  sponsoring_chapter_id: number;
+  business_name: string | null;
+  vendor_license_number: string;
+  headshot_url: string | null;
+  social_links: Record<string, string>;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+}
+
+export interface Promoter {
+  id: number;
+  email: string;
+  name: string;
+  membership_number: string;
+  initiated_chapter_id: number;
   sponsoring_chapter_id: number | null;
   headshot_url: string | null;
   social_links: Record<string, string>;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
+}
+
+export interface Event {
+  id: number;
+  promoter_id: number;
+  title: string;
+  description: string | null;
+  event_date: string;
+  location: string;
+  city: string | null;
+  state: string | null;
+  image_url: string | null;
+  sponsored_chapter_id: number | null;
+  ticket_price_cents: number;
+  max_attendees: number | null;
+  promoter_name?: string;
 }
 
 export interface Order {
@@ -47,6 +79,12 @@ export interface Order {
 export async function fetchChapters(): Promise<Chapter[]> {
   const res = await fetch(`${API_URL}/api/chapters`);
   if (!res.ok) throw new Error('Failed to fetch chapters');
+  return res.json();
+}
+
+export async function fetchActiveCollegiateChapters(): Promise<Chapter[]> {
+  const res = await fetch(`${API_URL}/api/chapters/active-collegiate`);
+  if (!res.ok) throw new Error('Failed to fetch active collegiate chapters');
   return res.json();
 }
 
@@ -122,6 +160,49 @@ export async function fetchDonations(adminKey: string) {
     headers: { 'x-admin-key': adminKey },
   });
   if (!res.ok) throw new Error('Failed to fetch donations');
+  return res.json();
+}
+
+export async function submitPromoterApplication(formData: FormData): Promise<Promoter> {
+  const res = await fetch(`${API_URL}/api/promoters/apply`, {
+    method: 'POST',
+    body: formData,
+  });
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.error || 'Failed to submit application');
+  }
+  return res.json();
+}
+
+export async function fetchPendingPromoters(adminKey: string): Promise<Promoter[]> {
+  const res = await fetch(`${API_URL}/api/admin/promoters/pending`, {
+    headers: { 'x-admin-key': adminKey },
+  });
+  if (!res.ok) throw new Error('Failed to fetch pending promoters');
+  return res.json();
+}
+
+export async function updatePromoterStatus(
+  promoterId: number,
+  status: 'APPROVED' | 'REJECTED',
+  adminKey: string
+): Promise<Promoter> {
+  const res = await fetch(`${API_URL}/api/admin/promoters/${promoterId}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-admin-key': adminKey,
+    },
+    body: JSON.stringify({ status }),
+  });
+  if (!res.ok) throw new Error('Failed to update promoter status');
+  return res.json();
+}
+
+export async function fetchEvents(): Promise<Event[]> {
+  const res = await fetch(`${API_URL}/api/events`);
+  if (!res.ok) throw new Error('Failed to fetch events');
   return res.json();
 }
 

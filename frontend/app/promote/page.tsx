@@ -2,13 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { fetchChapters, fetchActiveCollegiateChapters, submitSellerApplication } from '@/lib/api';
+import { fetchChapters, fetchActiveCollegiateChapters, submitPromoterApplication } from '@/lib/api';
 import type { Chapter } from '@/lib/api';
 import Link from 'next/link';
 import Logo from '../components/Logo';
 import SearchableSelect from '../components/SearchableSelect';
 
-export default function ApplyPage() {
+export default function PromotePage() {
   const router = useRouter();
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [sponsoringChapters, setSponsoringChapters] = useState<Chapter[]>([]);
@@ -23,8 +23,6 @@ export default function ApplyPage() {
     membership_number: '',
     initiated_chapter_id: '',
     sponsoring_chapter_id: '',
-    business_name: '',
-    vendor_license_number: '',
     social_links: {
       instagram: '',
       twitter: '',
@@ -66,18 +64,16 @@ export default function ApplyPage() {
       formDataToSend.append('email', formData.email);
       formDataToSend.append('membership_number', formData.membership_number);
       formDataToSend.append('initiated_chapter_id', formData.initiated_chapter_id);
-      formDataToSend.append('sponsoring_chapter_id', formData.sponsoring_chapter_id);
-      if (formData.business_name) {
-        formDataToSend.append('business_name', formData.business_name);
+      if (formData.sponsoring_chapter_id) {
+        formDataToSend.append('sponsoring_chapter_id', formData.sponsoring_chapter_id);
       }
-      formDataToSend.append('vendor_license_number', formData.vendor_license_number);
       formDataToSend.append('social_links', JSON.stringify(formData.social_links));
       
       if (headshot) {
         formDataToSend.append('headshot', headshot);
       }
 
-      await submitSellerApplication(formDataToSend);
+      await submitPromoterApplication(formDataToSend);
       setSuccess(true);
     } catch (err: any) {
       setError(err.message || 'Failed to submit application');
@@ -91,7 +87,7 @@ export default function ApplyPage() {
         <div className="bg-white p-8 rounded-lg shadow-lg text-center max-w-md border border-frost-gray">
           <h1 className="text-2xl font-display font-extrabold mb-4 text-green-600">Application Submitted!</h1>
           <p className="text-midnight-navy/70 mb-6">
-            Your application has been submitted and is pending admin approval.
+            Your promoter application has been submitted and is pending admin approval.
             You will be notified once your application is reviewed.
           </p>
           <Link
@@ -114,7 +110,7 @@ export default function ApplyPage() {
       </nav>
 
       <div className="container mx-auto px-4 py-8 max-w-2xl">
-        <h1 className="text-3xl font-display font-extrabold text-midnight-navy mb-8">Become a Seller</h1>
+        <h1 className="text-3xl font-display font-extrabold text-midnight-navy mb-8">Become a Promoter</h1>
 
         <form onSubmit={handleSubmit} className="bg-white p-8 rounded-lg shadow-lg space-y-6 border border-frost-gray">
           <div>
@@ -175,9 +171,8 @@ export default function ApplyPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2 text-midnight-navy">Sponsoring Chapter *</label>
+            <label className="block text-sm font-medium mb-2 text-midnight-navy">Sponsoring Chapter (Optional)</label>
             <SearchableSelect
-              required
               value={formData.sponsoring_chapter_id}
               onChange={(value) => setFormData({ ...formData, sponsoring_chapter_id: value })}
               placeholder="Search for an active collegiate chapter..."
@@ -195,29 +190,6 @@ export default function ApplyPage() {
                   label: displayName,
                 };
               })}
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-2 text-midnight-navy">Business Name (Optional)</label>
-            <input
-              type="text"
-              value={formData.business_name}
-              onChange={(e) => setFormData({ ...formData, business_name: e.target.value })}
-              className="w-full px-4 py-2 border border-frost-gray rounded-lg focus:ring-2 focus:ring-crimson focus:border-transparent text-midnight-navy"
-              placeholder="Enter your business name if applicable"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-2 text-midnight-navy">Vendor License Number *</label>
-            <input
-              type="text"
-              required
-              value={formData.vendor_license_number}
-              onChange={(e) => setFormData({ ...formData, vendor_license_number: e.target.value })}
-              className="w-full px-4 py-2 border border-frost-gray rounded-lg focus:ring-2 focus:ring-crimson focus:border-transparent text-midnight-navy"
-              placeholder="Enter your vendor license number"
             />
           </div>
 
