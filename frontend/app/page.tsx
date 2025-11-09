@@ -5,9 +5,17 @@ import Logo from './components/Logo';
 
 export default async function Home() {
   const [products, chapters] = await Promise.all([
-    fetchProducts().catch(() => []),
-    fetchChapters().catch(() => []),
+    fetchProducts().catch((err) => {
+      console.error('Error fetching products:', err);
+      return [];
+    }),
+    fetchChapters().catch((err) => {
+      console.error('Error fetching chapters:', err);
+      return [];
+    }),
   ]);
+
+  console.log(`Fetched ${products.length} products and ${chapters.length} chapters`);
 
   // Group products by seller to get featured brothers
   const sellerMap = new Map<string, { name: string; products: typeof products; chapter?: string }>();
@@ -66,6 +74,46 @@ export default async function Home() {
           </Link>
         </div>
       </section>
+
+      {/* Product Highlights */}
+      {products.length > 0 && (
+        <section id="shop" className="max-w-7xl mx-auto py-16 px-4">
+          <h2 className="text-2xl font-display font-extrabold text-crimson mb-6 text-center">Featured Products</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+            {products.slice(0, 8).map((product) => (
+              <Link
+                key={product.id}
+                href={`/product/${product.id}`}
+                className="bg-white rounded-xl overflow-hidden shadow hover:shadow-md transition"
+              >
+                <div className="aspect-square relative bg-cream">
+                  {product.image_url ? (
+                    <Image
+                      src={product.image_url}
+                      alt={product.name}
+                      fill
+                      className="object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-midnight-navy/30">
+                      <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                  )}
+                </div>
+                <div className="p-3">
+                  <p className="font-semibold text-sm text-midnight-navy line-clamp-2">{product.name}</p>
+                  {product.seller_name && (
+                    <p className="text-xs text-midnight-navy/60 mt-1">by {product.seller_name}</p>
+                  )}
+                  <p className="text-crimson font-bold text-sm mt-1">${(product.price_cents / 100).toFixed(2)}</p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Featured Brothers */}
       <section className="max-w-7xl mx-auto py-16 px-4">
@@ -174,46 +222,6 @@ export default async function Home() {
           ))}
         </div>
       </section>
-
-      {/* Product Highlights */}
-      {products.length > 0 && (
-        <section id="shop" className="max-w-7xl mx-auto py-16 px-4">
-          <h2 className="text-2xl font-display font-extrabold text-crimson mb-6 text-center">Featured Products</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-            {products.slice(0, 8).map((product) => (
-              <Link
-                key={product.id}
-                href={`/product/${product.id}`}
-                className="bg-white rounded-xl overflow-hidden shadow hover:shadow-md transition"
-              >
-                <div className="aspect-square relative bg-cream">
-                  {product.image_url ? (
-                    <Image
-                      src={product.image_url}
-                      alt={product.name}
-                      fill
-                      className="object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-midnight-navy/30">
-                      <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                    </div>
-                  )}
-                </div>
-                <div className="p-3">
-                  <p className="font-semibold text-sm text-midnight-navy line-clamp-2">{product.name}</p>
-                  {product.seller_name && (
-                    <p className="text-xs text-midnight-navy/60 mt-1">by {product.seller_name}</p>
-                  )}
-                  <p className="text-crimson font-bold text-sm mt-1">${(product.price_cents / 100).toFixed(2)}</p>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
 
       {/* Impact Section */}
       <section className="bg-midnight-navy text-cream text-center py-16 px-6">

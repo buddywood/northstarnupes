@@ -89,9 +89,21 @@ export async function fetchActiveCollegiateChapters(): Promise<Chapter[]> {
 }
 
 export async function fetchProducts(): Promise<Product[]> {
-  const res = await fetch(`${API_URL}/api/products`);
-  if (!res.ok) throw new Error('Failed to fetch products');
-  return res.json();
+  try {
+    const res = await fetch(`${API_URL}/api/products`, {
+      cache: 'no-store', // Ensure fresh data on each request
+    });
+    if (!res.ok) {
+      console.error(`Failed to fetch products: ${res.status} ${res.statusText}`);
+      throw new Error('Failed to fetch products');
+    }
+    const data = await res.json();
+    console.log(`fetchProducts: Retrieved ${data.length} products`);
+    return data;
+  } catch (error) {
+    console.error('Error in fetchProducts:', error);
+    throw error;
+  }
 }
 
 export async function fetchProduct(id: number): Promise<Product> {
