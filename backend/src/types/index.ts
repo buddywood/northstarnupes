@@ -33,6 +33,9 @@ export interface Brother {
   industry: string | null;
   job_title: string | null;
   bio: string | null; // biography/about section
+  verification_status?: 'PENDING' | 'VERIFIED' | 'FAILED' | 'MANUAL_REVIEW';
+  verification_date?: Date | null;
+  verification_notes?: string | null;
   created_at: Date;
   updated_at: Date;
 }

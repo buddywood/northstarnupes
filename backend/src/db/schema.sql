@@ -229,6 +229,54 @@ BEGIN
                  WHERE table_name='users' AND column_name='onboarding_status') THEN
     ALTER TABLE users ADD COLUMN onboarding_status VARCHAR(50) DEFAULT 'PRE_COGNITO' CHECK (onboarding_status IN ('PRE_COGNITO', 'COGNITO_CONFIRMED', 'ONBOARDING_STARTED', 'ONBOARDING_FINISHED'));
   END IF;
+
+  -- Add verification fields to members table
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                 WHERE table_name='members' AND column_name='verification_status') THEN
+    ALTER TABLE members ADD COLUMN verification_status VARCHAR(20) DEFAULT 'PENDING' CHECK (verification_status IN ('PENDING', 'VERIFIED', 'FAILED', 'MANUAL_REVIEW'));
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                 WHERE table_name='members' AND column_name='verification_date') THEN
+    ALTER TABLE members ADD COLUMN verification_date TIMESTAMP;
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                 WHERE table_name='members' AND column_name='verification_notes') THEN
+    ALTER TABLE members ADD COLUMN verification_notes TEXT;
+  END IF;
+
+  -- Add verification fields to sellers table
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                 WHERE table_name='sellers' AND column_name='verification_status') THEN
+    ALTER TABLE sellers ADD COLUMN verification_status VARCHAR(20) DEFAULT 'PENDING' CHECK (verification_status IN ('PENDING', 'VERIFIED', 'FAILED', 'MANUAL_REVIEW'));
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                 WHERE table_name='sellers' AND column_name='verification_date') THEN
+    ALTER TABLE sellers ADD COLUMN verification_date TIMESTAMP;
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                 WHERE table_name='sellers' AND column_name='verification_notes') THEN
+    ALTER TABLE sellers ADD COLUMN verification_notes TEXT;
+  END IF;
+
+  -- Add verification fields to promoters table
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                 WHERE table_name='promoters' AND column_name='verification_status') THEN
+    ALTER TABLE promoters ADD COLUMN verification_status VARCHAR(20) DEFAULT 'PENDING' CHECK (verification_status IN ('PENDING', 'VERIFIED', 'FAILED', 'MANUAL_REVIEW'));
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                 WHERE table_name='promoters' AND column_name='verification_date') THEN
+    ALTER TABLE promoters ADD COLUMN verification_date TIMESTAMP;
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                 WHERE table_name='promoters' AND column_name='verification_notes') THEN
+    ALTER TABLE promoters ADD COLUMN verification_notes TEXT;
+  END IF;
 END $$;
 
 -- Products table

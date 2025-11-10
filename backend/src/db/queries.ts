@@ -642,3 +642,126 @@ export async function updateUserFeatures(
   return row;
 }
 
+// Member verification queries
+export async function getPendingMembersForVerification(): Promise<any[]> {
+  const result = await pool.query(
+    `SELECT * FROM members 
+     WHERE registration_status = 'COMPLETE' 
+     AND (verification_status IS NULL OR verification_status = 'PENDING')
+     AND name IS NOT NULL 
+     AND membership_number IS NOT NULL
+     ORDER BY created_at DESC`
+  );
+  return result.rows;
+}
+
+export async function getPendingSellersForVerification(): Promise<Seller[]> {
+  const result = await pool.query(
+    `SELECT * FROM sellers 
+     WHERE status = 'PENDING' 
+     AND (verification_status IS NULL OR verification_status = 'PENDING')
+     ORDER BY created_at DESC`
+  );
+  return result.rows.map(row => ({
+    ...row,
+    social_links: typeof row.social_links === 'string' ? JSON.parse(row.social_links) : row.social_links,
+  }));
+}
+
+export async function getPendingPromotersForVerification(): Promise<Promoter[]> {
+  const result = await pool.query(
+    `SELECT * FROM promoters 
+     WHERE status = 'PENDING' 
+     AND (verification_status IS NULL OR verification_status = 'PENDING')
+     ORDER BY created_at DESC`
+  );
+  return result.rows.map(row => ({
+    ...row,
+    social_links: typeof row.social_links === 'string' ? JSON.parse(row.social_links) : row.social_links,
+  }));
+}
+
+export async function updateMemberVerification(
+  id: number,
+  verification_status: 'PENDING' | 'VERIFIED' | 'FAILED' | 'MANUAL_REVIEW',
+  verification_notes?: string | null
+): Promise<any> {
+  const result = await pool.query(
+    `UPDATE members 
+     SET verification_status = $2, 
+         verification_date = CURRENT_TIMESTAMP,
+         verification_notes = $3,
+         updated_at = CURRENT_TIMESTAMP 
+     WHERE id = $1 
+     RETURNING *`,
+    [id, verification_status, verification_notes || null]
+  );
+  return result.rows[0];
+}
+
+export async function updateSellerVerification(
+  id: number,
+  verification_status: 'PENDING' | 'VERIFIED' | 'FAILED' | 'MANUAL_REVIEW',
+  verification_notes?: string | null,
+  autoApprove?: boolean
+): Promise<Seller> {
+  const updates: string[] = [
+    'verification_status = $2',
+    'verification_date = CURRENT_TIMESTAMP',
+    'verification_notes = $3',
+  ];
+  const values: any[] = [id, verification_status, verification_notes || null];
+
+  // Auto-approve if verified
+  if (autoApprove && verification_status === 'VERIFIED') {
+    updates.push('status = $4');
+    values.push('APPROVED');
+  }
+
+  updates.push('updated_at = CURRENT_TIMESTAMP');
+
+  const result = await pool.query(
+    `UPDATE sellers SET ${updates.join(', ')} WHERE id = $1 RETURNING *`,
+    values
+  );
+  if (result.rows[0]) {
+    result.rows[0].social_links = typeof result.rows[0].social_links === 'string' 
+      ? JSON.parse(result.rows[0].social_links) 
+      : result.rows[0].social_links;
+  }
+  return result.rows[0];
+}
+
+export async function updatePromoterVerification(
+  id: number,
+  verification_status: 'PENDING' | 'VERIFIED' | 'FAILED' | 'MANUAL_REVIEW',
+  verification_notes?: string | null,
+  autoApprove?: boolean
+): Promise<Promoter> {
+  const updates: string[] = [
+    'verification_status = $2',
+    'verification_date = CURRENT_TIMESTAMP',
+    'verification_notes = $3',
+  ];
+  const values: any[] = [id, verification_status, verification_notes || null];
+
+  // Auto-approve if verified
+  if (autoApprove && verification_status === 'VERIFIED') {
+    updates.push('status = $4');
+    values.push('APPROVED');
+  }
+
+  updates.push('updated_at = CURRENT_TIMESTAMP');
+
+  const result = await pool.query(
+    `UPDATE promoters SET ${updates.join(', ')} WHERE id = $1 RETURNING *`,
+    values
+  );
+  if (result.rows[0]) {
+    result.rows[0].social_links = typeof result.rows[0].social_links === 'string' 
+      ? JSON.parse(result.rows[0].social_links) 
+      : result.rows[0].social_links;
+  }
+  return result.rows[0];
+}
+
