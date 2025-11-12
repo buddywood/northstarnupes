@@ -27,12 +27,12 @@ export interface Seller {
   id: number;
   email: string;
   name: string;
-  membership_number: string;
-  initiated_chapter_id: number;
+  member_id?: number | null;
   sponsoring_chapter_id: number;
   business_name: string | null;
   vendor_license_number: string;
   headshot_url: string | null;
+  store_logo_url: string;
   social_links: Record<string, string>;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
 }
@@ -141,8 +141,21 @@ export async function createCheckoutSession(productId: number, buyerEmail: strin
 }
 
 export async function submitSellerApplication(formData: FormData): Promise<Seller> {
+  // Get auth token if available (optional)
+  const headers: HeadersInit = {};
+  try {
+    const session = await fetch('/api/auth/session').then(res => res.json());
+    const idToken = (session as any)?.idToken;
+    if (idToken) {
+      headers['Authorization'] = `Bearer ${idToken}`;
+    }
+  } catch (error) {
+    // Not authenticated, continue without auth header
+  }
+
   const res = await fetch(`${API_URL}/api/sellers/apply`, {
     method: 'POST',
+    headers,
     body: formData,
   });
   if (!res.ok) {
@@ -150,6 +163,29 @@ export async function submitSellerApplication(formData: FormData): Promise<Selle
     throw new Error(error.error || 'Failed to submit application');
   }
   return res.json();
+}
+
+export async function validateSellerInvitation(token: string): Promise<{ valid: boolean; seller: { email: string; name: string } }> {
+  const res = await fetch(`${API_URL}/api/seller-setup/validate/${token}`);
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.error || 'Invalid invitation token');
+  }
+  return res.json();
+}
+
+export async function completeSellerSetup(token: string, password: string): Promise<void> {
+  const res = await fetch(`${API_URL}/api/seller-setup/complete`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ token, password }),
+  });
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.error || 'Failed to complete seller setup');
+  }
 }
 
 async function getAuthHeaders(): Promise<HeadersInit> {
@@ -257,8 +293,9 @@ export async function updatePromoterStatus(
   return res.json();
 }
 
-export async function fetchEvents(): Promise<Event[]> {
-  const res = await fetch(`${API_URL}/api/events`);
+export async function fetchEvents(includeAll: boolean = true): Promise<Event[]> {
+  const url = includeAll ? `${API_URL}/api/events?all=true` : `${API_URL}/api/events`;
+  const res = await fetch(url);
   if (!res.ok) throw new Error('Failed to fetch events');
   return res.json();
 }
@@ -266,6 +303,102 @@ export async function fetchEvents(): Promise<Event[]> {
 export async function fetchEvent(id: number): Promise<Event> {
   const res = await fetch(`${API_URL}/api/events/${id}`);
   if (!res.ok) throw new Error('Failed to fetch event');
+  return res.json();
+}
+
+export interface MemberProfile {
+  id: number;
+  email: string;
+  name: string | null;
+  membership_number: string | null;
+  initiated_chapter_id: number | null;
+  chapter_name: string | null;
+  initiated_season: string | null;
+  initiated_year: number | null;
+  ship_name: string | null;
+  line_name: string | null;
+  location: string | null;
+  address: string | null;
+  address_is_private: boolean;
+  phone_number: string | null;
+  phone_is_private: boolean;
+  industry: string | null;
+  job_title: string | null;
+  bio: string | null;
+  headshot_url: string | null;
+  social_links: Record<string, string>;
+  created_at: string;
+  updated_at: string;
+}
+
+export async function fetchMemberProfile(): Promise<MemberProfile> {
+  const session = await fetch('/api/auth/session').then(res => res.json());
+  const idToken = (session as any)?.idToken;
+  
+  if (!idToken) {
+    throw new Error('Not authenticated');
+  }
+
+  const res = await fetch(`${API_URL}/api/members/profile`, {
+    headers: {
+      'Authorization': `Bearer ${idToken}`,
+    },
+  });
+  
+  if (!res.ok) {
+    if (res.status === 404) {
+      throw new Error('Member profile not found');
+    }
+    throw new Error('Failed to fetch member profile');
+  }
+  
+  return res.json();
+}
+
+export async function updateMemberProfile(
+  data: Partial<MemberProfile> & { headshot?: File }
+): Promise<MemberProfile> {
+  const session = await fetch('/api/auth/session').then(res => res.json());
+  const idToken = (session as any)?.idToken;
+  
+  if (!idToken) {
+    throw new Error('Not authenticated');
+  }
+
+  const formData = new FormData();
+  
+  // Add all fields except headshot
+  Object.keys(data).forEach((key) => {
+    if (key !== 'headshot' && data[key as keyof typeof data] !== undefined) {
+      const value = data[key as keyof typeof data];
+      if (key === 'social_links' && typeof value === 'object') {
+        formData.append(key, JSON.stringify(value));
+      } else if (key === 'address_is_private' || key === 'phone_is_private') {
+        formData.append(key, String(value));
+      } else if (value !== null) {
+        formData.append(key, String(value));
+      }
+    }
+  });
+
+  // Add headshot if provided
+  if (data.headshot) {
+    formData.append('headshot', data.headshot);
+  }
+
+  const res = await fetch(`${API_URL}/api/members/profile`, {
+    method: 'PUT',
+    headers: {
+      'Authorization': `Bearer ${idToken}`,
+    },
+    body: formData,
+  });
+  
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ error: 'Failed to update profile' }));
+    throw new Error(error.error || 'Failed to update member profile');
+  }
+  
   return res.json();
 }
 

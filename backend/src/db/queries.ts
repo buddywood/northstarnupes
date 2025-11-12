@@ -61,27 +61,27 @@ export async function createChapter(chapter: {
 export async function createSeller(seller: {
   email: string;
   name: string;
-  membership_number: string;
-  initiated_chapter_id: number;
+  member_id?: number | null;
   sponsoring_chapter_id: number;
   business_name?: string | null;
   vendor_license_number: string;
   headshot_url?: string;
+  store_logo_url?: string;
   social_links?: Record<string, string>;
 }): Promise<Seller> {
   const result = await pool.query(
-    `INSERT INTO sellers (email, name, membership_number, initiated_chapter_id, sponsoring_chapter_id, business_name, vendor_license_number, headshot_url, social_links, status)
+    `INSERT INTO sellers (email, name, member_id, sponsoring_chapter_id, business_name, vendor_license_number, headshot_url, store_logo_url, social_links, status)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'PENDING')
      RETURNING *`,
     [
       seller.email,
       seller.name,
-      seller.membership_number,
-      seller.initiated_chapter_id,
+      seller.member_id || null,
       seller.sponsoring_chapter_id,
       seller.business_name || null,
       seller.vendor_license_number,
       seller.headshot_url || null,
+      seller.store_logo_url || null,
       JSON.stringify(seller.social_links || {}),
     ]
   );
@@ -142,6 +142,31 @@ export async function updateSellerStatus(
       : result.rows[0].social_links;
   }
   return result.rows[0];
+}
+
+export async function updateSellerInvitationToken(
+  sellerId: number,
+  invitationToken: string | null
+): Promise<void> {
+  await pool.query(
+    'UPDATE sellers SET invitation_token = $1 WHERE id = $2',
+    [invitationToken, sellerId]
+  );
+}
+
+export async function getSellerByInvitationToken(
+  invitationToken: string
+): Promise<Seller | null> {
+  const result = await pool.query(
+    'SELECT * FROM sellers WHERE invitation_token = $1 AND status = $2',
+    [invitationToken, 'APPROVED']
+  );
+  if (result.rows[0]) {
+    result.rows[0].social_links = typeof result.rows[0].social_links === 'string' 
+      ? JSON.parse(result.rows[0].social_links) 
+      : result.rows[0].social_links;
+  }
+  return result.rows[0] || null;
 }
 
 // Product queries
@@ -325,21 +350,19 @@ export async function getTotalDonations(): Promise<number> {
 export async function createPromoter(promoter: {
   email: string;
   name: string;
-  membership_number: string;
-  initiated_chapter_id: number;
+  member_id?: number | null;
   sponsoring_chapter_id?: number;
   headshot_url?: string;
   social_links?: Record<string, string>;
 }): Promise<Promoter> {
   const result = await pool.query(
-    `INSERT INTO promoters (email, name, membership_number, initiated_chapter_id, sponsoring_chapter_id, headshot_url, social_links, status)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, 'PENDING')
+    `INSERT INTO promoters (email, name, member_id, sponsoring_chapter_id, headshot_url, social_links, status)
+     VALUES ($1, $2, $3, $4, $5, $6, 'PENDING')
      RETURNING *`,
     [
       promoter.email,
       promoter.name,
-      promoter.membership_number,
-      promoter.initiated_chapter_id,
+      promoter.member_id || null,
       promoter.sponsoring_chapter_id || null,
       promoter.headshot_url || null,
       JSON.stringify(promoter.social_links || {}),
@@ -460,6 +483,17 @@ export async function getActiveEvents(): Promise<Event[]> {
   return result.rows;
 }
 
+export async function getAllEvents(): Promise<Event[]> {
+  const result = await pool.query(
+    `SELECT e.*, p.name as promoter_name, p.status as promoter_status
+     FROM events e
+     JOIN promoters p ON e.promoter_id = p.id
+     WHERE p.status = 'APPROVED'
+     ORDER BY e.event_date ASC`
+  );
+  return result.rows;
+}
+
 export async function getEventsByPromoter(promoterId: number): Promise<Event[]> {
   const result = await pool.query(
     'SELECT * FROM events WHERE promoter_id = $1 ORDER BY event_date DESC',
@@ -519,14 +553,11 @@ export async function getUserByCognitoSub(cognitoSub: string): Promise<User | nu
 
 export async function getUserByEmail(email: string): Promise<User | null> {
   const result = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
-  if (result.rows[0]) {
-    const row = result.rows[0];
-    if (row.features && typeof row.features === 'string') {
-      row.features = JSON.parse(row.features);
-    }
-    return row;
+  const row = result.rows[0];
+  if (row && row.features && typeof row.features === 'string') {
+    row.features = JSON.parse(row.features);
   }
-  return null;
+  return row || null;
 }
 
 export async function getUserById(id: number): Promise<User | null> {

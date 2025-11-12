@@ -68,17 +68,17 @@ export default function Header() {
           <Logo href="/" />
         </div>
         <nav className="hidden md:flex gap-6 text-sm font-medium items-center absolute left-1/2 transform -translate-x-1/2">
-          <a href="#shop" className="hover:text-crimson transition">Shop</a>
+          <Link href="/shop" className="hover:text-crimson transition">Shop</Link>
           <Link href="/collections" className="hover:text-crimson transition">Collections</Link>
           <Link href="/connect" className="hover:text-crimson transition">Connect</Link>
-          <a href="#events" className="hover:text-crimson transition">Events</a>
+          <Link href="/events" className="hover:text-crimson transition">Events</Link>
           {showAuthenticatedMenu ? (
             <>
               <Link 
-                href="/admin" 
+                href="/profile" 
                 className="text-sm font-medium text-midnight-navy hover:text-crimson transition px-4 py-2"
               >
-                {firstName ? `Welcome Brother ${firstName}` : 'Dashboard'}
+                {firstName ? `Welcome Brother ${firstName}` : 'Profile'}
               </Link>
               <button
                 onClick={handleLogout}

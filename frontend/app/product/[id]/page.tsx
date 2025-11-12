@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { fetchProduct, createCheckoutSession, fetchChapters } from '@/lib/api';
 import type { Product, Chapter } from '@/lib/api';
 import Image from 'next/image';
@@ -13,6 +14,7 @@ import { SkeletonLoader } from '../../components/Skeleton';
 export default function ProductPage() {
   const params = useParams();
   const router = useRouter();
+  const { data: session, status: sessionStatus } = useSession();
   const [product, setProduct] = useState<Product | null>(null);
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [loading, setLoading] = useState(true);
@@ -37,6 +39,13 @@ export default function ProductPage() {
         .finally(() => setLoading(false));
     }
   }, [params.id]);
+
+  // Pre-populate email if user is authenticated
+  useEffect(() => {
+    if (sessionStatus === 'authenticated' && session?.user?.email && !email) {
+      setEmail(session.user.email);
+    }
+  }, [sessionStatus, session, email]);
 
   const getChapterName = (chapterId: number | null) => {
     if (!chapterId) return null;
@@ -160,6 +169,11 @@ export default function ProductPage() {
                     className="w-full px-4 py-2 border border-frost-gray rounded-lg focus:ring-2 focus:ring-crimson focus:border-transparent text-midnight-navy"
                     placeholder="your@email.com"
                   />
+                  {sessionStatus === 'authenticated' && session?.user?.email === email && (
+                    <p className="mt-1 text-xs text-midnight-navy/60">
+                      Using email from your account
+                    </p>
+                  )}
                 </div>
 
                 {error && (

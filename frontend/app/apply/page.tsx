@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { fetchChapters, fetchActiveCollegiateChapters, submitSellerApplication } from '@/lib/api';
+import { useSession } from 'next-auth/react';
+import { fetchActiveCollegiateChapters, submitSellerApplication, fetchMemberProfile } from '@/lib/api';
 import type { Chapter } from '@/lib/api';
 import Link from 'next/link';
 import Logo from '../components/Logo';
@@ -10,18 +11,17 @@ import SearchableSelect from '../components/SearchableSelect';
 
 export default function ApplyPage() {
   const router = useRouter();
-  const [chapters, setChapters] = useState<Chapter[]>([]);
+  const { data: session, status: sessionStatus } = useSession();
   const [sponsoringChapters, setSponsoringChapters] = useState<Chapter[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [profileLoaded, setProfileLoaded] = useState(false);
 
   const [formData, setFormData] = useState({
     name: '',
     email: '',
-    membership_number: '',
-    initiated_chapter_id: '',
     sponsoring_chapter_id: '',
     business_name: '',
     vendor_license_number: '',
@@ -35,13 +35,70 @@ export default function ApplyPage() {
 
   const [headshot, setHeadshot] = useState<File | null>(null);
   const [headshotPreview, setHeadshotPreview] = useState<string | null>(null);
+  const [storeLogo, setStoreLogo] = useState<File | null>(null);
+  const [storeLogoPreview, setStoreLogoPreview] = useState<string | null>(null);
 
   useEffect(() => {
-    Promise.all([
-      fetchChapters().then(setChapters).catch(console.error),
-      fetchActiveCollegiateChapters().then(setSponsoringChapters).catch(console.error)
-    ]).finally(() => setLoading(false));
+    fetchActiveCollegiateChapters()
+      .then(setSponsoringChapters)
+      .catch(console.error)
+      .finally(() => setLoading(false));
   }, []);
+
+  // Load member profile if authenticated (for prefilling form data)
+  useEffect(() => {
+    const loadMemberProfile = async () => {
+      if (sessionStatus === 'authenticated' && session?.user && !profileLoaded) {
+        try {
+          const memberId = (session.user as any)?.memberId;
+          if (memberId) {
+            const profile = await fetchMemberProfile();
+            setFormData(prev => ({
+              ...prev,
+              name: profile.name || prev.name,
+              email: profile.email || prev.email,
+              social_links: {
+                instagram: profile.social_links?.instagram || prev.social_links.instagram,
+                twitter: profile.social_links?.twitter || prev.social_links.twitter,
+                linkedin: profile.social_links?.linkedin || prev.social_links.linkedin,
+                website: profile.social_links?.website || prev.social_links.website,
+              },
+            }));
+
+            // Set headshot preview if available
+            if (profile.headshot_url) {
+              setHeadshotPreview(profile.headshot_url);
+            }
+          } else {
+            // If authenticated but no memberId, just use email
+            const sessionEmail = (session.user as any)?.email;
+            if (sessionEmail) {
+              setFormData(prev => ({
+                ...prev,
+                email: sessionEmail,
+              }));
+            }
+          }
+          setProfileLoaded(true);
+        } catch (err) {
+          // If profile fetch fails, just use session email
+          console.error('Error loading member profile:', err);
+          const sessionEmail = (session.user as any)?.email;
+          if (sessionEmail) {
+            setFormData(prev => ({
+              ...prev,
+              email: sessionEmail,
+            }));
+          }
+          setProfileLoaded(true);
+        }
+      } else if (sessionStatus === 'unauthenticated') {
+        setProfileLoaded(true);
+      }
+    };
+
+    loadMemberProfile();
+  }, [sessionStatus, session, profileLoaded]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -50,6 +107,18 @@ export default function ApplyPage() {
       const reader = new FileReader();
       reader.onloadend = () => {
         setHeadshotPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setStoreLogo(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setStoreLogoPreview(reader.result as string);
       };
       reader.readAsDataURL(file);
     }
@@ -64,8 +133,6 @@ export default function ApplyPage() {
       const formDataToSend = new FormData();
       formDataToSend.append('name', formData.name);
       formDataToSend.append('email', formData.email);
-      formDataToSend.append('membership_number', formData.membership_number);
-      formDataToSend.append('initiated_chapter_id', formData.initiated_chapter_id);
       formDataToSend.append('sponsoring_chapter_id', formData.sponsoring_chapter_id);
       if (formData.business_name) {
         formDataToSend.append('business_name', formData.business_name);
@@ -73,10 +140,24 @@ export default function ApplyPage() {
       formDataToSend.append('vendor_license_number', formData.vendor_license_number);
       formDataToSend.append('social_links', JSON.stringify(formData.social_links));
       
+      // Store logo is required
+      if (!storeLogo) {
+        setError('Store logo is required');
+        setSubmitting(false);
+        return;
+      }
+      formDataToSend.append('store_logo', storeLogo);
+
+      // Headshot is optional - if new headshot uploaded, use it; otherwise use existing headshot URL if available
       if (headshot) {
         formDataToSend.append('headshot', headshot);
+      } else if (headshotPreview && headshotPreview.startsWith('http')) {
+        // Existing headshot URL from profile - send it to backend
+        formDataToSend.append('existing_headshot_url', headshotPreview);
       }
 
+      // submitSellerApplication will automatically include auth header if user is authenticated
+      // Backend will use memberId from authenticated user if available
       await submitSellerApplication(formDataToSend);
       setSuccess(true);
     } catch (err: any) {
@@ -89,11 +170,28 @@ export default function ApplyPage() {
     return (
       <div className="min-h-screen bg-cream flex items-center justify-center">
         <div className="bg-white p-8 rounded-lg shadow-lg text-center max-w-md border border-frost-gray">
-          <h1 className="text-2xl font-display font-bold mb-4 text-green-600">Application Submitted!</h1>
-          <p className="text-midnight-navy/70 mb-6">
-            Your application has been submitted and is pending admin approval.
-            You will be notified once your application is reviewed.
+          <div className="mb-6">
+            <svg className="w-16 h-16 mx-auto text-crimson" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <h1 className="text-2xl font-display font-bold mb-4 text-midnight-navy">Application Submitted!</h1>
+          <p className="text-midnight-navy/70 mb-4">
+            Thank you for your interest in becoming a seller on 1Kappa. Your application has been successfully submitted and is now under review.
           </p>
+          <p className="text-midnight-navy/70 mb-6">
+            Our team will review your application and you will receive an email notification once a decision has been made. This typically takes 1-3 business days.
+          </p>
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+            <p className="text-sm text-blue-800">
+              <strong>What happens next?</strong>
+            </p>
+            <ul className="text-sm text-blue-700 mt-2 text-left list-disc list-inside space-y-1">
+              <li>We'll review your application and verify your information</li>
+              <li>You'll receive an email when your application is approved</li>
+              <li>Once approved, you can start listing products in the shop</li>
+            </ul>
+          </div>
           <Link
             href="/"
             className="inline-block bg-crimson text-white px-6 py-2 rounded-lg hover:bg-crimson/90 transition shadow-md"
@@ -117,6 +215,17 @@ export default function ApplyPage() {
         <h1 className="text-3xl font-display font-bold text-midnight-navy mb-8">Become a Seller</h1>
 
         <form onSubmit={handleSubmit} className="bg-white p-8 rounded-lg shadow-lg space-y-6 border border-frost-gray">
+          {sessionStatus === 'authenticated' && profileLoaded && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+              <p className="text-sm text-blue-800">
+                <svg className="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Your member information has been prefilled. You can edit any field as needed.
+              </p>
+            </div>
+          )}
+
           <div>
             <label className="block text-sm font-medium mb-2 text-midnight-navy">Full Name *</label>
             <input
@@ -137,42 +246,21 @@ export default function ApplyPage() {
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               className="w-full px-4 py-2 border border-frost-gray rounded-lg focus:ring-2 focus:ring-crimson focus:border-transparent text-midnight-navy"
             />
+            {sessionStatus === 'authenticated' && session?.user?.email === formData.email && (
+              <p className="mt-1 text-xs text-midnight-navy/60">Using email from your account</p>
+            )}
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-2 text-midnight-navy">Membership Number *</label>
-            <input
-              type="text"
-              required
-              value={formData.membership_number}
-              onChange={(e) => setFormData({ ...formData, membership_number: e.target.value })}
-              className="w-full px-4 py-2 border border-frost-gray rounded-lg focus:ring-2 focus:ring-crimson focus:border-transparent text-midnight-navy"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-2 text-midnight-navy">Initiated Chapter *</label>
-            <SearchableSelect
-              required
-              value={formData.initiated_chapter_id}
-              onChange={(value) => setFormData({ ...formData, initiated_chapter_id: value })}
-              placeholder="Search for a chapter..."
-              options={chapters.map((chapter) => {
-                const locationParts = [];
-                if (chapter.city) locationParts.push(chapter.city);
-                if (chapter.state) locationParts.push(chapter.state);
-                const location = locationParts.length > 0 ? locationParts.join(', ') : '';
-                const displayName = location 
-                  ? `${chapter.name} - ${location}${chapter.province ? ` (${chapter.province})` : ''}`
-                  : chapter.name;
-                return {
-                  id: chapter.id,
-                  value: chapter.id,
-                  label: displayName,
-                };
-              })}
-            />
-          </div>
+          {sessionStatus === 'authenticated' && (session?.user as any)?.memberId && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+              <p className="text-sm text-blue-800">
+                <svg className="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                You're logged in as a member. Your membership will be automatically associated with your seller account.
+              </p>
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium mb-2 text-midnight-navy">Sponsoring Chapter *</label>
@@ -222,20 +310,59 @@ export default function ApplyPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2 text-midnight-navy">Headshot *</label>
+            <label className="block text-sm font-medium mb-2 text-midnight-navy">Store Logo *</label>
+            <p className="text-xs text-midnight-navy/60 mb-2">
+              Upload a logo for your store. This will be displayed on your seller profile and product pages.
+            </p>
             <input
               type="file"
               accept="image/*"
               required
+              onChange={handleLogoChange}
+              className="w-full px-4 py-2 border border-frost-gray rounded-lg text-midnight-navy"
+            />
+            {storeLogoPreview && (
+              <div className="mt-4">
+                <p className="text-sm text-midnight-navy/70 mb-2">Logo preview:</p>
+                <img
+                  src={storeLogoPreview}
+                  alt="Store logo preview"
+                  className="max-w-xs max-h-32 object-contain rounded-lg border border-frost-gray bg-white p-2"
+                />
+              </div>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-2 text-midnight-navy">Headshot (Optional)</label>
+            {headshotPreview && !headshot && (
+              <div className="mb-3 p-3 bg-frost-gray rounded-lg">
+                <p className="text-sm text-midnight-navy/70 mb-2">Current profile photo:</p>
+                <img
+                  src={headshotPreview}
+                  alt="Current headshot"
+                  className="w-24 h-24 object-cover rounded-lg border border-frost-gray"
+                />
+                <p className="text-xs text-midnight-navy/60 mt-2">Upload a new photo below or keep your current one</p>
+              </div>
+            )}
+            <input
+              type="file"
+              accept="image/*"
               onChange={handleFileChange}
               className="w-full px-4 py-2 border border-frost-gray rounded-lg text-midnight-navy"
             />
-            {headshotPreview && (
+            {headshot && (
               <img
-                src={headshotPreview}
+                src={headshotPreview || ''}
                 alt="Headshot preview"
                 className="mt-4 w-32 h-32 object-cover rounded-lg border border-frost-gray"
               />
+            )}
+            {headshotPreview && !headshot && (
+              <p className="mt-2 text-xs text-midnight-navy/60">
+                If you don't upload a new photo, your current profile photo will be used.
+              </p>
             )}
           </div>
 

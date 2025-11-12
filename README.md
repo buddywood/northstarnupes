@@ -1,4 +1,4 @@
-# North Star Nupes MVP
+# 1Kappa MVP
 
 A verified fraternity member marketplace for selling branded merchandise with automated donation tracking.
 

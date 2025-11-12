@@ -3,6 +3,7 @@ import multer from 'multer';
 import pool from '../db/connection';
 import { uploadToS3 } from '../services/s3';
 import { sendWelcomeEmail } from '../services/email';
+import { authenticate } from '../middleware/auth';
 import { z } from 'zod';
 import { CognitoIdentityProviderClient, SignUpCommand, ConfirmSignUpCommand, ForgotPasswordCommand, ConfirmForgotPasswordCommand, AdminGetUserCommand, ResendConfirmationCodeCommand } from '@aws-sdk/client-cognito-identity-provider';
 import { getUserByCognitoSub, createUser, linkUserToMember, updateUserOnboardingStatusByCognitoSub } from '../db/queries';
@@ -876,6 +877,254 @@ router.post('/register', upload.single('headshot'), async (req: Request, res: Re
     }
     console.error('Error creating member registration:', error);
     res.status(500).json({ error: 'Failed to create member registration' });
+  }
+});
+
+// Get current member profile
+router.get('/profile', authenticate, async (req: Request, res: Response) => {
+  try {
+    if (!req.user || !req.user.memberId) {
+      return res.status(404).json({ error: 'Member profile not found' });
+    }
+
+    const result = await pool.query(
+      `SELECT m.*, c.name as chapter_name
+       FROM members m
+       LEFT JOIN chapters c ON m.initiated_chapter_id = c.id
+       WHERE m.id = $1`,
+      [req.user.memberId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Member not found' });
+    }
+
+    const member = result.rows[0];
+    // Parse social_links if it's a string
+    if (typeof member.social_links === 'string') {
+      member.social_links = JSON.parse(member.social_links);
+    }
+
+    res.json(member);
+  } catch (error) {
+    console.error('Error fetching member profile:', error);
+    res.status(500).json({ error: 'Failed to fetch member profile' });
+  }
+});
+
+// Update member profile
+const memberUpdateSchema = z.object({
+  name: z.string().min(1).optional(),
+  initiated_chapter_id: z.number().int().positive().optional(),
+  initiated_season: z.string().optional().nullable(),
+  initiated_year: z.number().int().positive().optional().nullable(),
+  ship_name: z.string().optional().nullable(),
+  line_name: z.string().optional().nullable(),
+  location: z.string().optional().nullable(),
+  address: z.string().optional().nullable(),
+  address_is_private: z.boolean().optional(),
+  phone_number: z.string().optional().nullable(),
+  phone_is_private: z.boolean().optional(),
+  industry: z.string().optional().nullable(),
+  job_title: z.string().optional().nullable(),
+  bio: z.string().optional().nullable(),
+  social_links: z.record(z.string()).optional(),
+});
+
+router.put('/profile', authenticate, upload.single('headshot'), async (req: Request, res: Response) => {
+  try {
+    if (!req.user || !req.user.memberId) {
+      return res.status(404).json({ error: 'Member profile not found' });
+    }
+
+    // Helper to convert empty strings to null
+    const toNullIfEmpty = (value: any) => {
+      if (value === undefined || value === null || value === '') return null;
+      return value;
+    };
+
+    // Parse form data
+    const parsedBody = {
+      ...req.body,
+      initiated_chapter_id: req.body.initiated_chapter_id ? parseInt(req.body.initiated_chapter_id) : undefined,
+      initiated_season: toNullIfEmpty(req.body.initiated_season),
+      initiated_year: req.body.initiated_year && req.body.initiated_year !== '' 
+        ? parseInt(req.body.initiated_year) 
+        : undefined,
+      ship_name: toNullIfEmpty(req.body.ship_name),
+      line_name: toNullIfEmpty(req.body.line_name),
+      location: toNullIfEmpty(req.body.location),
+      address: toNullIfEmpty(req.body.address),
+      phone_number: toNullIfEmpty(req.body.phone_number),
+      industry: toNullIfEmpty(req.body.industry),
+      job_title: toNullIfEmpty(req.body.job_title),
+      bio: toNullIfEmpty(req.body.bio),
+      address_is_private: req.body.address_is_private === 'true' || req.body.address_is_private === true,
+      phone_is_private: req.body.phone_is_private === 'true' || req.body.phone_is_private === true,
+      social_links: req.body.social_links ? JSON.parse(req.body.social_links) : undefined,
+    };
+
+    // Validate request body
+    const body = memberUpdateSchema.parse(parsedBody);
+
+    // Handle headshot upload
+    let headshotUrl: string | undefined;
+    if (req.file) {
+      // Validate image dimensions
+      try {
+        const { default: sizeOf } = await import('image-size');
+        const dimensions = sizeOf(req.file.buffer);
+        const MIN_DIMENSION = 200;
+        const MAX_DIMENSION = 2000;
+
+        if (dimensions.width < MIN_DIMENSION || dimensions.height < MIN_DIMENSION) {
+          return res.status(400).json({ 
+            error: `Image is too small. Minimum dimensions are ${MIN_DIMENSION}x${MIN_DIMENSION} pixels.` 
+          });
+        }
+
+        if (dimensions.width > MAX_DIMENSION || dimensions.height > MAX_DIMENSION) {
+          return res.status(400).json({ 
+            error: `Image is too large. Maximum dimensions are ${MAX_DIMENSION}x${MAX_DIMENSION} pixels.` 
+          });
+        }
+      } catch (err) {
+        return res.status(400).json({ error: 'Invalid image file. Please upload a valid image.' });
+      }
+
+      const uploadResult = await uploadToS3(
+        req.file.buffer,
+        req.file.originalname,
+        req.file.mimetype,
+        'headshots'
+      );
+      headshotUrl = uploadResult.url;
+    }
+
+    // Build dynamic UPDATE query
+    const updateFields: string[] = [];
+    const values: any[] = [];
+    let paramCount = 1;
+
+    if (body.name !== undefined) {
+      updateFields.push(`name = $${paramCount}`);
+      values.push(body.name);
+      paramCount++;
+    }
+    if (body.initiated_chapter_id !== undefined) {
+      updateFields.push(`initiated_chapter_id = $${paramCount}`);
+      values.push(body.initiated_chapter_id);
+      paramCount++;
+    }
+    if (body.initiated_season !== undefined) {
+      updateFields.push(`initiated_season = $${paramCount}`);
+      values.push(body.initiated_season);
+      paramCount++;
+    }
+    if (body.initiated_year !== undefined) {
+      updateFields.push(`initiated_year = $${paramCount}`);
+      values.push(body.initiated_year);
+      paramCount++;
+    }
+    if (body.ship_name !== undefined) {
+      updateFields.push(`ship_name = $${paramCount}`);
+      values.push(body.ship_name);
+      paramCount++;
+    }
+    if (body.line_name !== undefined) {
+      updateFields.push(`line_name = $${paramCount}`);
+      values.push(body.line_name);
+      paramCount++;
+    }
+    if (body.location !== undefined) {
+      updateFields.push(`location = $${paramCount}`);
+      values.push(body.location);
+      paramCount++;
+    }
+    if (body.address !== undefined) {
+      updateFields.push(`address = $${paramCount}`);
+      values.push(body.address);
+      paramCount++;
+    }
+    if (body.address_is_private !== undefined) {
+      updateFields.push(`address_is_private = $${paramCount}`);
+      values.push(body.address_is_private);
+      paramCount++;
+    }
+    if (body.phone_number !== undefined) {
+      updateFields.push(`phone_number = $${paramCount}`);
+      values.push(body.phone_number);
+      paramCount++;
+    }
+    if (body.phone_is_private !== undefined) {
+      updateFields.push(`phone_is_private = $${paramCount}`);
+      values.push(body.phone_is_private);
+      paramCount++;
+    }
+    if (body.industry !== undefined) {
+      updateFields.push(`industry = $${paramCount}`);
+      values.push(body.industry);
+      paramCount++;
+    }
+    if (body.job_title !== undefined) {
+      updateFields.push(`job_title = $${paramCount}`);
+      values.push(body.job_title);
+      paramCount++;
+    }
+    if (body.bio !== undefined) {
+      updateFields.push(`bio = $${paramCount}`);
+      values.push(body.bio);
+      paramCount++;
+    }
+    if (headshotUrl) {
+      updateFields.push(`headshot_url = $${paramCount}`);
+      values.push(headshotUrl);
+      paramCount++;
+    }
+    if (body.social_links !== undefined) {
+      updateFields.push(`social_links = $${paramCount}::jsonb`);
+      values.push(JSON.stringify(body.social_links));
+      paramCount++;
+    }
+
+    if (updateFields.length === 0) {
+      return res.status(400).json({ error: 'No fields to update' });
+    }
+
+    updateFields.push(`updated_at = CURRENT_TIMESTAMP`);
+
+    values.push(req.user.memberId);
+    const whereClause = `WHERE id = $${paramCount}`;
+
+    const result = await pool.query(
+      `UPDATE members SET ${updateFields.join(', ')} ${whereClause}
+       RETURNING *`,
+      values
+    );
+
+    const updatedMember = result.rows[0];
+    // Parse social_links if it's a string
+    if (typeof updatedMember.social_links === 'string') {
+      updatedMember.social_links = JSON.parse(updatedMember.social_links);
+    }
+
+    // Get chapter name
+    if (updatedMember.initiated_chapter_id) {
+      const chapterResult = await pool.query(
+        'SELECT name FROM chapters WHERE id = $1',
+        [updatedMember.initiated_chapter_id]
+      );
+      updatedMember.chapter_name = chapterResult.rows[0]?.name || null;
+    }
+
+    res.json(updatedMember);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ error: 'Validation error', details: error.errors });
+      return;
+    }
+    console.error('Error updating member profile:', error);
+    res.status(500).json({ error: 'Failed to update member profile' });
   }
 });
 

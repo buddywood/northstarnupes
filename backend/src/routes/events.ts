@@ -1,12 +1,14 @@
 import { Router, Request, Response } from 'express';
-import { getActiveEvents, getEventById } from '../db/queries';
+import { getActiveEvents, getAllEvents, getEventById } from '../db/queries';
 import pool from '../db/connection';
 
 const router = Router();
 
 router.get('/', async (req: Request, res: Response) => {
   try {
-    const events = await getActiveEvents();
+    // Support 'all' query parameter to get all events (including past)
+    const includeAll = req.query.all === 'true';
+    const events = includeAll ? await getAllEvents() : await getActiveEvents();
     res.json(events);
   } catch (error) {
     console.error('Error fetching events:', error);

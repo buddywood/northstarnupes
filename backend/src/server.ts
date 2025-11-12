@@ -16,6 +16,7 @@ import webhookRouter from './routes/webhook';
 import donationsRouter from './routes/donations';
 import locationRouter from './routes/location';
 import industriesRouter from './routes/industries';
+import sellerSetupRouter from './routes/seller-setup';
 import { initializeDatabase } from './db/migrations';
 import { runVerification } from './scripts/verify-members';
 
@@ -60,6 +61,7 @@ app.use('/api/checkout', checkoutRouter);
 app.use('/api/donations', donationsRouter);
 app.use('/api/location', locationRouter);
 app.use('/api/industries', industriesRouter);
+app.use('/api/seller-setup', sellerSetupRouter);
 
 // Initialize database on startup
 initializeDatabase().catch(console.error);

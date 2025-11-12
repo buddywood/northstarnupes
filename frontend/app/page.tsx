@@ -18,7 +18,7 @@ export default async function Home() {
       console.error('Error fetching chapters:', err);
       return [];
     }),
-    fetchEvents().catch((err) => {
+    fetchEvents(false).catch((err) => {
       console.error('Error fetching events:', err);
       return [];
     }),

@@ -1,4 +1,4 @@
-# North Star Nupes MVP - Implementation Summary
+# 1Kappa MVP - Implementation Summary
 
 ## ✅ Completed Implementation
 

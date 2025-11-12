@@ -57,7 +57,7 @@ export default function HeroBanner() {
         One Kappa. Infinite Brotherhood.
         </p>
         <div className="flex flex-wrap gap-3 md:gap-4 justify-center items-center max-w-3xl mx-auto">
-          <Link href="#shop" className="bg-crimson text-white px-5 sm:px-6 py-2.5 rounded-full font-bold hover:bg-crimson/90 hover:shadow-lg hover:shadow-crimson/50 hover:scale-105 active:scale-100 transition-all duration-200 text-sm sm:text-base whitespace-nowrap h-[42px] flex items-center justify-center">
+          <Link href="/shop" className="bg-crimson text-white px-5 sm:px-6 py-2.5 rounded-full font-bold hover:bg-crimson/90 hover:shadow-lg hover:shadow-crimson/50 hover:scale-105 active:scale-100 transition-all duration-200 text-sm sm:text-base whitespace-nowrap h-[42px] flex items-center justify-center">
             Shop Now
           </Link>
           {finalShowBecomeMember && (
