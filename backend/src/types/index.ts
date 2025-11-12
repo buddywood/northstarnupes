@@ -42,6 +42,7 @@ export interface Brother {
 }
 
 export interface Seller extends Brother {
+  member_id: number | null; // Foreign key to members table (sellers can optionally be members)
   sponsoring_chapter_id: number;
   business_name: string | null;
   business_email: string | null;
@@ -59,6 +60,7 @@ export interface Product {
   price_cents: number;
   image_url: string | null;
   sponsored_chapter_id: number | null;
+  is_kappa_branded: boolean; // Indicates if product is Kappa Alpha Psi branded merchandise
   created_at: Date;
   updated_at: Date;
 }
@@ -142,6 +144,7 @@ export interface Steward {
   verification_status: 'PENDING' | 'VERIFIED' | 'FAILED' | 'MANUAL_REVIEW';
   verification_date: Date | null;
   verification_notes: string | null;
+  stripe_account_id: string | null;
   created_at: Date;
   updated_at: Date;
 }

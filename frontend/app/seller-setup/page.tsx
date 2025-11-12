@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Logo from '../components/Logo';
@@ -8,7 +8,7 @@ import PasswordStrengthIndicator from '../components/PasswordStrengthIndicator';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
-export default function SellerSetupPage() {
+function SellerSetupPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get('token');
@@ -242,6 +242,21 @@ export default function SellerSetupPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+export default function SellerSetupPage() {
+  return (
+    <Suspense fallback={
+      <main className="min-h-screen bg-cream flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-crimson mx-auto mb-4"></div>
+          <p className="text-midnight-navy">Loading...</p>
+        </div>
+      </main>
+    }>
+      <SellerSetupPageContent />
+    </Suspense>
   );
 }
 

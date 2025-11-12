@@ -2,12 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { fetchActiveCollegiateChapters, applyToBecomeSteward, type Chapter } from '@/lib/api';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 
 export default function StewardSetupPage() {
   const router = useRouter();
+  const { data: session, status: sessionStatus } = useSession();
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [selectedChapterId, setSelectedChapterId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
@@ -46,7 +48,16 @@ export default function StewardSetupPage() {
       router.push('/profile?steward_applied=true');
     } catch (err: any) {
       console.error('Error applying to become steward:', err);
-      setError(err.message || 'Failed to submit application');
+      let errorMessage = err.message || 'Failed to submit application';
+      
+      // Provide better error messages for authentication issues
+      if (errorMessage.includes('Not authenticated') || errorMessage.includes('Unauthorized') || errorMessage.includes('401')) {
+        errorMessage = 'Please login to submit your steward application. You must be logged in as a verified member to become a steward.';
+      } else if (errorMessage.includes('Member profile required') || errorMessage.includes('verification')) {
+        errorMessage = 'You must be a verified member of Kappa Alpha Psi to become a steward. Please complete your member registration and verification first.';
+      }
+      
+      setError(errorMessage);
     } finally {
       setSubmitting(false);
     }
@@ -78,6 +89,52 @@ export default function StewardSetupPage() {
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-8">
+            {/* Member Status Display */}
+            {sessionStatus === 'authenticated' && (session?.user as any)?.memberId && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <p className="text-sm text-blue-800">
+                  <svg className="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  You&apos;re logged in as a member. Your membership will be automatically associated with your steward account. Verified members will be auto-approved.
+                </p>
+              </div>
+            )}
+            {sessionStatus === 'authenticated' && !(session?.user as any)?.memberId && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <p className="text-sm text-red-800 font-medium mb-2">
+                  Member Profile Required
+                </p>
+                <p className="text-sm text-red-700">
+                  You must be a verified member of Kappa Alpha Psi to become a steward. Please complete your member registration first.
+                </p>
+              </div>
+            )}
+            {sessionStatus !== 'authenticated' && (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                <p className="text-sm text-amber-800 font-medium mb-2">
+                  Login Required
+                </p>
+                <p className="text-sm text-amber-700 mb-3">
+                  You must be logged in as a verified member to become a steward.
+                </p>
+                <div className="flex gap-3">
+                  <a
+                    href="/register"
+                    className="inline-block bg-crimson text-white px-4 py-2 rounded-lg hover:bg-crimson/90 transition text-sm font-medium"
+                  >
+                    Register Now
+                  </a>
+                  <a
+                    href="/login"
+                    className="inline-block bg-midnight-navy text-white px-4 py-2 rounded-lg hover:bg-midnight-navy/90 transition text-sm font-medium"
+                  >
+                    Login
+                  </a>
+                </div>
+              </div>
+            )}
+
             {/* Qualification Section */}
             <div className="bg-cream p-6 rounded-lg">
               <h2 className="text-xl font-display font-semibold text-midnight-navy mb-4">
@@ -90,7 +147,7 @@ export default function StewardSetupPage() {
                 <li>You must be a verified member of Kappa Alpha Psi</li>
                 <li>You must have legacy or used fraternity paraphernalia to share</li>
                 <li>You must select a sponsoring collegiate chapter</li>
-                <li>Your application will be reviewed before approval</li>
+                <li>Verified members will be auto-approved</li>
               </ul>
             </div>
 

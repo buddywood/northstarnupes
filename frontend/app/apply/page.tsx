@@ -48,6 +48,7 @@ export default function ApplyPage() {
   const [headshotPreview, setHeadshotPreview] = useState<string | null>(null);
   const [storeLogo, setStoreLogo] = useState<File | null>(null);
   const [storeLogoPreview, setStoreLogoPreview] = useState<string | null>(null);
+  const [isMember, setIsMember] = useState<string>(''); // 'yes', 'no', or ''
 
   useEffect(() => {
     fetchActiveCollegiateChapters()
@@ -140,6 +141,21 @@ export default function ApplyPage() {
     setSubmitting(true);
     setError('');
 
+    // If user says they're a member but aren't logged in, prevent submission
+    // (This check is only needed if the radio button is shown, which only happens when not logged in)
+    if (sessionStatus !== 'authenticated' && isMember === 'yes') {
+      setError('Please register or login first to apply as a member. Verified members can sell any products and will be auto-approved.');
+      setSubmitting(false);
+      return;
+    }
+    
+    // Require radio button selection if not logged in
+    if (sessionStatus !== 'authenticated' && !isMember) {
+      setError('Please indicate whether you are a member of Kappa Alpha Psi.');
+      setSubmitting(false);
+      return;
+    }
+
     try {
       const formDataToSend = new FormData();
       formDataToSend.append('name', formData.name);
@@ -178,7 +194,14 @@ export default function ApplyPage() {
       await submitSellerApplication(formDataToSend);
       setSuccess(true);
     } catch (err: any) {
-      setError(err.message || 'Failed to submit application');
+      let errorMessage = err.message || 'Failed to submit application';
+      
+      // Provide better error messages for authentication issues
+      if (errorMessage.includes('Not authenticated') || errorMessage.includes('Unauthorized') || errorMessage.includes('401')) {
+        errorMessage = 'Please login or register to submit your seller application. If you indicated you are a member, you must be logged in to apply.';
+      }
+      
+      setError(errorMessage);
       setSubmitting(false);
     }
   };
@@ -254,6 +277,84 @@ export default function ApplyPage() {
             />
           </div>
 
+          {/* Only show member question if not logged in */}
+          {sessionStatus !== 'authenticated' && (
+            <div>
+              <label className="block text-sm font-medium mb-2 text-midnight-navy">
+                Are you a member of Kappa Alpha Psi? *
+              </label>
+              <div className="space-y-2">
+                <label className="flex items-center cursor-pointer">
+                  <input
+                    type="radio"
+                    name="isMember"
+                    value="yes"
+                    checked={isMember === 'yes'}
+                    onChange={(e) => setIsMember(e.target.value)}
+                    className="mr-2 text-crimson focus:ring-crimson"
+                    required
+                  />
+                  <span className="text-midnight-navy">Yes, I am a member</span>
+                </label>
+                <label className="flex items-center cursor-pointer">
+                  <input
+                    type="radio"
+                    name="isMember"
+                    value="no"
+                    checked={isMember === 'no'}
+                    onChange={(e) => setIsMember(e.target.value)}
+                    className="mr-2 text-crimson focus:ring-crimson"
+                    required
+                  />
+                  <span className="text-midnight-navy">No, I am not a member</span>
+                </label>
+              </div>
+              {isMember === 'yes' && (
+                <div className="mt-3 bg-amber-50 border border-amber-200 rounded-lg p-4">
+                  <p className="text-sm text-amber-800 font-medium mb-2">
+                    Member Registration Required
+                  </p>
+                  <p className="text-sm text-amber-700 mb-3">
+                    To apply as a member, please register or login first. Verified members can sell any products and will be auto-approved.
+                  </p>
+                  <div className="flex gap-3">
+                    <Link
+                      href="/register"
+                      className="inline-block bg-crimson text-white px-4 py-2 rounded-lg hover:bg-crimson/90 transition text-sm font-medium"
+                    >
+                      Register Now
+                    </Link>
+                    <Link
+                      href="/login"
+                      className="inline-block bg-midnight-navy text-white px-4 py-2 rounded-lg hover:bg-midnight-navy/90 transition text-sm font-medium"
+                    >
+                      Login
+                    </Link>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Show member status message if logged in */}
+          {sessionStatus === 'authenticated' && (session?.user as any)?.memberId && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <p className="text-sm text-blue-800">
+                <svg className="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                You&apos;re logged in as a member. Your membership will be automatically associated with your seller account. Verified members can sell any products and will be auto-approved.
+              </p>
+            </div>
+          )}
+          {sessionStatus === 'authenticated' && !(session?.user as any)?.memberId && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+              <p className="text-sm text-amber-800">
+                You&apos;re logged in, but you don&apos;t have a member profile yet. You can still apply as a non-member seller.
+              </p>
+            </div>
+          )}
+
           <div>
             <label className="block text-sm font-medium mb-2 text-midnight-navy">Email *</label>
             <input
@@ -267,17 +368,6 @@ export default function ApplyPage() {
               <p className="mt-1 text-xs text-midnight-navy/60">Using email from your account</p>
             )}
           </div>
-
-          {sessionStatus === 'authenticated' && (session?.user as any)?.memberId && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-              <p className="text-sm text-blue-800">
-                <svg className="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                You&apos;re logged in as a member. Your membership will be automatically associated with your seller account.
-              </p>
-            </div>
-          )}
 
           <div>
             <label className="block text-sm font-medium mb-2 text-midnight-navy">Sponsoring Chapter *</label>

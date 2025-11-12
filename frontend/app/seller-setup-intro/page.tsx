@@ -70,13 +70,22 @@ export default function SellerSetupIntroPage() {
                 Who Can Become a Seller?
               </h2>
               <p className="text-midnight-navy/70 mb-4">
-                Selling on 1Kappa is open to verified members who want to share their products with brothers worldwide.
+                Selling on 1Kappa is open to verified sellers and verified members who want to share their products with brothers worldwide.
               </p>
-              <ul className="list-disc list-inside space-y-2 text-sm text-midnight-navy/70">
+              <ul className="list-disc list-inside space-y-2 text-sm text-midnight-navy/70 mb-4">
                 <li>You must have a valid business or vendor license</li>
                 <li>You must select a sponsoring collegiate chapter</li>
                 <li>Your application will be reviewed before approval</li>
               </ul>
+              
+              {/* Product Restrictions */}
+              <div className="mt-4 p-4 bg-white rounded border border-midnight-navy/20">
+                <h3 className="font-semibold text-midnight-navy mb-2 text-sm">What Can You Sell?</h3>
+                <div className="space-y-2 text-xs text-midnight-navy/70">
+                  <p><strong>Verified Sellers:</strong> Must sell Kappa Alpha Psi branded merchandise only. These are sellers verified through the official vendor program.</p>
+                  <p><strong>Verified Members:</strong> Can sell any products (Kappa branded or otherwise) as long as you&apos;re a verified member of Kappa Alpha Psi.</p>
+                </div>
+              </div>
             </div>
 
             {/* Application Process Section */}

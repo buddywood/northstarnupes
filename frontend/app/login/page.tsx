@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Logo from '../components/Logo';
 import VerificationCodeInput from '../components/VerificationCodeInput';
 
-export default function LoginPage() {
+function LoginPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [email, setEmail] = useState('');
@@ -44,49 +44,35 @@ export default function LoginPage() {
     let passwordChangeRequired = false;
 
     try {
-      // First, try to authenticate with Cognito directly to check for password change requirement
-      const { signIn: cognitoSignIn } = await import('@/lib/cognito');
+      // First, try to authenticate with Cognito via API route to check for password change requirement
+      const checkResponse = await fetch('/api/auth/check-cognito', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
       
-      try {
-        // This will throw if password change is required or user is not confirmed
-        await cognitoSignIn(email, password);
-        console.log('Cognito signIn succeeded, proceeding to NextAuth');
-      } catch (cognitoError: any) {
-        console.log('🔴 Cognito signIn threw an error - caught in catch block');
-        // Check if it's a password change requirement - check multiple ways the error might be formatted
-        const errorMessage = cognitoError?.message || cognitoError?.toString() || '';
-        const errorCode = cognitoError?.code || cognitoError?.name || '';
+      const checkResult = await checkResponse.json();
+      
+      if (!checkResult.success) {
+        // Check if it's a password change requirement
+        const errorMessage = checkResult.error || '';
+        const errorCode = checkResult.code || checkResult.name || '';
         const errorString = String(errorMessage);
         
-        console.log('Cognito error caught in login page:', {
-          message: errorMessage,
-          code: errorCode,
-          name: cognitoError?.name,
-          error: cognitoError,
-          string: errorString,
-          type: typeof cognitoError,
-          keys: Object.keys(cognitoError || {}),
-          hasCode: 'code' in cognitoError,
-          codeValue: cognitoError?.code
-        }); // Debug log
-        
-        // Check multiple ways the error might indicate password change requirement
         const isPasswordChangeRequired = 
           errorString.includes('NEW_PASSWORD_REQUIRED') ||
           errorCode === 'NEW_PASSWORD_REQUIRED' ||
-          cognitoError?.name === 'NEW_PASSWORD_REQUIRED' ||
+          checkResult.name === 'NEW_PASSWORD_REQUIRED' ||
           errorString.includes('newPasswordRequired');
         
-        // Check if user is not confirmed - check all possible ways this error might appear
-        // The error object from amazon-cognito-identity-js has a 'code' property
+        // Check if user is not confirmed
         const isUserNotConfirmed = 
-          cognitoError?.code === 'UserNotConfirmedException' ||
+          checkResult.code === 'UserNotConfirmedException' ||
           errorCode === 'UserNotConfirmedException' ||
-          cognitoError?.name === 'UserNotConfirmedException' ||
+          checkResult.name === 'UserNotConfirmedException' ||
           errorString.includes('UserNotConfirmedException') ||
           errorString.includes('User is not confirmed') ||
-          errorString.includes('not confirmed') ||
-          (errorCode === 'NotAuthorizedException' && errorString.includes('confirmed'));
+          errorString.includes('not confirmed');
         
         if (isPasswordChangeRequired) {
           console.log('✅ Password change required detected, showing form and preventing NextAuth call');
@@ -97,34 +83,16 @@ export default function LoginPage() {
         }
         
         if (isUserNotConfirmed) {
-          console.log('✅ User not confirmed detected in Cognito signIn, showing verification form');
-          console.log('Error object details:', {
-            code: cognitoError?.code,
-            name: cognitoError?.name,
-            message: cognitoError?.message,
-            fullError: cognitoError
-          });
+          console.log('✅ User not confirmed detected in Cognito check, showing verification form');
           setNeedsVerification(true);
           setLoading(false);
           return; // Exit early, don't call NextAuth
-        } else {
-          console.log('❌ UserNotConfirmedException NOT detected in Cognito signIn catch block');
-          console.log('Error check results:', {
-            codeCheck: cognitoError?.code === 'UserNotConfirmedException',
-            errorCodeCheck: errorCode === 'UserNotConfirmedException',
-            nameCheck: cognitoError?.name === 'UserNotConfirmedException',
-            stringCheck: errorString.includes('UserNotConfirmedException'),
-            actualCode: cognitoError?.code,
-            actualName: cognitoError?.name,
-            actualMessage: cognitoError?.message
-          });
         }
         
         // If it's a different Cognito error, we'll try NextAuth anyway
-        // (it might be a different error that NextAuth can handle)
         console.log('Not a password change or verification error, will try NextAuth. Error:', errorString);
-        // Don't re-throw - let NextAuth try to handle it
-        // The error will be caught by NextAuth and we'll check result.error
+      } else {
+        console.log('Cognito signIn succeeded, proceeding to NextAuth');
       }
       
       // Only call NextAuth if password change is NOT required
@@ -341,8 +309,17 @@ export default function LoginPage() {
     }
 
     try {
-      const { completeNewPasswordChallenge } = await import('@/lib/cognito');
-      const result = await completeNewPasswordChallenge(newPassword);
+      const response = await fetch('/api/auth/complete-password-change', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newPassword }),
+      });
+      
+      const result = await response.json();
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to change password');
+      }
 
       // Now authenticate with NextAuth using the new password
       const { signIn } = await import('next-auth/react');
@@ -704,6 +681,21 @@ export default function LoginPage() {
         )}
       </div>
     </main>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <main className="min-h-screen bg-cream flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-crimson mx-auto mb-4"></div>
+          <p className="text-midnight-navy">Loading...</p>
+        </div>
+      </main>
+    }>
+      <LoginPageContent />
+    </Suspense>
   );
 }
 

@@ -181,10 +181,11 @@ export async function createProduct(product: {
   price_cents: number;
   image_url?: string;
   sponsored_chapter_id?: number;
+  is_kappa_branded?: boolean;
 }): Promise<Product> {
   const result = await pool.query(
-    `INSERT INTO products (seller_id, name, description, price_cents, image_url, sponsored_chapter_id)
-     VALUES ($1, $2, $3, $4, $5, $6)
+    `INSERT INTO products (seller_id, name, description, price_cents, image_url, sponsored_chapter_id, is_kappa_branded)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
      RETURNING *`,
     [
       product.seller_id,
@@ -193,6 +194,7 @@ export async function createProduct(product: {
       product.price_cents,
       product.image_url || null,
       product.sponsored_chapter_id || null,
+      product.is_kappa_branded ?? false,
     ]
   );
   return result.rows[0];

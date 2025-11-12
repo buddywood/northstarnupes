@@ -75,9 +75,41 @@ router.post('/apply', authenticate, async (req: Request, res: Response) => {
       sponsoring_chapter_id: body.sponsoring_chapter_id,
     });
 
-    // Link user to steward if user role allows it
-    // Note: User role might need to be updated to STEWARD after approval
-    // For now, we'll link it but the role update happens on approval
+    // Auto-approve verified members (they're already verified, so we can auto-approve)
+    if (member.verification_status === 'VERIFIED') {
+      try {
+        // Create Stripe Connect account for steward to receive shipping reimbursements
+        const { createConnectAccount } = await import('../services/stripe');
+        
+        // Get user email for Stripe account creation
+        const userEmail = req.user?.email || member.email || null;
+        if (!userEmail) {
+          throw new Error('User email required for Stripe account creation');
+        }
+
+        const account = await createConnectAccount(userEmail);
+        
+        // Update steward status to APPROVED and set Stripe account
+        await pool.query(
+          'UPDATE stewards SET status = $1, stripe_account_id = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3',
+          ['APPROVED', account.id, steward.id]
+        );
+
+        // Link user to steward
+        if (req.user?.id) {
+          await linkUserToSteward(req.user.id, steward.id);
+        }
+
+        console.log(`Auto-approved verified member steward: ${member.name || 'Unknown'} (member_id: ${member.id})`);
+
+        // Fetch updated steward to return correct status
+        const updatedSteward = await getStewardById(steward.id);
+        return res.status(201).json(updatedSteward || steward);
+      } catch (error: any) {
+        console.error('Error auto-approving verified member steward:', error);
+        // Don't fail the request - steward is still created, just needs manual approval
+      }
+    }
 
     res.status(201).json(steward);
   } catch (error) {

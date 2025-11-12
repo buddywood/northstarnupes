@@ -6,7 +6,8 @@ import {
   getStewardClaimByStripeSessionId,
   updateStewardClaimStatus,
   getPlatformSetting,
-  getChapterById
+  getChapterById,
+  getStewardById
 } from '../db/queries';
 import { createStewardCheckoutSession, calculateStewardPlatformFee } from '../services/stripe';
 import { authenticate, requireVerifiedMember } from '../middleware/auth';
@@ -42,6 +43,16 @@ router.post('/:listingId', authenticate, requireVerifiedMember, async (req: Requ
       return res.status(400).json({ error: 'Chapter Stripe account not set up. Please contact admin.' });
     }
 
+    // Get steward to check for Stripe account
+    const steward = await getStewardById(listing.steward_id);
+    if (!steward) {
+      return res.status(404).json({ error: 'Steward not found' });
+    }
+
+    if (!steward.stripe_account_id) {
+      return res.status(400).json({ error: 'Steward Stripe account not set up. Please contact admin.' });
+    }
+
     // Calculate platform fee
     const platformFeeCents = await calculateStewardPlatformFee(
       listing.shipping_cost_cents,
@@ -59,6 +70,7 @@ router.post('/:listingId', authenticate, requireVerifiedMember, async (req: Requ
       platformFeeCents,
       chapterDonationCents: listing.chapter_donation_cents,
       chapterStripeAccountId: chapter.stripe_account_id,
+      stewardStripeAccountId: steward.stripe_account_id,
       buyerEmail: req.user.email,
       successUrl: `${frontendUrl}/steward-checkout/${listingId}/success?session_id={CHECKOUT_SESSION_ID}`,
       cancelUrl: `${frontendUrl}/steward-listing/${listingId}`,

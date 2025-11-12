@@ -58,30 +58,38 @@ export default function HeroBanner() {
         <p className="text-base max-w-xl mx-auto mb-8 opacity-90">
         One Kappa. Infinite Brotherhood.
         </p>
-        <div className="flex flex-wrap gap-3 md:gap-4 justify-center items-center max-w-3xl mx-auto">
-          <Link href="/shop" className="bg-crimson text-white px-5 sm:px-6 py-2.5 rounded-full font-bold hover:bg-crimson/90 hover:shadow-lg hover:shadow-crimson/50 hover:scale-105 active:scale-100 transition-all duration-200 text-sm sm:text-base whitespace-nowrap h-[42px] flex items-center justify-center">
+        <div className="flex flex-col gap-4 justify-center items-center max-w-3xl mx-auto">
+          {/* Top row: All "Become" buttons */}
+          <div className="flex gap-3 md:gap-4 justify-center items-center flex-nowrap">
+            {finalShowBecomeMember && (
+              <Link href="/member-setup" className="border-2 border-white px-5 sm:px-6 py-2.5 rounded-full font-semibold hover:bg-white/10 hover:shadow-lg hover:shadow-white/20 hover:scale-105 active:scale-100 transition-all duration-200 text-sm sm:text-base whitespace-nowrap h-[42px] flex items-center justify-center">
+                Become a Member
+              </Link>
+            )}
+            {showBecomeSeller && (
+              <Link href="/seller-setup-intro" className="border-2 border-white px-5 sm:px-6 py-2.5 rounded-full font-semibold hover:bg-white/10 hover:shadow-lg hover:shadow-white/20 hover:scale-105 active:scale-100 transition-all duration-200 text-sm sm:text-base whitespace-nowrap h-[42px] flex items-center justify-center">
+                Become a Seller
+              </Link>
+            )}
+            {showBecomePromoter && (
+              <Link href="/promoter-setup" className="border-2 border-white px-5 sm:px-6 py-2.5 rounded-full font-semibold hover:bg-white/10 hover:shadow-lg hover:shadow-white/20 hover:scale-105 active:scale-100 transition-all duration-200 text-sm sm:text-base whitespace-nowrap h-[42px] flex items-center justify-center">
+                Become a Promoter
+              </Link>
+            )}
+            {showBecomeSteward && (
+              <Link href="/steward-setup" className="border-2 border-white px-5 sm:px-6 py-2.5 rounded-full font-semibold hover:bg-white/10 hover:shadow-lg hover:shadow-white/20 hover:scale-105 active:scale-100 transition-all duration-200 text-sm sm:text-base whitespace-nowrap h-[42px] flex items-center justify-center">
+                Become a Steward
+              </Link>
+            )}
+          </div>
+          
+          {/* Bottom row: Shop button - wider with icon */}
+          <Link href="/shop" className="bg-crimson text-white px-8 sm:px-12 py-3 rounded-full font-bold hover:bg-crimson/90 hover:shadow-lg hover:shadow-crimson/50 hover:scale-105 active:scale-100 transition-all duration-200 text-base sm:text-lg whitespace-nowrap h-[48px] flex items-center justify-center gap-2 min-w-[200px] sm:min-w-[250px]">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+            </svg>
             Shop Now
           </Link>
-          {finalShowBecomeMember && (
-            <Link href="/member-setup" className="border-2 border-white px-5 sm:px-6 py-2.5 rounded-full font-semibold hover:bg-white/10 hover:shadow-lg hover:shadow-white/20 hover:scale-105 active:scale-100 transition-all duration-200 text-sm sm:text-base whitespace-nowrap h-[42px] flex items-center justify-center">
-              Become a Member
-            </Link>
-          )}
-          {showBecomeSeller && (
-            <Link href="/seller-setup-intro" className="border-2 border-white px-5 sm:px-6 py-2.5 rounded-full font-semibold hover:bg-white/10 hover:shadow-lg hover:shadow-white/20 hover:scale-105 active:scale-100 transition-all duration-200 text-sm sm:text-base whitespace-nowrap h-[42px] flex items-center justify-center">
-              Become a Seller
-            </Link>
-          )}
-          {showBecomePromoter && (
-            <Link href="/promoter-setup" className="border-2 border-white px-5 sm:px-6 py-2.5 rounded-full font-semibold hover:bg-white/10 hover:shadow-lg hover:shadow-white/20 hover:scale-105 active:scale-100 transition-all duration-200 text-sm sm:text-base whitespace-nowrap h-[42px] flex items-center justify-center">
-              Become a Promoter
-            </Link>
-          )}
-          {showBecomeSteward && (
-            <Link href="/steward-setup" className="border-2 border-white px-5 sm:px-6 py-2.5 rounded-full font-semibold hover:bg-white/10 hover:shadow-lg hover:shadow-white/20 hover:scale-105 active:scale-100 transition-all duration-200 text-sm sm:text-base whitespace-nowrap h-[42px] flex items-center justify-center">
-              Become a Steward
-            </Link>
-          )}
         </div>
       </div>
     </section>

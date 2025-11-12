@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { fetchChapters, fetchActiveCollegiateChapters, submitPromoterApplication } from '@/lib/api';
 import type { Chapter } from '@/lib/api';
 import Link from 'next/link';
@@ -10,12 +11,14 @@ import SearchableSelect from '../components/SearchableSelect';
 
 export default function PromotePage() {
   const router = useRouter();
+  const { data: session, status: sessionStatus } = useSession();
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [sponsoringChapters, setSponsoringChapters] = useState<Chapter[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [isMember, setIsMember] = useState<string>(''); // 'yes', 'no', or ''
   
   // Check for sponsoring_chapter_id in URL params (from setup screen)
   const [urlParams] = useState(() => {
@@ -67,6 +70,20 @@ export default function PromotePage() {
     setSubmitting(true);
     setError('');
 
+    // If user says they're a member but aren't logged in, prevent submission
+    if (sessionStatus !== 'authenticated' && isMember === 'yes') {
+      setError('Please register or login first to apply as a member.');
+      setSubmitting(false);
+      return;
+    }
+    
+    // Require radio button selection if not logged in
+    if (sessionStatus !== 'authenticated' && !isMember) {
+      setError('Please indicate whether you are a member of Kappa Alpha Psi.');
+      setSubmitting(false);
+      return;
+    }
+
     try {
       const formDataToSend = new FormData();
       formDataToSend.append('name', formData.name);
@@ -85,7 +102,14 @@ export default function PromotePage() {
       await submitPromoterApplication(formDataToSend);
       setSuccess(true);
     } catch (err: any) {
-      setError(err.message || 'Failed to submit application');
+      let errorMessage = err.message || 'Failed to submit application';
+      
+      // Provide better error messages for authentication issues
+      if (errorMessage.includes('Not authenticated') || errorMessage.includes('Unauthorized') || errorMessage.includes('401')) {
+        errorMessage = 'Please login or register to submit your promoter application. If you indicated you are a member, you must be logged in to apply.';
+      }
+      
+      setError(errorMessage);
       setSubmitting(false);
     }
   };
@@ -122,6 +146,84 @@ export default function PromotePage() {
         <h1 className="text-3xl font-display font-bold text-midnight-navy mb-8">Become a Promoter</h1>
 
         <form onSubmit={handleSubmit} className="bg-white p-8 rounded-lg shadow-lg space-y-6 border border-frost-gray">
+          {/* Only show member question if not logged in */}
+          {sessionStatus !== 'authenticated' && (
+            <div>
+              <label className="block text-sm font-medium mb-2 text-midnight-navy">
+                Are you a member of Kappa Alpha Psi? *
+              </label>
+              <div className="space-y-2">
+                <label className="flex items-center cursor-pointer">
+                  <input
+                    type="radio"
+                    name="isMember"
+                    value="yes"
+                    checked={isMember === 'yes'}
+                    onChange={(e) => setIsMember(e.target.value)}
+                    className="mr-2 text-crimson focus:ring-crimson"
+                    required
+                  />
+                  <span className="text-midnight-navy">Yes, I am a member</span>
+                </label>
+                <label className="flex items-center cursor-pointer">
+                  <input
+                    type="radio"
+                    name="isMember"
+                    value="no"
+                    checked={isMember === 'no'}
+                    onChange={(e) => setIsMember(e.target.value)}
+                    className="mr-2 text-crimson focus:ring-crimson"
+                    required
+                  />
+                  <span className="text-midnight-navy">No, I am not a member</span>
+                </label>
+              </div>
+              {isMember === 'yes' && (
+                <div className="mt-3 bg-amber-50 border border-amber-200 rounded-lg p-4">
+                  <p className="text-sm text-amber-800 font-medium mb-2">
+                    Member Registration Required
+                  </p>
+                  <p className="text-sm text-amber-700 mb-3">
+                    To apply as a member, please register or login first.
+                  </p>
+                  <div className="flex gap-3">
+                    <Link
+                      href="/register"
+                      className="inline-block bg-crimson text-white px-4 py-2 rounded-lg hover:bg-crimson/90 transition text-sm font-medium"
+                    >
+                      Register Now
+                    </Link>
+                    <Link
+                      href="/login"
+                      className="inline-block bg-midnight-navy text-white px-4 py-2 rounded-lg hover:bg-midnight-navy/90 transition text-sm font-medium"
+                    >
+                      Login
+                    </Link>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Show member status message if logged in */}
+          {sessionStatus === 'authenticated' && (session?.user as any)?.memberId && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <p className="text-sm text-blue-800">
+                <svg className="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                You&apos;re logged in as a member. Your membership will be automatically associated with your promoter account.
+              </p>
+            </div>
+          )}
+          {sessionStatus === 'authenticated' && !(session?.user as any)?.memberId && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+              <p className="text-sm text-amber-800">
+                You&apos;re logged in, but you don&apos;t have a member profile yet. You can still apply as a non-member promoter.
+              </p>
+            </div>
+          )}
+
           <div>
             <label className="block text-sm font-medium mb-2 text-midnight-navy">Full Name *</label>
             <input

@@ -154,6 +154,7 @@ export async function createStewardCheckoutSession(params: {
   platformFeeCents: number;
   chapterDonationCents: number;
   chapterStripeAccountId: string;
+  stewardStripeAccountId: string;
   buyerEmail: string;
   successUrl: string;
   cancelUrl: string;
@@ -163,7 +164,7 @@ export async function createStewardCheckoutSession(params: {
   // Create line items breakdown
   const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [];
 
-  // Shipping cost
+  // Shipping cost - will be transferred to steward
   if (params.shippingCents > 0) {
     lineItems.push({
       price_data: {
@@ -177,7 +178,7 @@ export async function createStewardCheckoutSession(params: {
     });
   }
 
-  // Platform fee
+  // Platform fee - stays with platform
   if (params.platformFeeCents > 0) {
     lineItems.push({
       price_data: {
@@ -191,7 +192,7 @@ export async function createStewardCheckoutSession(params: {
     });
   }
 
-  // Chapter donation
+  // Chapter donation - will be transferred to chapter (handled separately via webhook)
   if (params.chapterDonationCents > 0) {
     lineItems.push({
       price_data: {
@@ -205,19 +206,25 @@ export async function createStewardCheckoutSession(params: {
     });
   }
 
-  // Create session with transfer to chapter for donation portion
-  // Platform fee and shipping stay with platform
-  // Donation goes to chapter via Stripe Connect
+  // Create session with transfer to steward for shipping reimbursement
+  // Note: Stripe Checkout only supports one transfer destination per session
+  // Payment breakdown:
+  // - Shipping: transferred to steward (reimbursement)
+  // - Platform fee: stays with platform (application_fee)
+  // - Chapter donation: stays with platform initially, transferred to chapter via webhook
   const session = await stripe.checkout.sessions.create({
     payment_method_types: ['card'],
     line_items: lineItems,
     mode: 'payment',
     payment_intent_data: {
-      // Transfer donation amount to chapter
-      on_behalf_of: params.chapterStripeAccountId,
+      // Transfer shipping to steward for reimbursement
+      // Platform keeps platform fee + chapter donation initially
+      // Chapter donation will be transferred to chapter via webhook after payment
+      on_behalf_of: params.stewardStripeAccountId,
+      application_fee_amount: params.platformFeeCents + params.chapterDonationCents, // Platform fee + chapter donation stay with platform
       transfer_data: {
-        destination: params.chapterStripeAccountId,
-        amount: params.chapterDonationCents, // Only transfer donation, not platform fee or shipping
+        destination: params.stewardStripeAccountId,
+        amount: params.shippingCents, // Only transfer shipping to steward
       },
     },
     customer_email: params.buyerEmail,
@@ -226,6 +233,10 @@ export async function createStewardCheckoutSession(params: {
     metadata: {
       listing_id: params.listingId.toString(),
       type: 'steward_claim',
+      steward_account_id: params.stewardStripeAccountId,
+      chapter_account_id: params.chapterStripeAccountId,
+      chapter_donation_cents: params.chapterDonationCents.toString(),
+      shipping_cents: params.shippingCents.toString(),
     },
   });
 

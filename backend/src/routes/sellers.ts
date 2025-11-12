@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import type { Router as ExpressRouter } from 'express';
 import multer from 'multer';
-import { createSeller, getActiveProducts } from '../db/queries';
+import { createSeller, getActiveProducts, getSellerById } from '../db/queries';
 import pool from '../db/connection';
 import { uploadToS3 } from '../services/s3';
 import { z } from 'zod';
@@ -99,13 +99,7 @@ router.post('/apply', optionalAuthenticate, upload.fields([
       return value;
     };
 
-    // Get member_id from authenticated user if available
-    let memberId: number | null = null;
-    if (req.user?.memberId) {
-      memberId = req.user.memberId;
-    }
-
-    // Validate request body
+    // Validate request body first
     const body = sellerApplicationSchema.parse({
       ...req.body,
       sponsoring_chapter_id: parseInt(req.body.sponsoring_chapter_id),
@@ -115,6 +109,23 @@ router.post('/apply', optionalAuthenticate, upload.fields([
       website: toNullIfEmpty(req.body.website),
       social_links: req.body.social_links ? JSON.parse(req.body.social_links) : {},
     });
+
+    // Get member_id from authenticated user if available
+    // If not authenticated, try to look up member by email
+    let memberId: number | null = null;
+    if (req.user?.memberId) {
+      memberId = req.user.memberId;
+    } else {
+      // Try to find member by email if not logged in
+      // This allows verified members to get auto-approved even if they're not logged in
+      const memberResult = await pool.query(
+        'SELECT id, verification_status FROM members WHERE email = $1',
+        [body.email]
+      );
+      if (memberResult.rows.length > 0) {
+        memberId = memberResult.rows[0].id;
+      }
+    }
 
     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
     const headshotFile = files?.headshot?.[0];
@@ -160,12 +171,67 @@ router.post('/apply', optionalAuthenticate, upload.fields([
       social_links: body.social_links || {},
     });
 
+    // Auto-approve if seller is a verified member (verified members can sell anything)
+    if (memberId) {
+      const memberResult = await pool.query(
+        'SELECT verification_status FROM members WHERE id = $1',
+        [memberId]
+      );
+      
+      if (memberResult.rows[0]?.verification_status === 'VERIFIED') {
+        // Auto-approve verified members
+        // Note: We don't create Stripe account here - that happens when admin approves
+        // But we can set status to APPROVED and let admin handle Stripe setup
+        // OR we could create Stripe account here too - let's do it for consistency
+        const { createConnectAccount } = await import('../services/stripe');
+        const { generateInvitationToken } = await import('../utils/tokens');
+        const { updateSellerInvitationToken, linkUserToSeller, getUserByEmail } = await import('../db/queries');
+        
+        try {
+          // Check if seller already has a Cognito account
+          const existingUser = await getUserByEmail(seller.email);
+          
+          let invitationToken: string | undefined;
+          if (existingUser) {
+            // Seller already has an account - link it to seller role
+            await linkUserToSeller(existingUser.id, seller.id);
+          } else {
+            // Generate invitation token for new seller account
+            invitationToken = generateInvitationToken();
+            await updateSellerInvitationToken(seller.id, invitationToken);
+          }
+
+          // Create Stripe Connect account
+          const account = await createConnectAccount(seller.email);
+          
+          // Update seller status to APPROVED
+          await pool.query(
+            'UPDATE sellers SET status = $1, stripe_account_id = $2 WHERE id = $3',
+            ['APPROVED', account.id, seller.id]
+          );
+
+          // Send approval email
+          const { sendSellerApprovedEmail } = await import('../services/email');
+          sendSellerApprovedEmail(seller.email, seller.name, invitationToken).catch(error => {
+            console.error('Failed to send seller approved email:', error);
+          });
+
+          console.log(`Auto-approved verified member seller: ${seller.name} (${seller.email})`);
+        } catch (error: any) {
+          console.error('Error auto-approving verified member seller:', error);
+          // Don't fail the request - seller is still created, just needs manual approval
+        }
+      }
+    }
+
     // Send confirmation email (don't await - send in background)
     sendSellerApplicationSubmittedEmail(body.email, body.name).catch(error => {
       console.error('Failed to send seller application submitted email:', error);
     });
 
-    res.status(201).json(seller);
+    // Fetch updated seller to return correct status
+    const updatedSeller = await getSellerById(seller.id);
+    res.status(201).json(updatedSeller || seller);
   } catch (error) {
     if (error instanceof z.ZodError) {
       res.status(400).json({ error: 'Validation error', details: error.errors });
