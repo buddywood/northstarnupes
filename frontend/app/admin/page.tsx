@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { signOut } from 'next-auth/react';
 import { useAuth } from '@/lib/auth';
 import Skeleton, { SkeletonLoader } from '../components/Skeleton';
 import {
@@ -11,23 +12,24 @@ import {
   updatePromoterStatus,
   fetchOrders,
   fetchDonations,
-  fetchPendingStewards,
-  updateStewardStatus,
   fetchStewardActivity,
   fetchStewardDonations,
   fetchPlatformSettings,
   updatePlatformSetting,
+  fetchPendingMembers,
+  updateMemberVerificationStatus,
+  fetchChapters,
 } from '@/lib/api';
-import type { Seller, Promoter, Order, Steward, PlatformSetting } from '@/lib/api';
+import type { Seller, Promoter, Order, PlatformSetting, MemberProfile, Chapter } from '@/lib/api';
 import Link from 'next/link';
 
 export default function AdminDashboard() {
   const { session, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'sellers' | 'promoters' | 'stewards' | 'orders' | 'donations' | 'steward-donations' | 'steward-activity' | 'platform-settings'>('sellers');
+  const [activeTab, setActiveTab] = useState<'members' | 'sellers' | 'promoters' | 'orders' | 'donations' | 'steward-donations' | 'steward-activity' | 'platform-settings'>('members');
+  const [members, setMembers] = useState<MemberProfile[]>([]);
   const [sellers, setSellers] = useState<Seller[]>([]);
   const [promoters, setPromoters] = useState<Promoter[]>([]);
-  const [stewards, setStewards] = useState<Steward[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [donations, setDonations] = useState<any[]>([]);
   const [stewardDonations, setStewardDonations] = useState<any[]>([]);
@@ -35,7 +37,10 @@ export default function AdminDashboard() {
   const [platformSettings, setPlatformSettings] = useState<PlatformSetting[]>([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState<number | null>(null);
-  const [processingType, setProcessingType] = useState<'seller' | 'promoter' | 'steward' | null>(null);
+  const [processingType, setProcessingType] = useState<'member' | 'seller' | 'promoter' | 'steward' | null>(null);
+  const [selectedItem, setSelectedItem] = useState<MemberProfile | Seller | Promoter | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [chapters, setChapters] = useState<Chapter[]>([]);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -46,6 +51,8 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (isAuthenticated && session) {
       loadData();
+      // Load chapters for displaying chapter names
+      fetchChapters().then(setChapters).catch(console.error);
     }
   }, [isAuthenticated, session, activeTab]);
 
@@ -60,15 +67,15 @@ export default function AdminDashboard() {
     
     setLoading(true);
     try {
-      if (activeTab === 'sellers') {
+      if (activeTab === 'members') {
+        const data = await fetchPendingMembers();
+        setMembers(data);
+      } else if (activeTab === 'sellers') {
         const data = await fetchPendingSellers();
         setSellers(data);
       } else if (activeTab === 'promoters') {
         const data = await fetchPendingPromoters();
         setPromoters(data);
-      } else if (activeTab === 'stewards') {
-        const data = await fetchPendingStewards();
-        setStewards(data);
       } else if (activeTab === 'orders') {
         const data = await fetchOrders();
         setOrders(data);
@@ -104,6 +111,8 @@ export default function AdminDashboard() {
     try {
       await updateSellerStatus(sellerId, 'APPROVED');
       await loadData();
+      setIsModalOpen(false);
+      setSelectedItem(null);
     } catch (error) {
       console.error('Error approving seller:', error);
       alert('Failed to approve seller');
@@ -121,6 +130,8 @@ export default function AdminDashboard() {
     try {
       await updateSellerStatus(sellerId, 'REJECTED');
       await loadData();
+      setIsModalOpen(false);
+      setSelectedItem(null);
     } catch (error) {
       console.error('Error rejecting seller:', error);
       alert('Failed to reject seller');
@@ -138,6 +149,8 @@ export default function AdminDashboard() {
     try {
       await updatePromoterStatus(promoterId, 'APPROVED');
       await loadData();
+      setIsModalOpen(false);
+      setSelectedItem(null);
     } catch (error) {
       console.error('Error approving promoter:', error);
       alert('Failed to approve promoter');
@@ -155,6 +168,8 @@ export default function AdminDashboard() {
     try {
       await updatePromoterStatus(promoterId, 'REJECTED');
       await loadData();
+      setIsModalOpen(false);
+      setSelectedItem(null);
     } catch (error) {
       console.error('Error rejecting promoter:', error);
       alert('Failed to reject promoter');
@@ -164,34 +179,75 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleApproveSteward = async (stewardId: number) => {
+  const handleVerifyMember = async (memberId: number) => {
     if (!session) return;
     
-    setProcessing(stewardId);
-    setProcessingType('steward');
+    setProcessing(memberId);
+    setProcessingType('member');
     try {
-      await updateStewardStatus(stewardId, 'APPROVED');
+      await updateMemberVerificationStatus(memberId, 'VERIFIED');
       await loadData();
+      setIsModalOpen(false);
+      setSelectedItem(null);
     } catch (error) {
-      console.error('Error approving steward:', error);
-      alert('Failed to approve steward');
+      console.error('Error verifying member:', error);
+      alert('Failed to verify member');
     } finally {
       setProcessing(null);
       setProcessingType(null);
     }
   };
 
-  const handleRejectSteward = async (stewardId: number) => {
+  const handleRejectMember = async (memberId: number) => {
     if (!session) return;
     
-    setProcessing(stewardId);
-    setProcessingType('steward');
+    const notes = prompt('Please provide a reason for rejection (optional):');
+    setProcessing(memberId);
+    setProcessingType('member');
     try {
-      await updateStewardStatus(stewardId, 'REJECTED');
+      await updateMemberVerificationStatus(memberId, 'FAILED', notes || null);
       await loadData();
+      setIsModalOpen(false);
+      setSelectedItem(null);
     } catch (error) {
-      console.error('Error rejecting steward:', error);
-      alert('Failed to reject steward');
+      console.error('Error rejecting member:', error);
+      alert('Failed to reject member');
+    } finally {
+      setProcessing(null);
+      setProcessingType(null);
+    }
+  };
+
+  const getChapterName = (chapterId: number | null | undefined): string => {
+    if (!chapterId) return 'N/A';
+    const chapter = chapters.find(c => c.id === chapterId);
+    return chapter?.name || `Chapter ID: ${chapterId}`;
+  };
+
+  const openDetailModal = (item: MemberProfile | Seller | Promoter) => {
+    setSelectedItem(item);
+    setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setSelectedItem(null);
+  };
+
+  const handleMarkForReview = async (memberId: number) => {
+    if (!session) return;
+    
+    const notes = prompt('Please provide notes for manual review (optional):');
+    setProcessing(memberId);
+    setProcessingType('member');
+    try {
+      await updateMemberVerificationStatus(memberId, 'MANUAL_REVIEW', notes || null);
+      await loadData();
+      setIsModalOpen(false);
+      setSelectedItem(null);
+    } catch (error) {
+      console.error('Error marking member for review:', error);
+      alert('Failed to mark member for review');
     } finally {
       setProcessing(null);
       setProcessingType(null);
@@ -219,7 +275,7 @@ export default function AdminDashboard() {
     return <SkeletonLoader />;
   }
 
-  if (status === 'unauthenticated') {
+  if (!isAuthenticated) {
     return null;
   }
 
@@ -231,12 +287,14 @@ export default function AdminDashboard() {
             <Link href="/" className="text-2xl font-display font-bold text-crimson">
               1Kappa - Admin
             </Link>
-            <Link
-              href="/api/auth/signout"
+            <button
+              onClick={async () => {
+                await signOut({ callbackUrl: '/' });
+              }}
               className="text-midnight-navy hover:text-crimson transition font-medium"
             >
               Logout
-            </Link>
+            </button>
           </div>
         </div>
       </nav>
@@ -245,6 +303,16 @@ export default function AdminDashboard() {
         <div className="bg-white rounded-lg shadow-lg border border-frost-gray">
           <div className="border-b border-frost-gray">
             <div className="flex">
+              <button
+                onClick={() => setActiveTab('members')}
+                className={`px-6 py-4 font-semibold ${
+                  activeTab === 'members'
+                    ? 'border-b-2 border-crimson text-crimson'
+                    : 'text-midnight-navy/70 hover:text-crimson'
+                }`}
+              >
+                Pending Members
+              </button>
               <button
                 onClick={() => setActiveTab('sellers')}
                 className={`px-6 py-4 font-semibold ${
@@ -264,16 +332,6 @@ export default function AdminDashboard() {
                 }`}
               >
                 Pending Promoters
-              </button>
-              <button
-                onClick={() => setActiveTab('stewards')}
-                className={`px-6 py-4 font-semibold ${
-                  activeTab === 'stewards'
-                    ? 'border-b-2 border-crimson text-crimson'
-                    : 'text-midnight-navy/70 hover:text-crimson'
-                }`}
-              >
-                Pending Stewards
               </button>
               <button
                 onClick={() => setActiveTab('orders')}
@@ -335,6 +393,72 @@ export default function AdminDashboard() {
                 <Skeleton variant="card" className="h-24 w-full" />
                 <Skeleton variant="card" className="h-24 w-full" />
               </div>
+            ) : activeTab === 'members' ? (
+              <div className="space-y-4">
+                {members.length === 0 ? (
+                  <p className="text-center py-8 text-midnight-navy/70">No pending members</p>
+                ) : (
+                  members.map((member) => (
+                    <div
+                      key={member.id}
+                      onClick={() => openDetailModal(member)}
+                      className="border border-frost-gray rounded-lg p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50 transition-colors"
+                    >
+                      <div className="flex items-center space-x-4">
+                        {member.headshot_url && (
+                          <img
+                            src={member.headshot_url}
+                            alt={member.name || 'Member'}
+                            className="w-16 h-16 rounded-full object-cover"
+                          />
+                        )}
+                        <div>
+                          <h3 className="font-semibold">{member.name || 'Unknown'}</h3>
+                          <p className="text-sm text-gray-600">{member.email}</p>
+                          {member.membership_number && (
+                            <p className="text-sm text-gray-600">
+                              Membership #: {member.membership_number}
+                            </p>
+                          )}
+                          {member.chapter_name && (
+                            <p className="text-sm text-gray-600">
+                              Chapter: {member.chapter_name}
+                            </p>
+                          )}
+                          {member.verification_status && (
+                            <p className="text-sm text-gray-600">
+                              Status: <span className="font-medium">{member.verification_status}</span>
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex space-x-2" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          onClick={() => handleVerifyMember(member.id)}
+                          disabled={processing === member.id && processingType === 'member'}
+                          className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:opacity-50"
+                        >
+                          {processing === member.id && processingType === 'member' ? 'Processing...' : 'Verify'}
+                        </button>
+                        <button
+                          onClick={() => handleMarkForReview(member.id)}
+                          disabled={processing === member.id && processingType === 'member'}
+                          className="bg-yellow-600 text-white px-4 py-2 rounded hover:bg-yellow-700 disabled:opacity-50"
+                        >
+                          {processing === member.id && processingType === 'member' ? 'Processing...' : 'Review'}
+                        </button>
+                        <button
+                          onClick={() => handleRejectMember(member.id)}
+                          disabled={processing === member.id && processingType === 'member'}
+                          className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 disabled:opacity-50"
+                        >
+                          {processing === member.id && processingType === 'member' ? 'Processing...' : 'Reject'}
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
             ) : activeTab === 'sellers' ? (
               <div className="space-y-4">
                 {sellers.length === 0 ? (
@@ -343,7 +467,8 @@ export default function AdminDashboard() {
                   sellers.map((seller) => (
                     <div
                       key={seller.id}
-                      className="border border-frost-gray rounded-lg p-4 flex items-center justify-between"
+                      onClick={() => openDetailModal(seller)}
+                      className="border border-frost-gray rounded-lg p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50 transition-colors"
                     >
                       <div className="flex items-center space-x-4">
                         {seller.headshot_url && (
@@ -363,7 +488,7 @@ export default function AdminDashboard() {
                           )}
                         </div>
                       </div>
-                      <div className="flex space-x-2">
+                      <div className="flex space-x-2" onClick={(e) => e.stopPropagation()}>
                         <button
                           onClick={() => handleApprove(seller.id)}
                           disabled={processing === seller.id && processingType === 'seller'}
@@ -391,7 +516,8 @@ export default function AdminDashboard() {
                   promoters.map((promoter) => (
                     <div
                       key={promoter.id}
-                      className="border border-frost-gray rounded-lg p-4 flex items-center justify-between"
+                      onClick={() => openDetailModal(promoter)}
+                      className="border border-frost-gray rounded-lg p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50 transition-colors"
                     >
                       <div className="flex items-center space-x-4">
                         {promoter.headshot_url && (
@@ -409,7 +535,7 @@ export default function AdminDashboard() {
                           </p>
                         </div>
                       </div>
-                      <div className="flex space-x-2">
+                      <div className="flex space-x-2" onClick={(e) => e.stopPropagation()}>
                         <button
                           onClick={() => handleApprovePromoter(promoter.id)}
                           disabled={processing === promoter.id && processingType === 'promoter'}
@@ -423,52 +549,6 @@ export default function AdminDashboard() {
                           className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 disabled:opacity-50"
                         >
                           {processing === promoter.id && processingType === 'promoter' ? 'Processing...' : 'Reject'}
-                        </button>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            ) : activeTab === 'stewards' ? (
-              <div className="space-y-4">
-                {stewards.length === 0 ? (
-                  <p className="text-center py-8 text-midnight-navy/70">No pending stewards</p>
-                ) : (
-                  stewards.map((steward) => (
-                    <div
-                      key={steward.id}
-                      className="border border-frost-gray rounded-lg p-4 flex items-center justify-between"
-                    >
-                      <div className="flex items-center space-x-4">
-                        {steward.member?.headshot_url && (
-                          <img
-                            src={steward.member.headshot_url}
-                            alt={steward.member.name || 'Steward'}
-                            className="w-16 h-16 rounded-full object-cover"
-                          />
-                        )}
-                        <div>
-                          <h3 className="font-semibold">{steward.member?.name || 'Unknown'}</h3>
-                          <p className="text-sm text-gray-600">{steward.member?.email || 'N/A'}</p>
-                          <p className="text-sm text-gray-600">
-                            Sponsoring Chapter: {steward.chapter?.name || 'N/A'}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex space-x-2">
-                        <button
-                          onClick={() => handleApproveSteward(steward.id)}
-                          disabled={processing === steward.id && processingType === 'steward'}
-                          className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:opacity-50"
-                        >
-                          {processing === steward.id && processingType === 'steward' ? 'Processing...' : 'Approve'}
-                        </button>
-                        <button
-                          onClick={() => handleRejectSteward(steward.id)}
-                          disabled={processing === steward.id && processingType === 'steward'}
-                          className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 disabled:opacity-50"
-                        >
-                          {processing === steward.id && processingType === 'steward' ? 'Processing...' : 'Reject'}
                         </button>
                       </div>
                     </div>
@@ -645,6 +725,280 @@ export default function AdminDashboard() {
           </div>
         </div>
       </div>
+
+      {/* Application Detail Modal */}
+      {isModalOpen && selectedItem && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={closeModal}>
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto m-4" onClick={(e) => e.stopPropagation()}>
+            <div className="sticky top-0 bg-white border-b border-frost-gray px-6 py-4 flex justify-between items-center">
+              <h2 className="text-2xl font-bold text-midnight-navy">
+                {activeTab === 'members' ? 'Member Application' : activeTab === 'sellers' ? 'Seller Application' : 'Promoter Application'}
+              </h2>
+              <button
+                onClick={closeModal}
+                className="text-gray-500 hover:text-gray-700 text-2xl font-bold"
+              >
+                ×
+              </button>
+            </div>
+            <div className="p-6 space-y-6">
+              {/* Common fields */}
+              {selectedItem.headshot_url && (
+                <div className="flex justify-center">
+                  <img
+                    src={selectedItem.headshot_url}
+                    alt={selectedItem.name}
+                    className="w-32 h-32 rounded-full object-cover border-4 border-frost-gray"
+                  />
+                </div>
+              )}
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-semibold text-gray-600">Name</label>
+                  <p className="text-lg">{selectedItem.name}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-semibold text-gray-600">Email</label>
+                  <p className="text-lg">{selectedItem.email}</p>
+                </div>
+              </div>
+
+              {/* Member-specific fields */}
+              {'membership_number' in selectedItem && selectedItem.membership_number && (
+                <div>
+                  <label className="text-sm font-semibold text-gray-600">Membership Number</label>
+                  <p className="text-lg">{selectedItem.membership_number}</p>
+                </div>
+              )}
+
+              {'chapter_name' in selectedItem && selectedItem.chapter_name && (
+                <div>
+                  <label className="text-sm font-semibold text-gray-600">Chapter</label>
+                  <p className="text-lg">{selectedItem.chapter_name}</p>
+                </div>
+              )}
+
+              {'initiated_chapter_id' in selectedItem && selectedItem.initiated_chapter_id && (
+                <div>
+                  <label className="text-sm font-semibold text-gray-600">Initiated Chapter</label>
+                  <p className="text-lg">{getChapterName(selectedItem.initiated_chapter_id)}</p>
+                </div>
+              )}
+
+              {'initiated_season' in selectedItem && selectedItem.initiated_season && (
+                <div>
+                  <label className="text-sm font-semibold text-gray-600">Initiated Season</label>
+                  <p className="text-lg">{selectedItem.initiated_season}</p>
+                </div>
+              )}
+
+              {'initiated_year' in selectedItem && selectedItem.initiated_year && (
+                <div>
+                  <label className="text-sm font-semibold text-gray-600">Initiated Year</label>
+                  <p className="text-lg">{selectedItem.initiated_year}</p>
+                </div>
+              )}
+
+              {'ship_name' in selectedItem && selectedItem.ship_name && (
+                <div>
+                  <label className="text-sm font-semibold text-gray-600">Ship Name</label>
+                  <p className="text-lg">{selectedItem.ship_name}</p>
+                </div>
+              )}
+
+              {'line_name' in selectedItem && selectedItem.line_name && (
+                <div>
+                  <label className="text-sm font-semibold text-gray-600">Line Name</label>
+                  <p className="text-lg">{selectedItem.line_name}</p>
+                </div>
+              )}
+
+              {'location' in selectedItem && selectedItem.location && (
+                <div>
+                  <label className="text-sm font-semibold text-gray-600">Location</label>
+                  <p className="text-lg">{selectedItem.location}</p>
+                </div>
+              )}
+
+              {'address' in selectedItem && selectedItem.address && (
+                <div>
+                  <label className="text-sm font-semibold text-gray-600">Address</label>
+                  <p className="text-lg">{selectedItem.address}</p>
+                  {selectedItem.address_is_private && (
+                    <p className="text-sm text-gray-500">(Private)</p>
+                  )}
+                </div>
+              )}
+
+              {'phone_number' in selectedItem && selectedItem.phone_number && (
+                <div>
+                  <label className="text-sm font-semibold text-gray-600">Phone Number</label>
+                  <p className="text-lg">{selectedItem.phone_number}</p>
+                  {selectedItem.phone_is_private && (
+                    <p className="text-sm text-gray-500">(Private)</p>
+                  )}
+                </div>
+              )}
+
+              {'industry' in selectedItem && selectedItem.industry && (
+                <div>
+                  <label className="text-sm font-semibold text-gray-600">Industry</label>
+                  <p className="text-lg">{selectedItem.industry}</p>
+                </div>
+              )}
+
+              {'job_title' in selectedItem && selectedItem.job_title && (
+                <div>
+                  <label className="text-sm font-semibold text-gray-600">Job Title</label>
+                  <p className="text-lg">{selectedItem.job_title}</p>
+                </div>
+              )}
+
+              {'bio' in selectedItem && selectedItem.bio && (
+                <div>
+                  <label className="text-sm font-semibold text-gray-600">Bio</label>
+                  <p className="text-lg whitespace-pre-wrap">{selectedItem.bio}</p>
+                </div>
+              )}
+
+              {/* Seller-specific fields */}
+              {'business_name' in selectedItem && selectedItem.business_name && (
+                <div>
+                  <label className="text-sm font-semibold text-gray-600">Business Name</label>
+                  <p className="text-lg">{selectedItem.business_name}</p>
+                </div>
+              )}
+
+              {'vendor_license_number' in selectedItem && selectedItem.vendor_license_number && (
+                <div>
+                  <label className="text-sm font-semibold text-gray-600">Vendor License Number</label>
+                  <p className="text-lg">{selectedItem.vendor_license_number}</p>
+                </div>
+              )}
+
+              {'store_logo_url' in selectedItem && selectedItem.store_logo_url && (
+                <div>
+                  <label className="text-sm font-semibold text-gray-600">Store Logo</label>
+                  <img src={selectedItem.store_logo_url} alt="Store Logo" className="w-32 h-32 object-contain border border-frost-gray rounded" />
+                </div>
+              )}
+
+              {'sponsoring_chapter_id' in selectedItem && selectedItem.sponsoring_chapter_id && (
+                <div>
+                  <label className="text-sm font-semibold text-gray-600">Sponsoring Chapter</label>
+                  <p className="text-lg">{getChapterName(selectedItem.sponsoring_chapter_id)}</p>
+                </div>
+              )}
+
+              {'member_id' in selectedItem && selectedItem.member_id && (
+                <div>
+                  <label className="text-sm font-semibold text-gray-600">Member ID</label>
+                  <p className="text-lg">{selectedItem.member_id}</p>
+                </div>
+              )}
+
+              {'verification_status' in selectedItem && selectedItem.verification_status && (
+                <div>
+                  <label className="text-sm font-semibold text-gray-600">Verification Status</label>
+                  <p className="text-lg">
+                    <span className={`px-2 py-1 rounded text-sm ${
+                      selectedItem.verification_status === 'VERIFIED' ? 'bg-green-100 text-green-800' :
+                      selectedItem.verification_status === 'FAILED' ? 'bg-red-100 text-red-800' :
+                      selectedItem.verification_status === 'MANUAL_REVIEW' ? 'bg-yellow-100 text-yellow-800' :
+                      'bg-gray-100 text-gray-800'
+                    }`}>
+                      {selectedItem.verification_status}
+                    </span>
+                  </p>
+                </div>
+              )}
+
+              {/* Social links */}
+              {selectedItem.social_links && Object.keys(selectedItem.social_links).length > 0 && (
+                <div>
+                  <label className="text-sm font-semibold text-gray-600">Social Links</label>
+                  <div className="space-y-2 mt-2">
+                    {Object.entries(selectedItem.social_links).map(([platform, url]) => (
+                      <div key={platform} className="flex items-center space-x-2">
+                        <span className="font-medium capitalize">{platform}:</span>
+                        <a href={url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                          {url}
+                        </a>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Action buttons */}
+              <div className="flex space-x-4 pt-4 border-t border-frost-gray">
+                {activeTab === 'members' && (
+                  <>
+                    <button
+                      onClick={() => selectedItem && 'id' in selectedItem && handleVerifyMember(selectedItem.id)}
+                      disabled={selectedItem && 'id' in selectedItem && processing === selectedItem.id && processingType === 'member'}
+                      className="flex-1 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:opacity-50"
+                    >
+                      {selectedItem && 'id' in selectedItem && processing === selectedItem.id && processingType === 'member' ? 'Processing...' : 'Verify'}
+                    </button>
+                    <button
+                      onClick={() => selectedItem && 'id' in selectedItem && handleMarkForReview(selectedItem.id)}
+                      disabled={selectedItem && 'id' in selectedItem && processing === selectedItem.id && processingType === 'member'}
+                      className="flex-1 bg-yellow-600 text-white px-4 py-2 rounded hover:bg-yellow-700 disabled:opacity-50"
+                    >
+                      {selectedItem && 'id' in selectedItem && processing === selectedItem.id && processingType === 'member' ? 'Processing...' : 'Review'}
+                    </button>
+                    <button
+                      onClick={() => selectedItem && 'id' in selectedItem && handleRejectMember(selectedItem.id)}
+                      disabled={selectedItem && 'id' in selectedItem && processing === selectedItem.id && processingType === 'member'}
+                      className="flex-1 bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 disabled:opacity-50"
+                    >
+                      {selectedItem && 'id' in selectedItem && processing === selectedItem.id && processingType === 'member' ? 'Processing...' : 'Reject'}
+                    </button>
+                  </>
+                )}
+                {activeTab === 'sellers' && (
+                  <>
+                    <button
+                      onClick={() => selectedItem && 'id' in selectedItem && handleApprove(selectedItem.id)}
+                      disabled={selectedItem && 'id' in selectedItem && processing === selectedItem.id && processingType === 'seller'}
+                      className="flex-1 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:opacity-50"
+                    >
+                      {selectedItem && 'id' in selectedItem && processing === selectedItem.id && processingType === 'seller' ? 'Processing...' : 'Approve'}
+                    </button>
+                    <button
+                      onClick={() => selectedItem && 'id' in selectedItem && handleReject(selectedItem.id)}
+                      disabled={selectedItem && 'id' in selectedItem && processing === selectedItem.id && processingType === 'seller'}
+                      className="flex-1 bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 disabled:opacity-50"
+                    >
+                      {selectedItem && 'id' in selectedItem && processing === selectedItem.id && processingType === 'seller' ? 'Processing...' : 'Reject'}
+                    </button>
+                  </>
+                )}
+                {activeTab === 'promoters' && (
+                  <>
+                    <button
+                      onClick={() => selectedItem && 'id' in selectedItem && handleApprovePromoter(selectedItem.id)}
+                      disabled={selectedItem && 'id' in selectedItem && processing === selectedItem.id && processingType === 'promoter'}
+                      className="flex-1 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:opacity-50"
+                    >
+                      {selectedItem && 'id' in selectedItem && processing === selectedItem.id && processingType === 'promoter' ? 'Processing...' : 'Approve'}
+                    </button>
+                    <button
+                      onClick={() => selectedItem && 'id' in selectedItem && handleRejectPromoter(selectedItem.id)}
+                      disabled={selectedItem && 'id' in selectedItem && processing === selectedItem.id && processingType === 'promoter'}
+                      className="flex-1 bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 disabled:opacity-50"
+                    >
+                      {selectedItem && 'id' in selectedItem && processing === selectedItem.id && processingType === 'promoter' ? 'Processing...' : 'Reject'}
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

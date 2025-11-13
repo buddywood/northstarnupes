@@ -279,6 +279,30 @@ export async function fetchPendingPromoters(): Promise<Promoter[]> {
   return res.json();
 }
 
+export async function fetchPendingMembers(): Promise<MemberProfile[]> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_URL}/api/admin/members/pending`, {
+    headers,
+  });
+  if (!res.ok) throw new Error('Failed to fetch pending members');
+  return res.json();
+}
+
+export async function updateMemberVerificationStatus(
+  memberId: number,
+  verification_status: 'PENDING' | 'VERIFIED' | 'FAILED' | 'MANUAL_REVIEW',
+  verification_notes?: string | null
+): Promise<MemberProfile> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_URL}/api/admin/members/${memberId}/verification`, {
+    method: 'PUT',
+    headers,
+    body: JSON.stringify({ verification_status, verification_notes }),
+  });
+  if (!res.ok) throw new Error('Failed to update member verification');
+  return res.json();
+}
+
 export async function updatePromoterStatus(
   promoterId: number,
   status: 'APPROVED' | 'REJECTED'
@@ -348,7 +372,11 @@ export async function fetchMemberProfile(): Promise<MemberProfile> {
   
   if (!res.ok) {
     if (res.status === 404) {
-      throw new Error('Member profile not found');
+      const errorData = await res.json().catch(() => ({}));
+      const error = new Error('Member profile not found');
+      (error as any).requiresRegistration = errorData.requiresRegistration === true;
+      (error as any).code = errorData.code;
+      throw error;
     }
     throw new Error('Failed to fetch member profile');
   }

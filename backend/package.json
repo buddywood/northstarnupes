@@ -23,7 +23,8 @@
     "verify:members:watch": "tsx src/scripts/verify-members.ts --visible",
     "verify:members:debug": "tsx src/scripts/verify-members.ts --visible --debug",
     "verify:members:record": "tsx src/scripts/verify-members.ts --visible --record",
-    "grant-admin": "tsx src/scripts/grant-admin-access.ts"
+    "grant-admin": "tsx src/scripts/grant-admin-access.ts",
+    "fix:orphaned-member": "tsx src/scripts/fix-orphaned-member.ts"
   },
   "keywords": [],
   "author": "",

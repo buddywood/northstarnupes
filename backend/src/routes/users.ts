@@ -23,7 +23,22 @@ router.get('/me', authenticate, async (req: Request, res: Response) => {
     let name: string | null = null;
     if (user.member_id) {
       const memberResult = await pool.query('SELECT name FROM members WHERE id = $1', [user.member_id]);
-      name = memberResult.rows[0]?.name || null;
+      if (memberResult.rows.length === 0) {
+        // Orphaned member_id detected - clear it
+        console.warn(`Orphaned member_id detected for user ${user.id}: member_id ${user.member_id} doesn't exist`);
+        await pool.query(
+          `UPDATE users 
+           SET member_id = NULL, 
+               onboarding_status = 'ONBOARDING_STARTED',
+               updated_at = CURRENT_TIMESTAMP 
+           WHERE id = $1`,
+          [user.id]
+        );
+        user.member_id = null;
+        user.onboarding_status = 'ONBOARDING_STARTED';
+      } else {
+        name = memberResult.rows[0]?.name || null;
+      }
     } else if (user.seller_id) {
       const sellerResult = await pool.query('SELECT name FROM sellers WHERE id = $1', [user.seller_id]);
       name = sellerResult.rows[0]?.name || null;
@@ -92,7 +107,22 @@ router.post('/upsert-on-login', async (req: Request, res: Response) => {
     let name: string | null = null;
     if (user.member_id) {
       const memberResult = await pool.query('SELECT name FROM members WHERE id = $1', [user.member_id]);
-      name = memberResult.rows[0]?.name || null;
+      if (memberResult.rows.length === 0) {
+        // Orphaned member_id detected - clear it
+        console.warn(`Orphaned member_id detected for user ${user.id}: member_id ${user.member_id} doesn't exist`);
+        await pool.query(
+          `UPDATE users 
+           SET member_id = NULL, 
+               onboarding_status = 'ONBOARDING_STARTED',
+               updated_at = CURRENT_TIMESTAMP 
+           WHERE id = $1`,
+          [user.id]
+        );
+        user.member_id = null;
+        user.onboarding_status = 'ONBOARDING_STARTED';
+      } else {
+        name = memberResult.rows[0]?.name || null;
+      }
     } else if (user.seller_id) {
       const sellerResult = await pool.query('SELECT name FROM sellers WHERE id = $1', [user.seller_id]);
       name = sellerResult.rows[0]?.name || null;

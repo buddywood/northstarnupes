@@ -839,6 +839,7 @@ router.post('/register', upload.single('headshot'), async (req: Request, res: Re
     const member = result.rows[0];
 
     // Create or update user record and link to member
+    // This is critical - if this fails, we have an orphaned member record
     if (body.cognito_sub) {
       try {
         let user = await getUserByCognitoSub(body.cognito_sub);
@@ -856,9 +857,29 @@ router.post('/register', upload.single('headshot'), async (req: Request, res: Re
           await linkUserToMember(user.id, member.id);
           await updateUserOnboardingStatusByCognitoSub(body.cognito_sub, 'ONBOARDING_FINISHED');
         }
-      } catch (userError) {
+      } catch (userError: any) {
         console.error('Error creating/linking user record:', userError);
-        // Don't fail the registration if user creation fails
+        console.error('Error details:', {
+          message: userError.message,
+          code: userError.code,
+          detail: userError.detail,
+          constraint: userError.constraint,
+        });
+        
+        // If user linking fails, we have an orphaned member record
+        // Try to clean up the member record we just created
+        try {
+          await pool.query('DELETE FROM members WHERE id = $1', [member.id]);
+          console.log(`Cleaned up orphaned member record ${member.id} due to user linking failure`);
+        } catch (cleanupError) {
+          console.error('Failed to clean up orphaned member record:', cleanupError);
+        }
+        
+        // Fail the registration since user linking is critical
+        return res.status(500).json({ 
+          error: 'Failed to link user account. Please try again.',
+          code: 'USER_LINKING_FAILED'
+        });
       }
     }
 
@@ -897,7 +918,26 @@ router.get('/profile', authenticate, async (req: Request, res: Response) => {
     );
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Member not found' });
+      // Member doesn't exist but user has member_id set - this is an orphaned reference
+      // Clear it so user can complete registration
+      console.warn(`Orphaned member_id detected: user ${req.user.id} has member_id ${req.user.memberId} but member doesn't exist`);
+      try {
+        await pool.query(
+          `UPDATE users 
+           SET member_id = NULL, 
+               onboarding_status = 'ONBOARDING_STARTED',
+               updated_at = CURRENT_TIMESTAMP 
+           WHERE id = $1`,
+          [req.user.id]
+        );
+      } catch (cleanupError) {
+        console.error('Error clearing orphaned member_id:', cleanupError);
+      }
+      return res.status(404).json({ 
+        error: 'Member profile not found',
+        code: 'MEMBER_NOT_FOUND',
+        requiresRegistration: true 
+      });
     }
 
     const member = result.rows[0];

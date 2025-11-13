@@ -21,7 +21,9 @@ import {
   getPlatformSetting,
   setPlatformSetting,
   getAllPlatformSettings,
-  getChapterById
+  getChapterById,
+  getPendingMembersForVerification,
+  updateMemberVerification
 } from '../db/queries';
 import { createConnectAccount, createChapterConnectAccount } from '../services/stripe';
 import { sendSellerApprovedEmail } from '../services/email';
@@ -165,6 +167,61 @@ router.put('/promoters/:id', async (req: Request, res: Response) => {
     }
     console.error('Error updating promoter status:', error);
     res.status(500).json({ error: 'Failed to update promoter status' });
+  }
+});
+
+// Member verification admin routes
+router.get('/members/pending', async (req: Request, res: Response) => {
+  try {
+    const members = await getPendingMembersForVerification();
+    
+    // Enrich with chapter info
+    const enrichedMembers = await Promise.all(
+      members.map(async (member) => {
+        let chapter = null;
+        if (member.initiated_chapter_id) {
+          const chapterResult = await pool.query('SELECT * FROM chapters WHERE id = $1', [member.initiated_chapter_id]);
+          chapter = chapterResult.rows[0];
+        }
+        return {
+          ...member,
+          social_links: typeof member.social_links === 'string' ? JSON.parse(member.social_links) : member.social_links,
+          chapter: chapter,
+        };
+      })
+    );
+    
+    res.json(enrichedMembers);
+  } catch (error) {
+    console.error('Error fetching pending members:', error);
+    res.status(500).json({ error: 'Failed to fetch pending members' });
+  }
+});
+
+const updateMemberVerificationSchema = z.object({
+  verification_status: z.enum(['PENDING', 'VERIFIED', 'FAILED', 'MANUAL_REVIEW']),
+  verification_notes: z.string().optional().nullable(),
+});
+
+router.put('/members/:id/verification', async (req: Request, res: Response) => {
+  try {
+    const memberId = parseInt(req.params.id);
+    const body = updateMemberVerificationSchema.parse(req.body);
+    
+    const updatedMember = await updateMemberVerification(
+      memberId,
+      body.verification_status,
+      body.verification_notes || null
+    );
+    
+    res.json(updatedMember);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ error: 'Validation error', details: error.errors });
+      return;
+    }
+    console.error('Error updating member verification:', error);
+    res.status(500).json({ error: 'Failed to update member verification' });
   }
 });
 

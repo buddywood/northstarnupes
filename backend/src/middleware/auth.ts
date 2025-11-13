@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { verifyCognitoToken, extractUserInfoFromToken } from '../services/cognito';
 import { getUserByCognitoSub, createUser, getMemberById } from '../db/queries';
+import pool from '../db/connection';
 
 // Extend Express Request to include user
 declare global {
@@ -59,13 +60,38 @@ export async function authenticate(
       return;
     }
 
+    // Validate member_id if it exists - check if member record actually exists
+    let memberId = user.member_id;
+    if (memberId) {
+      const memberCheck = await pool.query('SELECT id FROM members WHERE id = $1', [memberId]);
+      if (memberCheck.rows.length === 0) {
+        // Orphaned member_id detected - clear it
+        console.warn(`Orphaned member_id detected in authenticate middleware: user ${user.id} has member_id ${memberId} but member doesn't exist`);
+        try {
+          await pool.query(
+            `UPDATE users 
+             SET member_id = NULL, 
+                 onboarding_status = 'ONBOARDING_STARTED',
+                 updated_at = CURRENT_TIMESTAMP 
+             WHERE id = $1`,
+            [user.id]
+          );
+          memberId = null;
+          user.member_id = null;
+          user.onboarding_status = 'ONBOARDING_STARTED';
+        } catch (cleanupError) {
+          console.error('Error clearing orphaned member_id in authenticate:', cleanupError);
+        }
+      }
+    }
+
     // Attach user to request
     req.user = {
       id: user.id,
       cognitoSub: user.cognito_sub,
       email: user.email,
       role: user.role,
-      memberId: user.member_id,
+      memberId: memberId,
       sellerId: user.seller_id,
       promoterId: user.promoter_id,
       stewardId: user.steward_id || null,
@@ -159,7 +185,13 @@ export async function requireVerifiedMember(
 
     const member = await getMemberById(req.user.memberId);
     if (!member) {
-      res.status(404).json({ error: 'Member not found' });
+      // This shouldn't happen if authenticate middleware is working correctly,
+      // but handle it gracefully
+      res.status(404).json({ 
+        error: 'Member not found',
+        code: 'MEMBER_NOT_FOUND',
+        requiresRegistration: true
+      });
       return;
     }
 

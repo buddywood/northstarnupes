@@ -29,6 +29,7 @@ export default function ProfilePage() {
   const [headshotPreview, setHeadshotPreview] = useState<string | null>(null);
   const [isSteward, setIsSteward] = useState(false);
   const [stewardStatus, setStewardStatus] = useState<string | null>(null);
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -55,21 +56,85 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (sessionStatus === 'loading') return;
+    if (isRedirecting) {
+      console.log('Profile page: Already redirecting, skipping...');
+      return; // Prevent multiple redirects
+    }
+    
+    console.log('Profile page: Session status:', sessionStatus, 'User:', session?.user?.email, 'MemberId:', (session?.user as any)?.memberId);
     
     if (sessionStatus !== 'authenticated' || !session?.user) {
+      console.log('Profile page: Not authenticated, redirecting to login');
+      setIsRedirecting(true);
       router.push('/login');
+      return;
+    }
+
+    // Check user role - ADMIN users don't have member profiles
+    const userRole = (session.user as any)?.role;
+    if (userRole === 'ADMIN') {
+      console.log('Profile page: User is ADMIN, redirecting to admin dashboard');
+      setIsRedirecting(true);
+      router.push('/admin');
       return;
     }
 
     // Check if user has memberId
     const memberId = (session.user as any)?.memberId;
-    if (!memberId) {
+    
+    // If no memberId, redirect to register (unless they're a seller/promoter)
+    if (!memberId && userRole === 'CONSUMER') {
+      console.log('Profile page: No memberId in session, redirecting to register');
+      setIsRedirecting(true);
       router.push('/register');
       return;
     }
+    
+    // Sellers and promoters don't have member profiles either
+    if (!memberId && (userRole === 'SELLER' || userRole === 'PROMOTER')) {
+      console.log(`Profile page: User is ${userRole}, no member profile needed`);
+      setError('Member profile not available for sellers/promoters');
+      setLoading(false);
+      return;
+    }
 
-    loadProfile();
-  }, [sessionStatus, session, router]);
+    // Verify memberId exists in backend before loading profile
+    const verifyAndLoad = async () => {
+      try {
+        const sessionData = await fetch('/api/auth/session').then(res => res.json());
+        const idToken = (sessionData as any)?.idToken;
+        
+        if (idToken) {
+          const verifyResponse = await fetch(`${API_URL}/api/users/me`, {
+            headers: {
+              'Authorization': `Bearer ${idToken}`,
+            },
+          });
+          
+          if (verifyResponse.ok) {
+            const userData = await verifyResponse.json();
+            if (!userData.member_id) {
+              console.log('Profile page: Backend has no member_id, refreshing session and redirecting');
+              setIsRedirecting(true);
+              const { update: updateSession } = await import('next-auth/react');
+              await updateSession();
+              window.location.href = '/register';
+              return;
+            }
+          }
+        }
+        
+        console.log('Profile page: MemberId verified, loading profile...');
+        loadProfile();
+      } catch (verifyError) {
+        console.error('Profile page: Error verifying member_id:', verifyError);
+        // Continue anyway - will fail in loadProfile if there's an issue
+        loadProfile();
+      }
+    };
+
+    verifyAndLoad();
+  }, [sessionStatus, session, router, isRedirecting]);
 
   const loadProfile = async () => {
     try {
@@ -124,7 +189,52 @@ export default function ProfilePage() {
         setHeadshotPreview(profileData.headshot_url);
       }
     } catch (err: any) {
-      console.error('Error loading profile:', err);
+      console.error('Profile page: Error loading profile:', err.message);
+      
+      // If member profile not found, backend may have cleared orphaned member_id
+      // Check backend directly and refresh session
+      if (err.message === 'Member profile not found' || err.message?.includes('Member profile not found')) {
+        console.log('Profile page: Member profile not found, checking backend state...');
+        setIsRedirecting(true); // Set redirect flag immediately to prevent loops
+        try {
+          // Check backend directly to see current state
+          const session = await fetch('/api/auth/session').then(res => res.json());
+          const idToken = (session as any)?.idToken;
+          
+          if (idToken) {
+            const userResponse = await fetch(`${API_URL}/api/users/me`, {
+              headers: {
+                'Authorization': `Bearer ${idToken}`,
+              },
+            });
+            
+            if (userResponse.ok) {
+              const userData = await userResponse.json();
+              console.log('Profile page: Backend user data:', { member_id: userData.member_id, email: userData.email });
+              
+              // If backend cleared member_id, refresh session and redirect
+              if (!userData.member_id) {
+                console.log('Profile page: Backend has no member_id, refreshing session and redirecting to register');
+                const { update: updateSession } = await import('next-auth/react');
+                await updateSession();
+                // Use window.location for a hard redirect to prevent loops
+                window.location.href = '/register';
+                return;
+              } else {
+                console.log('Profile page: Backend still has member_id, but profile fetch failed. Showing error.');
+              }
+            }
+          }
+        } catch (checkError) {
+          console.error('Profile page: Error checking user state:', checkError);
+          // If check fails, still redirect
+          const { update: updateSession } = await import('next-auth/react');
+          await updateSession();
+          window.location.href = '/register';
+          return;
+        }
+      }
+      
       setError(err.message || 'Failed to load profile');
     } finally {
       setLoading(false);
