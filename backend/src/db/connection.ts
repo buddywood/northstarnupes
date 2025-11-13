@@ -15,7 +15,7 @@ if (!databaseUrl) {
 
 const pool = new Pool({
   connectionString: databaseUrl,
-  ssl: process.env.NODE_ENV === 'production' && databaseUrl.includes('neon') 
+  ssl: process.env.NODE_ENV === 'production' && (databaseUrl.includes('neon') || databaseUrl.includes('heroku')) 
     ? { rejectUnauthorized: false } 
     : false,
 });
