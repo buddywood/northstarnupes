@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import Logo from '../components/Logo';
+import Image from 'next/image';
 import VerificationCodeInput from '../components/VerificationCodeInput';
 
 function LoginPageContent() {
@@ -359,18 +359,30 @@ function LoginPageContent() {
   return (
     <main className="min-h-screen bg-cream flex items-center justify-center">
       <div className="bg-white p-8 rounded-lg shadow-lg max-w-md w-full border border-frost-gray">
+        {/* Icon with animation/glow */}
         <div className="mb-6 text-center">
-          <Logo />
+          <div className="inline-block relative">
+            <div className="absolute inset-0 bg-crimson/20 rounded-full blur-xl animate-pulse"></div>
+            <Image
+              src="/header-icon.png"
+              alt="1Kappa Icon"
+              width={64}
+              height={64}
+              className="relative z-10 object-contain animate-pulse"
+              style={{ animationDuration: '3s' }}
+            />
+          </div>
         </div>
+        
         <h1 className="text-2xl font-display font-bold mb-2 text-center text-midnight-navy">
-          {needsPasswordChange ? 'Change Your Password' : needsVerification ? 'Verify Your Email' : 'Member Login'}
+          Welcome to 1KAPPA
         </h1>
         <p className="text-sm text-midnight-navy/70 text-center mb-6">
           {needsPasswordChange
             ? 'Please set a new password to continue.'
             : needsVerification
             ? 'Please verify your email address to continue. Check your email for a verification code.'
-            : 'Access your member account to shop, track orders, and connect with the brotherhood.'}
+            : 'Sign in to continue the Bond'}
         </p>
         {needsVerification ? (
           <form onSubmit={handleVerification} className="space-y-4">

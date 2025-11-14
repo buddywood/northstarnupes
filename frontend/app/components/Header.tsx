@@ -7,7 +7,6 @@ import Image from 'next/image';
 import { fetchTotalDonations, fetchMemberProfile } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { useTheme } from './ThemeProvider';
-import Logo from './Logo';
 
 export default function Header() {
   const { session, isAuthenticated } = useAuth();
@@ -113,14 +112,11 @@ export default function Header() {
 
   const navLinks = [
     { href: '/shop', label: 'Shop' },
-    { href: '/collections', label: 'Collections' },
-    { href: '/connect', label: 'Connect' },
+    { href: '/collections', label: 'Sellers' },
+    { href: '/promote', label: 'Promoters' },
+    { href: '/steward-marketplace', label: 'Stewards' },
     { href: '/events', label: 'Events' },
   ];
-
-  if (showAuthenticatedMenu) {
-    navLinks.push({ href: '/steward-marketplace', label: 'Steward Marketplace' });
-  }
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -134,10 +130,19 @@ export default function Header() {
     <header className="sticky top-0 z-50 bg-white dark:bg-black border-b border-gray-200 dark:border-gray-900">
       <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-14">
-          {/* Logo */}
-          <div className="flex-shrink-0">
-          <Logo href="/" />
-        </div>
+          {/* Logo - Icon + 1KAPPA */}
+          <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity flex-shrink-0">
+            {/* Icon */}
+            <Image
+              src="/header-icon.png"
+              alt="1Kappa Icon"
+              width={24}
+              height={24}
+              className="object-contain flex-shrink-0"
+              priority
+            />
+            <span className="font-display font-bold text-crimson text-xl whitespace-nowrap">1KAPPA</span>
+          </Link>
 
           {/* Desktop Navigation - Centered */}
           <nav className="hidden lg:flex items-center gap-6 flex-1 justify-center px-8">
@@ -349,20 +354,12 @@ export default function Header() {
                 )}
               </div>
             ) : (
-              <div className="flex items-center gap-3">
-                <Link
-                  href="/login"
-                  className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-crimson dark:hover:text-crimson transition-colors"
-                >
-                  Login
-                </Link>
-                <Link
-                  href="/register"
-                  className="bg-crimson text-white px-4 py-2 rounded-lg font-medium hover:bg-crimson/90 dark:hover:bg-crimson/80 transition text-sm"
-                >
-                  Join Now
-                </Link>
-              </div>
+              <Link
+                href="/login"
+                className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-crimson dark:hover:text-crimson transition-colors"
+              >
+                Login
+              </Link>
             )}
           </div>
 

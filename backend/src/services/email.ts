@@ -14,6 +14,15 @@ const sesClient = new SESClient({
 const FROM_EMAIL = process.env.FROM_EMAIL || process.env.SES_FROM_EMAIL || 'noreply@1kappa.com';
 
 /**
+ * Get the logo URL for email templates
+ * Uses FRONTEND_URL to reference the logo from the public directory
+ */
+function getLogoUrl(): string {
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+  return `${frontendUrl}/horizon-logo.png`;
+}
+
+/**
  * Send a welcome email to a newly registered member
  */
 export async function sendWelcomeEmail(
@@ -32,6 +41,7 @@ export async function sendWelcomeEmail(
       </head>
       <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="background-color: #1a1a2e; padding: 30px; text-align: center;">
+          <img src="${getLogoUrl()}" alt="1Kappa Logo" style="max-width: 300px; height: auto; margin-bottom: 20px;" />
           <h1 style="color: #dc143c; margin: 0; font-size: 28px;">Welcome to 1Kappa!</h1>
         </div>
         
@@ -149,6 +159,7 @@ export async function sendSellerApplicationSubmittedEmail(
       </head>
       <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="background-color: #1a1a2e; padding: 30px; text-align: center;">
+          <img src="${getLogoUrl()}" alt="1Kappa Logo" style="max-width: 300px; height: auto; margin-bottom: 20px;" />
           <h1 style="color: #dc143c; margin: 0; font-size: 28px;">Application Received</h1>
         </div>
         
@@ -273,6 +284,7 @@ export async function sendSellerApprovedEmail(
       </head>
       <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="background-color: #1a1a2e; padding: 30px; text-align: center;">
+          <img src="${getLogoUrl()}" alt="1Kappa Logo" style="max-width: 300px; height: auto; margin-bottom: 20px;" />
           <h1 style="color: #dc143c; margin: 0; font-size: 28px;">🎉 Application Approved!</h1>
         </div>
         

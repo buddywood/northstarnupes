@@ -6,7 +6,7 @@ import { useSession } from 'next-auth/react';
 import { fetchChapters } from '@/lib/api';
 import type { Chapter } from '@/lib/api';
 import Link from 'next/link';
-import Logo from '../components/Logo';
+import Image from 'next/image';
 import SearchableSelect from '../components/SearchableSelect';
 import PasswordStrengthIndicator from '../components/PasswordStrengthIndicator';
 import VerificationCodeInput from '../components/VerificationCodeInput';
@@ -929,119 +929,41 @@ export default function RegisterPage() {
 
   return (
     <main className="min-h-screen bg-cream">
-      <nav className="bg-white shadow-sm border-b border-frost-gray">
-        <div className="container mx-auto px-4 py-4">
-          <Logo />
-        </div>
-      </nav>
-
-      <div className="container mx-auto px-4 py-8 max-w-4xl">
-        <div className="mb-8">
-          <h1 className="text-3xl font-display font-bold text-midnight-navy mb-2">Become a Member</h1>
-          <p className="text-midnight-navy/70">
-            Join the 1Kappa brotherhood network. Create your profile to connect with brothers, shop authentic merchandise, and participate in events.
-          </p>
-        </div>
-
-        {/* Welcome Back Message */}
-        {showWelcomeBack && (
-          <div className="bg-gradient-to-r from-crimson/10 to-midnight-navy/10 border-l-4 border-crimson p-6 rounded-lg shadow-md mb-6">
-            <div className="flex items-start">
-              <div className="flex-shrink-0">
-                <svg className="w-6 h-6 text-crimson" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
+      {currentStep === 1 ? (
+        <div className="min-h-screen flex items-center justify-center py-8">
+          <div className="bg-white p-8 rounded-lg shadow-lg max-w-md w-full border border-frost-gray">
+            {/* Icon with animation/glow */}
+            <div className="mb-6 text-center">
+              <div className="inline-block relative">
+                <div className="absolute inset-0 bg-crimson/20 rounded-full blur-xl animate-pulse"></div>
+                <Image
+                  src="/header-icon.png"
+                  alt="1Kappa Icon"
+                  width={64}
+                  height={64}
+                  className="relative z-10 object-contain animate-pulse"
+                  style={{ animationDuration: '3s' }}
+                />
               </div>
-              <div className="ml-4 flex-1">
-                <h3 className="text-lg font-display font-semibold text-midnight-navy mb-2">
-                  Welcome Back!
-                </h3>
-                <p className="text-midnight-navy/80 mb-3">
-                  We noticed your registration isn&apos;t complete yet. Please finish setting up your profile to enjoy full access to the 1Kappa brotherhood network, including shopping authentic merchandise, connecting with brothers, and participating in events.
-                </p>
-                <p className="text-sm text-midnight-navy/70">
-                  Your progress has been saved. You can pick up right where you left off!
-                </p>
-              </div>
-              <button
-                onClick={() => setShowWelcomeBack(false)}
-                className="flex-shrink-0 text-midnight-navy/60 hover:text-midnight-navy transition"
-                aria-label="Dismiss message"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
             </div>
-          </div>
-        )}
-
-        {/* Step Indicator */}
-        <div className="bg-white p-6 rounded-lg shadow-lg border border-frost-gray mb-6">
-          <div className="flex items-center justify-between">
-            {steps.map((step, index) => (
-              <div key={step.number} className="flex items-center flex-1">
-                <div className="flex flex-col items-center flex-1">
-                  <div
-                    className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold transition ${
-                      currentStep === step.number
-                        ? 'bg-crimson text-white'
-                        : currentStep > step.number
-                        ? 'bg-green-500 text-white'
-                        : 'bg-frost-gray text-midnight-navy/60'
-                    }`}
-                  >
-                    {currentStep > step.number ? (
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                    ) : (
-                      step.number
-                    )}
-                  </div>
-                  <div className="mt-2 text-center">
-                    <p className={`text-xs font-medium ${currentStep >= step.number ? 'text-midnight-navy' : 'text-midnight-navy/40'}`}>
-                      {step.title}
-                    </p>
-                  </div>
-                </div>
-                {index < steps.length - 1 && (
-                  <div
-                    className={`h-1 flex-1 mx-2 rounded ${
-                      currentStep > step.number ? 'bg-green-500' : 'bg-frost-gray'
-                    }`}
-                  />
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <form onSubmit={(e) => {
-          if (currentStep === 1) {
-            if (cognitoStep === 'signup') {
-              handleCognitoSignUp(e);
-            } else {
-              handleCognitoVerify(e);
-            }
-          } else if (currentStep === 6) {
-            handleFinalSubmit(e);
-          } else {
-            handleNext(e);
-          }
-        }} className="bg-white p-8 rounded-lg shadow-lg border border-frost-gray">
-          {/* Step 1: Cognito Registration */}
-          {currentStep === 1 && (
-            <div className="space-y-6">
-              <div>
-                <h2 className="text-2xl font-display font-semibold text-midnight-navy mb-2">Create Your Account</h2>
-                <p className="text-midnight-navy/70 mb-6">
-                  {cognitoStep === 'signup' 
-                    ? 'Start by creating your secure account with AWS Cognito.'
-                    : 'Please check your email for a verification code and enter it below.'}
-                </p>
-              </div>
-
+            
+            <h1 className="text-2xl font-display font-bold mb-2 text-center text-midnight-navy">
+              Welcome to 1KAPPA
+            </h1>
+            <p className="text-sm text-midnight-navy/70 text-center mb-6">
+              {cognitoStep === 'signup' 
+                ? 'Sign in to continue the Bond'
+                : 'Please check your email for a verification code and enter it below.'}
+            </p>
+            
+            <form onSubmit={(e) => {
+              if (cognitoStep === 'signup') {
+                handleCognitoSignUp(e);
+              } else {
+                handleCognitoVerify(e);
+              }
+            }} className="space-y-6">
+              {/* Step 1: Cognito Registration */}
               {cognitoStep === 'signup' ? (
                 <>
                   <div>
@@ -1145,41 +1067,30 @@ export default function RegisterPage() {
                     <button
                       type="button"
                       onClick={async () => {
-                        if (resendTimer > 0) return; // Prevent action if timer is active
-                        
+                        if (resendTimer > 0) return;
                         setSubmitting(true);
                         setError('');
-                        
-                        // Reset timer
                         setResendTimer(60);
-                        
-                        // Clear verification code
                         setFormData({ ...formData, verificationCode: '' });
-                        
-                        // Resend code by calling signup again
                         try {
                           const response = await fetch(`${API_URL}/api/members/cognito/signup`, {
                             method: 'POST',
-                            headers: {
-                              'Content-Type': 'application/json',
-                            },
+                            headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
                               email: formData.email,
                               password: formData.password,
                             }),
                           });
-                          
                           if (!response.ok) {
                             const errorData = await response.json();
                             setError(errorData.error || 'Failed to resend code');
-                            setResendTimer(0); // Reset timer on error
+                            setResendTimer(0);
                           } else {
                             setError('');
-                            // Success - code has been resent
                           }
                         } catch (err: any) {
                           setError(err.message || 'Failed to resend code');
-                          setResendTimer(0); // Reset timer on error
+                          setResendTimer(0);
                         } finally {
                           setSubmitting(false);
                         }
@@ -1196,9 +1107,129 @@ export default function RegisterPage() {
                   </div>
                 </>
               )}
-            </div>
-          )}
 
+              {error && (
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+                  {error}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={submitting || loading}
+                className="w-full bg-crimson text-white py-3 rounded-lg font-semibold hover:bg-crimson/90 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {submitting ? 'Processing...' : cognitoStep === 'signup' ? 'Create Account' : 'Verify Email'}
+              </button>
+            </form>
+          </div>
+        </div>
+      ) : (
+        <>
+          <nav className="bg-white shadow-sm border-b border-frost-gray">
+            <div className="container mx-auto px-4 py-4">
+              <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+                <Image
+                  src="/header-icon.png"
+                  alt="1Kappa Icon"
+                  width={24}
+                  height={24}
+                  className="object-contain"
+                />
+                <span className="font-display font-bold text-crimson text-xl">1KAPPA</span>
+              </Link>
+            </div>
+          </nav>
+
+          <div className="container mx-auto px-4 py-8 max-w-4xl">
+            <div className="mb-8">
+              <h1 className="text-3xl font-display font-bold text-midnight-navy mb-2">Become a Member</h1>
+              <p className="text-midnight-navy/70">
+                Join the 1Kappa brotherhood network. Create your profile to connect with brothers, shop authentic merchandise, and participate in events.
+              </p>
+            </div>
+
+        {/* Welcome Back Message */}
+        {showWelcomeBack && (
+          <div className="bg-gradient-to-r from-crimson/10 to-midnight-navy/10 border-l-4 border-crimson p-6 rounded-lg shadow-md mb-6">
+            <div className="flex items-start">
+              <div className="flex-shrink-0">
+                <svg className="w-6 h-6 text-crimson" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div className="ml-4 flex-1">
+                <h3 className="text-lg font-display font-semibold text-midnight-navy mb-2">
+                  Welcome Back!
+                </h3>
+                <p className="text-midnight-navy/80 mb-3">
+                  We noticed your registration isn&apos;t complete yet. Please finish setting up your profile to enjoy full access to the 1Kappa brotherhood network, including shopping authentic merchandise, connecting with brothers, and participating in events.
+                </p>
+                <p className="text-sm text-midnight-navy/70">
+                  Your progress has been saved. You can pick up right where you left off!
+                </p>
+              </div>
+              <button
+                onClick={() => setShowWelcomeBack(false)}
+                className="flex-shrink-0 text-midnight-navy/60 hover:text-midnight-navy transition"
+                aria-label="Dismiss message"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Step Indicator */}
+        <div className="bg-white p-6 rounded-lg shadow-lg border border-frost-gray mb-6">
+          <div className="flex items-center justify-between">
+            {steps.map((step, index) => (
+              <div key={step.number} className="flex items-center flex-1">
+                <div className="flex flex-col items-center flex-1">
+                  <div
+                    className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold transition ${
+                      currentStep === step.number
+                        ? 'bg-crimson text-white'
+                        : currentStep > step.number
+                        ? 'bg-green-500 text-white'
+                        : 'bg-frost-gray text-midnight-navy/60'
+                    }`}
+                  >
+                    {currentStep > step.number ? (
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    ) : (
+                      step.number
+                    )}
+                  </div>
+                  <div className="mt-2 text-center">
+                    <p className={`text-xs font-medium ${currentStep >= step.number ? 'text-midnight-navy' : 'text-midnight-navy/40'}`}>
+                      {step.title}
+                    </p>
+                  </div>
+                </div>
+                {index < steps.length - 1 && (
+                  <div
+                    className={`h-1 flex-1 mx-2 rounded ${
+                      currentStep > step.number ? 'bg-green-500' : 'bg-frost-gray'
+                    }`}
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <form onSubmit={(e) => {
+          if (currentStep === 6) {
+            handleFinalSubmit(e);
+          } else {
+            handleNext(e);
+          }
+        }} className="bg-white p-8 rounded-lg shadow-lg border border-frost-gray">
           {/* Step 2: Basic Information */}
           {currentStep === 2 && (
             <div className="space-y-6">
