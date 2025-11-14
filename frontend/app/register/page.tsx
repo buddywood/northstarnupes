@@ -1655,6 +1655,8 @@ export default function RegisterPage() {
           </div>
         </form>
       </div>
+        </>
+      )}
     </main>
   );
 }
