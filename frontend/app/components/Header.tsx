@@ -32,7 +32,20 @@ export default function Header() {
   
   const firstName = getUserFirstName();
   const userRole = (session?.user as any)?.role;
+  const memberId = (session?.user as any)?.memberId;
+  const sellerId = (session?.user as any)?.sellerId;
+  const promoterId = (session?.user as any)?.promoterId;
   const { theme, toggleTheme } = useTheme();
+  
+  // Determine which "Become" buttons to show (same logic as HeroBanner)
+  const showBecomeSeller = !showAuthenticatedMenu || (userRole !== 'SELLER');
+  const showBecomePromoter = !showAuthenticatedMenu || (userRole !== 'PROMOTER');
+  const showBecomeSteward = !showAuthenticatedMenu || userRole !== 'STEWARD';
+  const finalShowBecomeMember = (!showAuthenticatedMenu || 
+    (userRole === 'SELLER' && !memberId)) && 
+    userRole !== 'PROMOTER' && 
+    !(userRole === 'CONSUMER' && memberId) &&
+    !(userRole === 'SELLER' && memberId);
 
   useEffect(() => {
     fetchTotalDonations()
@@ -446,6 +459,47 @@ export default function Header() {
                   {link.label}
                 </Link>
               ))}
+              
+              {/* "Become" buttons - shown on mobile in menu */}
+              <div className="border-t border-gray-200 dark:border-gray-900 pt-2 mt-2">
+                {finalShowBecomeMember && (
+                  <Link
+                    href="/member-setup"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="px-4 py-3 text-base font-medium text-midnight-navy dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-900 hover:text-crimson dark:hover:text-crimson transition-colors rounded-lg"
+                  >
+                    Become a Member
+                  </Link>
+                )}
+                {showBecomeSeller && (
+                  <Link
+                    href="/seller-setup-intro"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="px-4 py-3 text-base font-medium text-midnight-navy dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-900 hover:text-crimson dark:hover:text-crimson transition-colors rounded-lg"
+                  >
+                    Become a Seller
+                  </Link>
+                )}
+                {showBecomePromoter && (
+                  <Link
+                    href="/promoter-setup"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="px-4 py-3 text-base font-medium text-midnight-navy dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-900 hover:text-crimson dark:hover:text-crimson transition-colors rounded-lg"
+                  >
+                    Become a Promoter
+                  </Link>
+                )}
+                {showBecomeSteward && (
+                  <Link
+                    href="/steward-setup"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="px-4 py-3 text-base font-medium text-midnight-navy dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-900 hover:text-crimson dark:hover:text-crimson transition-colors rounded-lg"
+                  >
+                    Become a Steward
+                  </Link>
+                )}
+              </div>
+              
               {!showAuthenticatedMenu && (
                 <>
                   <Link

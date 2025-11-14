@@ -59,8 +59,8 @@ export default function HeroBanner() {
         One Kappa. Infinite Brotherhood.
         </p>
         <div className="flex flex-col gap-3 sm:gap-4 justify-center items-center max-w-3xl mx-auto w-full">
-          {/* Top row: All "Become" buttons */}
-          <div className="flex gap-3 md:gap-4 justify-center items-center flex-nowrap">
+          {/* Top row: All "Become" buttons - hidden on mobile, shown on md and up */}
+          <div className="hidden md:flex gap-3 md:gap-4 justify-center items-center flex-nowrap">
             {finalShowBecomeMember && (
               <Link href="/member-setup" className="border-2 border-white px-4 sm:px-5 md:px-6 py-2 sm:py-2.5 rounded-full font-semibold hover:bg-white/10 hover:shadow-lg hover:shadow-white/20 hover:scale-105 active:scale-100 transition-all duration-200 text-xs sm:text-sm md:text-base whitespace-nowrap h-[38px] sm:h-[42px] flex items-center justify-center flex-shrink-0">
                 Become a Member
