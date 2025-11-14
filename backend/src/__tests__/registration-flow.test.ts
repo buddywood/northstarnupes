@@ -55,6 +55,12 @@ jest.mock('../middleware/auth', () => ({
   requireVerifiedMember: jest.fn((req: any, res: any, next: any) => next()),
 }));
 
+// Mock services that routes depend on
+jest.mock('../services/cognito', () => ({
+  verifyCognitoToken: jest.fn().mockResolvedValue({ sub: 'test-sub', email: 'test@example.com' }),
+  extractUserInfoFromToken: jest.fn().mockReturnValue({ sub: 'test-sub', email: 'test@example.com' }),
+}));
+
 // Import routes after mocking
 import membersRouter from '../routes/members';
 import sellersRouter from '../routes/sellers';
@@ -351,7 +357,7 @@ describe('Registration Flow Tests', () => {
       };
 
       // Mock: Authenticated user with memberId
-      (optionalAuthenticate as jest.Mock) = jest.fn((req, res, next) => {
+      mockOptionalAuthenticate.mockImplementation((req: any, res: any, next: any) => {
         req.user = { id: 1, email: sellerApplication.email, memberId: 1 };
         next();
       });
@@ -447,7 +453,7 @@ describe('Registration Flow Tests', () => {
       };
 
       // Mock: Authenticated user
-      (optionalAuthenticate as jest.Mock) = jest.fn((req, res, next) => {
+      mockOptionalAuthenticate.mockImplementation((req: any, res: any, next: any) => {
         req.user = { id: 1, email: sellerApplication.email, memberId: 1 };
         next();
       });
@@ -564,7 +570,7 @@ describe('Registration Flow Tests', () => {
       };
 
       // Mock: Authenticated user with memberId
-      (authenticate as jest.Mock) = jest.fn((req, res, next) => {
+      mockAuthenticate.mockImplementation((req: any, res: any, next: any) => {
         req.user = { id: 1, email: 'steward@example.com', memberId: 1 };
         next();
       });
@@ -650,7 +656,7 @@ describe('Registration Flow Tests', () => {
       };
 
       // Mock: Authenticated user without memberId
-      (authenticate as jest.Mock) = jest.fn((req, res, next) => {
+      mockAuthenticate.mockImplementation((req: any, res: any, next: any) => {
         req.user = { id: 1, email: 'user@example.com' }; // No memberId
         next();
       });
@@ -694,18 +700,11 @@ describe('Registration Flow Tests', () => {
         password: 'TestPassword123!',
       };
 
-      // Mock Cognito client
-      const CognitoClient = require('@aws-sdk/client-cognito-identity-provider').CognitoIdentityProviderClient;
-      const mockSend = jest.fn();
-      CognitoClient.mockImplementation(() => ({
-        send: mockSend,
-      }));
-
       // Mock: No existing users
-      mockSend.mockResolvedValueOnce({ Users: [] });
+      mockCognitoSend.mockResolvedValueOnce({ Users: [] });
 
       // Mock: Cognito signup failure
-      mockSend.mockRejectedValueOnce({
+      mockCognitoSend.mockRejectedValueOnce({
         name: 'InvalidPasswordException',
         message: 'Password does not meet requirements',
       });
