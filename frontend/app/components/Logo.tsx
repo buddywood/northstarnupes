@@ -40,7 +40,6 @@ export default function Logo({
       x="0px" 
       y="0px"
       viewBox="0 0 1400 1000" 
-      style={{enableBackground: 'new 0 0 1400 1000'}} 
       xmlSpace="preserve"
       width={logoWidth}
       height={logoHeight}
