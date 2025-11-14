@@ -1,12 +1,35 @@
 {
   "name": "1kappa",
   "version": "1.0.0",
+  "description": "1Kappa monorepo with React frontend and Express backend",
   "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/buddywood/1kappa.git"
+  },
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
   "engines": {
     "node": "20.x",
     "npm": "10.x"
   },
   "scripts": {
-    "postinstall": "cd backend && npm install"
+    "install:all": "npm install && cd frontend && npm install && cd ../backend && npm install",
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:backend": "cd backend && npm run dev",
+    "build": "cd frontend && npm run build",
+    "start:backend": "cd backend && npm start",
+    "restart:all": "npm run stop:all && sleep 2 && npm run dev",
+    "stop:all": "lsof -ti:3000 | xargs kill -9 2>/dev/null || true && lsof -ti:3001 | xargs kill -9 2>/dev/null || true",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "db:logs": "docker compose logs -f postgres",
+    "db:reset": "docker compose down -v && docker compose up -d"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
   }
 }
