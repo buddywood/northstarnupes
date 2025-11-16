@@ -29,7 +29,7 @@ async function grantAdminAccess(emailOrCognitoSub: string) {
       email: user.email,
       cognito_sub: user.cognito_sub,
       current_role: user.role,
-      member_id: user.member_id,
+      fraternity_member_id: user.fraternity_member_id,
       seller_id: user.seller_id,
       promoter_id: user.promoter_id,
     });
@@ -47,7 +47,7 @@ async function grantAdminAccess(emailOrCognitoSub: string) {
     await pool.query(
       `UPDATE users 
        SET role = 'ADMIN', 
-           member_id = NULL, 
+           fraternity_member_id = NULL, 
            seller_id = NULL, 
            promoter_id = NULL,
            updated_at = CURRENT_TIMESTAMP 

@@ -413,7 +413,7 @@ async function seedStewardSellers(): Promise<void> {
       try {
         // Check if member already exists
         const existingMember = await pool.query(
-          'SELECT id FROM members WHERE email = $1',
+          'SELECT id FROM fraternity_members WHERE email = $1',
           [stewardData.email]
         );
 
@@ -423,14 +423,14 @@ async function seedStewardSellers(): Promise<void> {
           // Update member with initiated chapter if not set
           const initiatedChapter = availableChapters[Math.floor(Math.random() * availableChapters.length)];
           await pool.query(
-            'UPDATE members SET initiated_chapter_id = COALESCE(initiated_chapter_id, $1) WHERE id = $2',
+            'UPDATE fraternity_members SET initiated_chapter_id = COALESCE(initiated_chapter_id, $1) WHERE id = $2',
             [initiatedChapter.id, memberId]
           );
         } else {
           // Create new member
           const initiatedChapter = availableChapters[Math.floor(Math.random() * availableChapters.length)];
           const memberResult = await pool.query(
-            `INSERT INTO members (
+            `INSERT INTO fraternity_members (
               email, name, membership_number, registration_status, 
               initiated_chapter_id, verification_status
             ) VALUES ($1, $2, $3, $4, $5, 'VERIFIED')
@@ -448,7 +448,7 @@ async function seedStewardSellers(): Promise<void> {
 
         // Check if steward already exists
         const existingSteward = await pool.query(
-          'SELECT id FROM stewards WHERE member_id = $1',
+          'SELECT id FROM stewards WHERE fraternity_member_id = $1',
           [memberId]
         );
 
@@ -461,7 +461,7 @@ async function seedStewardSellers(): Promise<void> {
           // Create new steward
           const sponsoringChapter = availableChapters[Math.floor(Math.random() * availableChapters.length)];
           const steward = await createSteward({
-            member_id: memberId,
+            fraternity_member_id: memberId,
             sponsoring_chapter_id: sponsoringChapter.id,
           });
           stewardId = steward.id;
@@ -480,7 +480,7 @@ async function seedStewardSellers(): Promise<void> {
           sellerId = existingSeller.rows[0].id;
           // Update seller to ensure it's linked to the member
           await pool.query(
-            'UPDATE sellers SET member_id = $1, status = $2 WHERE id = $3',
+            'UPDATE sellers SET fraternity_member_id = $1, status = $2 WHERE id = $3',
             [memberId, 'APPROVED', sellerId]
           );
         } else {
@@ -489,7 +489,7 @@ async function seedStewardSellers(): Promise<void> {
           const seller = await createSeller({
             email: stewardData.email,
             name: stewardData.name,
-            member_id: memberId,
+            fraternity_member_id: memberId,
             sponsoring_chapter_id: sponsoringChapter.id,
             business_name: stewardData.business_name,
             vendor_license_number: stewardData.vendor_license_number,
@@ -505,7 +505,7 @@ async function seedStewardSellers(): Promise<void> {
           );
         }
 
-        const memberResult = await pool.query('SELECT initiated_chapter_id FROM members WHERE id = $1', [memberId]);
+        const memberResult = await pool.query('SELECT initiated_chapter_id FROM fraternity_members WHERE id = $1', [memberId]);
         const chapterId = memberResult.rows[0]?.initiated_chapter_id;
         const chapterResult = await pool.query('SELECT name FROM chapters WHERE id = $1', [chapterId]);
         const chapterName = chapterResult.rows[0]?.name || 'Unknown';
@@ -601,7 +601,7 @@ async function seedProducts(): Promise<void> {
     for (const sellerData of sampleSellers) {
       // Check if seller already exists
       const existingSeller = await pool.query(
-        'SELECT id, member_id FROM sellers WHERE email = $1',
+        'SELECT id, fraternity_member_id FROM sellers WHERE email = $1',
         [sellerData.email]
       );
 
@@ -609,13 +609,13 @@ async function seedProducts(): Promise<void> {
         const seller = existingSeller.rows[0];
         // Add email to seller object for matching
         (seller as any).email = sellerData.email;
-        // If seller exists but doesn't have a member_id and should be a member, create/update member
-        if (!seller.member_id && sellerData.is_member) {
+        // If seller exists but doesn't have a fraternity_member_id and should be a member, create/update member
+        if (!seller.fraternity_member_id && sellerData.is_member) {
           const initiatedChapter = availableChapters[Math.floor(Math.random() * availableChapters.length)];
           
           // Check if member already exists
           const existingMember = await pool.query(
-            'SELECT id FROM members WHERE email = $1',
+            'SELECT id FROM fraternity_members WHERE email = $1',
             [sellerData.email]
           );
 
@@ -624,13 +624,13 @@ async function seedProducts(): Promise<void> {
             memberId = existingMember.rows[0].id;
             // Update member with initiated chapter if not set
             await pool.query(
-              'UPDATE members SET initiated_chapter_id = COALESCE(initiated_chapter_id, $1) WHERE id = $2',
+              'UPDATE fraternity_members SET initiated_chapter_id = COALESCE(initiated_chapter_id, $1) WHERE id = $2',
               [initiatedChapter.id, memberId]
             );
           } else {
             // Create new member
             const memberResult = await pool.query(
-              `INSERT INTO members (
+              `INSERT INTO fraternity_members (
                 email, name, membership_number, registration_status, 
                 initiated_chapter_id, verification_status
               ) VALUES ($1, $2, $3, $4, $5, 'VERIFIED')
@@ -646,9 +646,9 @@ async function seedProducts(): Promise<void> {
             memberId = memberResult.rows[0].id;
           }
 
-          // Update seller with member_id
+          // Update seller with fraternity_member_id
           await pool.query(
-            'UPDATE sellers SET member_id = $1 WHERE id = $2',
+            'UPDATE sellers SET fraternity_member_id = $1 WHERE id = $2',
             [memberId, seller.id]
           );
           console.log(`  ✓ Updated seller ${sellerData.name} with member (initiated at ${initiatedChapter.name})`);
@@ -664,7 +664,7 @@ async function seedProducts(): Promise<void> {
           
           // Check if member already exists
           const existingMember = await pool.query(
-            'SELECT id FROM members WHERE email = $1',
+            'SELECT id FROM fraternity_members WHERE email = $1',
             [sellerData.email]
           );
 
@@ -672,13 +672,13 @@ async function seedProducts(): Promise<void> {
             memberId = existingMember.rows[0].id;
             // Update member with initiated chapter if not set
             await pool.query(
-              'UPDATE members SET initiated_chapter_id = COALESCE(initiated_chapter_id, $1) WHERE id = $2',
+              'UPDATE fraternity_members SET initiated_chapter_id = COALESCE(initiated_chapter_id, $1) WHERE id = $2',
               [initiatedChapter.id, memberId]
             );
           } else {
             // Create new member
             const memberResult = await pool.query(
-              `INSERT INTO members (
+              `INSERT INTO fraternity_members (
                 email, name, membership_number, registration_status, 
                 initiated_chapter_id, verification_status
               ) VALUES ($1, $2, $3, $4, $5, 'VERIFIED')
@@ -718,7 +718,7 @@ async function seedProducts(): Promise<void> {
         (newSeller as any).email = sellerData.email;
 
         if (sellerData.is_member) {
-          const memberResult = await pool.query('SELECT initiated_chapter_id FROM members WHERE id = $1', [memberId]);
+          const memberResult = await pool.query('SELECT initiated_chapter_id FROM fraternity_members WHERE id = $1', [memberId]);
           const chapterId = memberResult.rows[0]?.initiated_chapter_id;
           const chapterResult = await pool.query('SELECT name FROM chapters WHERE id = $1', [chapterId]);
           const chapterName = chapterResult.rows[0]?.name || 'Unknown';

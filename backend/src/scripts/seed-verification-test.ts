@@ -92,14 +92,14 @@ async function seedTestMembers(): Promise<void> {
       try {
         // Check if member already exists
         const existing = await pool.query(
-          'SELECT id FROM members WHERE email = $1',
+          'SELECT id FROM fraternity_members WHERE email = $1',
           [memberData.email]
         );
 
         if (existing.rows.length > 0) {
           // Update existing member to have PENDING verification status
           await pool.query(
-            `UPDATE members 
+            `UPDATE fraternity_members 
              SET name = $1, 
                  membership_number = $2, 
                  registration_status = $3,
@@ -124,7 +124,7 @@ async function seedTestMembers(): Promise<void> {
         // Create new member
         const randomChapter = availableChapters[Math.floor(Math.random() * availableChapters.length)];
         await pool.query(
-          `INSERT INTO members (
+          `INSERT INTO fraternity_members (
             email, name, membership_number, registration_status, 
             initiated_chapter_id, verification_status
           ) VALUES ($1, $2, $3, $4, $5, 'PENDING')`,
@@ -307,7 +307,7 @@ async function clearVerificationTestData(): Promise<void> {
   try {
     // Delete test data (members, sellers, promoters with test emails)
     await pool.query(
-      `DELETE FROM members 
+      `DELETE FROM fraternity_members 
        WHERE email LIKE 'test.%@example.com' OR email LIKE 'test%@example.com'`
     );
     await pool.query(

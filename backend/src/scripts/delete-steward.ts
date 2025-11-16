@@ -12,21 +12,21 @@ async function deleteSteward(emailOrMemberId: string) {
     let steward;
     let memberId: number | null = null;
     
-    // Try to find by email first (look up member by email, then steward by member_id)
-    const memberResult = await pool.query('SELECT id FROM members WHERE email = $1', [emailOrMemberId]);
+    // Try to find by email first (look up fraternity_member by email, then steward by fraternity_member_id)
+    const memberResult = await pool.query('SELECT id FROM fraternity_members WHERE email = $1', [emailOrMemberId]);
     if (memberResult.rows.length > 0) {
       memberId = memberResult.rows[0].id;
-      const stewardResult = await pool.query('SELECT id, member_id FROM stewards WHERE member_id = $1', [memberId]);
+      const stewardResult = await pool.query('SELECT id, fraternity_member_id FROM stewards WHERE fraternity_member_id = $1', [memberId]);
       if (stewardResult.rows.length > 0) {
         steward = stewardResult.rows[0];
       }
     }
     
-    // If not found by email, try as member_id directly
+    // If not found by email, try as fraternity_member_id directly
     if (!steward) {
       const memberIdNum = parseInt(emailOrMemberId);
       if (!isNaN(memberIdNum)) {
-        const stewardResult = await pool.query('SELECT id, member_id FROM stewards WHERE member_id = $1', [memberIdNum]);
+        const stewardResult = await pool.query('SELECT id, fraternity_member_id FROM stewards WHERE fraternity_member_id = $1', [memberIdNum]);
         if (stewardResult.rows.length > 0) {
           steward = stewardResult.rows[0];
           memberId = memberIdNum;
@@ -35,14 +35,14 @@ async function deleteSteward(emailOrMemberId: string) {
     }
     
     if (!steward) {
-      console.log('❌ No steward found with that email or member_id');
+      console.log('❌ No steward found with that email or fraternity_member_id');
       return;
     }
     
-    console.log(`📋 Found steward (ID: ${steward.id}, member_id: ${steward.member_id})`);
+    console.log(`📋 Found steward (ID: ${steward.id}, fraternity_member_id: ${steward.fraternity_member_id})`);
     
-    // Get member info for display
-    const memberInfo = await pool.query('SELECT name, email FROM members WHERE id = $1', [steward.member_id]);
+    // Get fraternity_member info for display
+    const memberInfo = await pool.query('SELECT name, email FROM fraternity_members WHERE id = $1', [steward.fraternity_member_id]);
     const member = memberInfo.rows[0];
     if (member) {
       console.log(`   Member: ${member.name} (${member.email})`);
@@ -67,7 +67,7 @@ async function deleteSteward(emailOrMemberId: string) {
     }
     
     // Check if steward is linked to a user
-    const userResult = await pool.query('SELECT id, email, role, member_id FROM users WHERE steward_id = $1', [steward.id]);
+    const userResult = await pool.query('SELECT id, email, role, fraternity_member_id FROM users WHERE steward_id = $1', [steward.id]);
     if (userResult.rows.length > 0) {
       const user = userResult.rows[0];
       console.log(`⚠️  Warning: This steward is linked to user account: ${user.email}`);
@@ -89,7 +89,7 @@ async function deleteSteward(emailOrMemberId: string) {
       console.log(`✅ Deleted ${listingCount} listing(s)`);
     }
     
-    // Update user account - stewards require member_id, so change role to CONSUMER
+    // Update user account - stewards require fraternity_member_id, so change role to CONSUMER
     if (userResult.rows.length > 0) {
       const user = userResult.rows[0];
       if (user.role === 'STEWARD') {
@@ -108,7 +108,7 @@ async function deleteSteward(emailOrMemberId: string) {
     
     // Delete the steward
     await pool.query('DELETE FROM stewards WHERE id = $1', [steward.id]);
-    console.log(`✅ Deleted steward (member_id: ${steward.member_id})`);
+    console.log(`✅ Deleted steward (fraternity_member_id: ${steward.fraternity_member_id})`);
     
   } catch (error: any) {
     console.error('❌ Error deleting steward:', error.message);
@@ -121,8 +121,8 @@ async function deleteSteward(emailOrMemberId: string) {
 const identifier = process.argv[2];
 
 if (!identifier) {
-  console.error('❌ Please provide an email address or member_id');
-  console.log('Usage: npm run delete:steward <email_or_member_id>');
+  console.error('❌ Please provide an email address or fraternity_member_id');
+  console.log('Usage: npm run delete:steward <email_or_fraternity_member_id>');
   process.exit(1);
 }
 

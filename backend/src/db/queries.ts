@@ -61,7 +61,7 @@ export async function createChapter(chapter: {
 export async function createSeller(seller: {
   email: string;
   name: string;
-  member_id?: number | null;
+  fraternity_member_id?: number | null;
   sponsoring_chapter_id: number;
   business_name?: string | null;
   business_email?: string | null;
@@ -73,13 +73,13 @@ export async function createSeller(seller: {
   social_links?: Record<string, string>;
 }): Promise<Seller> {
   const result = await pool.query(
-    `INSERT INTO sellers (email, name, member_id, sponsoring_chapter_id, business_name, business_email, vendor_license_number, merchandise_type, website, headshot_url, store_logo_url, social_links, status)
+    `INSERT INTO sellers (email, name, fraternity_member_id, sponsoring_chapter_id, business_name, business_email, vendor_license_number, merchandise_type, website, headshot_url, store_logo_url, social_links, status)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'PENDING')
      RETURNING *`,
     [
       seller.email,
       seller.name,
-      seller.member_id || null,
+      seller.fraternity_member_id || null,
       seller.sponsoring_chapter_id,
       seller.business_name || null,
       seller.business_email || null,
@@ -208,19 +208,20 @@ export async function getProductById(id: number): Promise<Product | null> {
             s.name as seller_name, 
             s.business_name as seller_business_name,
             s.status as seller_status, 
-            s.member_id as seller_member_id, 
+            s.fraternity_member_id as seller_fraternity_member_id,
+            m.initiated_chapter_id as seller_initiated_chapter_id, 
             s.sponsoring_chapter_id as seller_sponsoring_chapter_id,
             s.email as seller_email,
             m.initiated_chapter_id as seller_initiated_chapter_id,
-            CASE WHEN s.member_id IS NOT NULL THEN true ELSE false END as is_member,
+            CASE WHEN s.fraternity_member_id IS NOT NULL THEN true ELSE false END as is_fraternity_member,
             CASE WHEN s.status = 'APPROVED' THEN true ELSE false END as is_seller,
             CASE WHEN st.id IS NOT NULL THEN true ELSE false END as is_steward,
             CASE WHEN pr.id IS NOT NULL THEN true ELSE false END as is_promoter
      FROM products p
      JOIN sellers s ON p.seller_id = s.id
-     LEFT JOIN members m ON s.member_id = m.id
-     LEFT JOIN stewards st ON s.member_id = st.member_id AND st.status = 'APPROVED'
-     LEFT JOIN promoters pr ON (s.member_id = pr.member_id OR s.email = pr.email) AND pr.status = 'APPROVED'
+     LEFT JOIN fraternity_members m ON s.fraternity_member_id = m.id
+     LEFT JOIN stewards st ON s.fraternity_member_id = st.fraternity_member_id AND st.status = 'APPROVED'
+     LEFT JOIN promoters pr ON (s.fraternity_member_id = pr.fraternity_member_id OR s.email = pr.email) AND pr.status = 'APPROVED'
      WHERE p.id = $1`,
     [id]
   );
@@ -243,19 +244,20 @@ export async function getActiveProducts(): Promise<Product[]> {
             s.name as seller_name, 
             s.business_name as seller_business_name, 
             s.status as seller_status, 
-            s.member_id as seller_member_id, 
+            s.fraternity_member_id as seller_fraternity_member_id,
+            m.initiated_chapter_id as seller_initiated_chapter_id, 
             s.sponsoring_chapter_id as seller_sponsoring_chapter_id,
             s.email as seller_email,
             m.initiated_chapter_id as seller_initiated_chapter_id,
-            CASE WHEN s.member_id IS NOT NULL THEN true ELSE false END as is_member,
+            CASE WHEN s.fraternity_member_id IS NOT NULL THEN true ELSE false END as is_fraternity_member,
             CASE WHEN s.status = 'APPROVED' THEN true ELSE false END as is_seller,
             CASE WHEN st.id IS NOT NULL THEN true ELSE false END as is_steward,
             CASE WHEN pr.id IS NOT NULL THEN true ELSE false END as is_promoter
      FROM products p
      JOIN sellers s ON p.seller_id = s.id
-     LEFT JOIN members m ON s.member_id = m.id
-     LEFT JOIN stewards st ON s.member_id = st.member_id AND st.status = 'APPROVED'
-     LEFT JOIN promoters pr ON (s.member_id = pr.member_id OR s.email = pr.email) AND pr.status = 'APPROVED'
+     LEFT JOIN fraternity_members m ON s.fraternity_member_id = m.id
+     LEFT JOIN stewards st ON s.fraternity_member_id = st.fraternity_member_id AND st.status = 'APPROVED'
+     LEFT JOIN promoters pr ON (s.fraternity_member_id = pr.fraternity_member_id OR s.email = pr.email) AND pr.status = 'APPROVED'
      WHERE s.status = 'APPROVED'
      ORDER BY p.created_at DESC`
   );
@@ -278,19 +280,20 @@ export async function getProductsBySeller(sellerId: number): Promise<Product[]> 
             s.name as seller_name, 
             s.business_name as seller_business_name, 
             s.status as seller_status, 
-            s.member_id as seller_member_id, 
+            s.fraternity_member_id as seller_fraternity_member_id,
+            m.initiated_chapter_id as seller_initiated_chapter_id, 
             s.sponsoring_chapter_id as seller_sponsoring_chapter_id,
             s.email as seller_email,
             m.initiated_chapter_id as seller_initiated_chapter_id,
-            CASE WHEN s.member_id IS NOT NULL THEN true ELSE false END as is_member,
+            CASE WHEN s.fraternity_member_id IS NOT NULL THEN true ELSE false END as is_fraternity_member,
             CASE WHEN s.status = 'APPROVED' THEN true ELSE false END as is_seller,
             CASE WHEN st.id IS NOT NULL THEN true ELSE false END as is_steward,
             CASE WHEN pr.id IS NOT NULL THEN true ELSE false END as is_promoter
      FROM products p
      JOIN sellers s ON p.seller_id = s.id
-     LEFT JOIN members m ON s.member_id = m.id
-     LEFT JOIN stewards st ON s.member_id = st.member_id AND st.status = 'APPROVED'
-     LEFT JOIN promoters pr ON (s.member_id = pr.member_id OR s.email = pr.email) AND pr.status = 'APPROVED'
+     LEFT JOIN fraternity_members m ON s.fraternity_member_id = m.id
+     LEFT JOIN stewards st ON s.fraternity_member_id = st.fraternity_member_id AND st.status = 'APPROVED'
+     LEFT JOIN promoters pr ON (s.fraternity_member_id = pr.fraternity_member_id OR s.email = pr.email) AND pr.status = 'APPROVED'
      WHERE p.seller_id = $1
      ORDER BY p.created_at DESC`,
     [sellerId]
@@ -536,19 +539,19 @@ export async function getTotalDonations(): Promise<number> {
 export async function createPromoter(promoter: {
   email: string;
   name: string;
-  member_id?: number | null;
+  fraternity_member_id?: number | null;
   sponsoring_chapter_id?: number;
   headshot_url?: string;
   social_links?: Record<string, string>;
 }): Promise<Promoter> {
   const result = await pool.query(
-    `INSERT INTO promoters (email, name, member_id, sponsoring_chapter_id, headshot_url, social_links, status)
+    `INSERT INTO promoters (email, name, fraternity_member_id, sponsoring_chapter_id, headshot_url, social_links, status)
      VALUES ($1, $2, $3, $4, $5, $6, 'PENDING')
      RETURNING *`,
     [
       promoter.email,
       promoter.name,
-      promoter.member_id || null,
+      promoter.fraternity_member_id || null,
       promoter.sponsoring_chapter_id || null,
       promoter.headshot_url || null,
       JSON.stringify(promoter.social_links || {}),
@@ -658,18 +661,18 @@ export async function getEventById(id: number): Promise<Event | null> {
     `SELECT e.*,
             pr.name as promoter_name,
             pr.email as promoter_email,
-            pr.member_id as promoter_member_id,
+            pr.fraternity_member_id as promoter_fraternity_member_id,
             pr.sponsoring_chapter_id as promoter_sponsoring_chapter_id,
             m.initiated_chapter_id as promoter_initiated_chapter_id,
-            CASE WHEN pr.member_id IS NOT NULL THEN true ELSE false END as is_member,
+            CASE WHEN pr.fraternity_member_id IS NOT NULL THEN true ELSE false END as is_fraternity_member,
             CASE WHEN pr.status = 'APPROVED' THEN true ELSE false END as is_promoter,
             CASE WHEN st.id IS NOT NULL THEN true ELSE false END as is_steward,
             CASE WHEN s.id IS NOT NULL AND s.status = 'APPROVED' THEN true ELSE false END as is_seller
      FROM events e
      JOIN promoters pr ON e.promoter_id = pr.id
-     LEFT JOIN members m ON pr.member_id = m.id
-     LEFT JOIN stewards st ON pr.member_id = st.member_id AND st.status = 'APPROVED'
-     LEFT JOIN sellers s ON pr.member_id = s.member_id AND s.status = 'APPROVED'
+     LEFT JOIN fraternity_members m ON pr.fraternity_member_id = m.id
+     LEFT JOIN stewards st ON pr.fraternity_member_id = st.fraternity_member_id AND st.status = 'APPROVED'
+     LEFT JOIN sellers s ON pr.fraternity_member_id = s.fraternity_member_id AND s.status = 'APPROVED'
      WHERE e.id = $1`,
     [id]
   );
@@ -712,17 +715,17 @@ export async function createUser(user: {
   email: string;
   role: 'ADMIN' | 'SELLER' | 'PROMOTER' | 'CONSUMER';
   onboarding_status?: 'PRE_COGNITO' | 'COGNITO_CONFIRMED' | 'ONBOARDING_STARTED' | 'ONBOARDING_FINISHED';
-  member_id?: number | null;
+  fraternity_member_id?: number | null;
   seller_id?: number | null;
   promoter_id?: number | null;
   features?: Record<string, any>;
 }): Promise<User> {
-  // Ensure onboarding_status is set properly for CONSUMER role with null member_id
+  // Ensure onboarding_status is set properly for CONSUMER role with null fraternity_member_id
   const onboardingStatus = user.onboarding_status || 
-    (user.role === 'CONSUMER' && !user.member_id ? 'COGNITO_CONFIRMED' : 'COGNITO_CONFIRMED');
+    (user.role === 'CONSUMER' && !user.fraternity_member_id ? 'COGNITO_CONFIRMED' : 'COGNITO_CONFIRMED');
   
   const result = await pool.query(
-    `INSERT INTO users (cognito_sub, email, role, onboarding_status, member_id, seller_id, promoter_id, features)
+    `INSERT INTO users (cognito_sub, email, role, onboarding_status, fraternity_member_id, seller_id, promoter_id, features)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
      RETURNING *`,
     [
@@ -730,7 +733,7 @@ export async function createUser(user: {
       user.email,
       user.role,
       onboardingStatus,
-      user.member_id || null,
+      user.fraternity_member_id || null,
       user.seller_id || null,
       user.promoter_id || null,
       JSON.stringify(user.features || {}),
@@ -794,7 +797,7 @@ export async function updateUserRole(
 export async function linkUserToMember(userId: number, memberId: number): Promise<User> {
   const result = await pool.query(
     `UPDATE users 
-     SET member_id = $2, seller_id = NULL, promoter_id = NULL, role = 'CONSUMER', updated_at = CURRENT_TIMESTAMP 
+     SET fraternity_member_id = $2, seller_id = NULL, promoter_id = NULL, role = 'CONSUMER', updated_at = CURRENT_TIMESTAMP 
      WHERE id = $1 
      RETURNING *`,
     [userId, memberId]
@@ -809,7 +812,7 @@ export async function linkUserToMember(userId: number, memberId: number): Promis
 export async function linkUserToSeller(userId: number, sellerId: number): Promise<User> {
   const result = await pool.query(
     `UPDATE users 
-     SET seller_id = $2, member_id = NULL, promoter_id = NULL, role = 'SELLER', updated_at = CURRENT_TIMESTAMP 
+     SET seller_id = $2, fraternity_member_id = NULL, promoter_id = NULL, role = 'SELLER', updated_at = CURRENT_TIMESTAMP 
      WHERE id = $1 
      RETURNING *`,
     [userId, sellerId]
@@ -824,7 +827,7 @@ export async function linkUserToSeller(userId: number, sellerId: number): Promis
 export async function linkUserToPromoter(userId: number, promoterId: number): Promise<User> {
   const result = await pool.query(
     `UPDATE users 
-     SET promoter_id = $2, member_id = NULL, seller_id = NULL, role = 'PROMOTER', updated_at = CURRENT_TIMESTAMP 
+     SET promoter_id = $2, fraternity_member_id = NULL, seller_id = NULL, role = 'PROMOTER', updated_at = CURRENT_TIMESTAMP 
      WHERE id = $1 
      RETURNING *`,
     [userId, promoterId]
@@ -837,13 +840,13 @@ export async function linkUserToPromoter(userId: number, promoterId: number): Pr
 }
 
 export async function linkUserToSteward(userId: number, stewardId: number): Promise<User> {
-  // For stewards, we keep member_id (required) and can coexist with seller/promoter
-  // Get current user to preserve member_id
-  const currentUser = await pool.query('SELECT member_id, seller_id, promoter_id FROM users WHERE id = $1', [userId]);
-  const memberId = currentUser.rows[0]?.member_id;
+  // For stewards, we keep fraternity_member_id (required) and can coexist with seller/promoter
+  // Get current user to preserve fraternity_member_id
+  const currentUser = await pool.query('SELECT fraternity_member_id, seller_id, promoter_id FROM users WHERE id = $1', [userId]);
+  const fraternityMemberId = currentUser.rows[0]?.fraternity_member_id;
   
-  if (!memberId) {
-    throw new Error('User must have a member_id to become a steward');
+  if (!fraternityMemberId) {
+    throw new Error('User must have a fraternity_member_id to become a steward');
   }
 
   const result = await pool.query(
@@ -968,7 +971,7 @@ export async function updateUserFeatures(
 // Member verification queries
 export async function getPendingMembersForVerification(): Promise<any[]> {
   const result = await pool.query(
-    `SELECT * FROM members 
+    `SELECT * FROM fraternity_members 
      WHERE registration_status = 'COMPLETE' 
      AND (verification_status IS NULL OR verification_status = 'PENDING')
      AND name IS NOT NULL 
@@ -1010,7 +1013,7 @@ export async function updateMemberVerification(
   verification_notes?: string | null
 ): Promise<any> {
   const result = await pool.query(
-    `UPDATE members 
+    `UPDATE fraternity_members 
      SET verification_status = $2, 
          verification_date = CURRENT_TIMESTAMP,
          verification_notes = $3,
@@ -1172,7 +1175,7 @@ export async function deleteIndustry(id: number): Promise<boolean> {
 
 // Member queries
 export async function getMemberById(id: number): Promise<any | null> {
-  const result = await pool.query('SELECT * FROM members WHERE id = $1', [id]);
+  const result = await pool.query('SELECT * FROM fraternity_members WHERE id = $1', [id]);
   if (result.rows[0] && result.rows[0].social_links) {
     result.rows[0].social_links = typeof result.rows[0].social_links === 'string' 
       ? JSON.parse(result.rows[0].social_links) 
@@ -1183,14 +1186,14 @@ export async function getMemberById(id: number): Promise<any | null> {
 
 // Steward queries
 export async function createSteward(steward: {
-  member_id: number;
+  fraternity_member_id: number;
   sponsoring_chapter_id: number;
 }): Promise<Steward> {
   const result = await pool.query(
-    `INSERT INTO stewards (member_id, sponsoring_chapter_id, status)
+    `INSERT INTO stewards (fraternity_member_id, sponsoring_chapter_id, status)
      VALUES ($1, $2, 'PENDING')
      RETURNING *`,
-    [steward.member_id, steward.sponsoring_chapter_id]
+    [steward.fraternity_member_id, steward.sponsoring_chapter_id]
   );
   return result.rows[0];
 }
@@ -1200,8 +1203,8 @@ export async function getStewardById(id: number): Promise<Steward | null> {
   return result.rows[0] || null;
 }
 
-export async function getStewardByMemberId(memberId: number): Promise<Steward | null> {
-  const result = await pool.query('SELECT * FROM stewards WHERE member_id = $1', [memberId]);
+export async function getStewardByFraternityMemberId(fraternityMemberId: number): Promise<Steward | null> {
+  const result = await pool.query('SELECT * FROM stewards WHERE fraternity_member_id = $1', [fraternityMemberId]);
   return result.rows[0] || null;
 }
 
@@ -1337,7 +1340,7 @@ export async function claimStewardListing(
 ): Promise<StewardListing | null> {
   const result = await pool.query(
     `UPDATE steward_listings 
-     SET status = 'CLAIMED', claimed_by_member_id = $2, claimed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+     SET status = 'CLAIMED', claimed_by_fraternity_member_id = $2, claimed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
      WHERE id = $1 AND status = 'ACTIVE'
      RETURNING *`,
     [listingId, claimantMemberId]
@@ -1356,7 +1359,7 @@ export async function deleteStewardListing(id: number): Promise<boolean> {
 // Steward claim queries
 export async function createStewardClaim(claim: {
   listing_id: number;
-  claimant_member_id: number;
+  claimant_fraternity_member_id: number;
   stripe_session_id: string;
   total_amount_cents: number;
   shipping_cents: number;
@@ -1364,12 +1367,12 @@ export async function createStewardClaim(claim: {
   chapter_donation_cents: number;
 }): Promise<StewardClaim> {
   const result = await pool.query(
-    `INSERT INTO steward_claims (listing_id, claimant_member_id, stripe_session_id, total_amount_cents, shipping_cents, platform_fee_cents, chapter_donation_cents, status)
+    `INSERT INTO steward_claims (listing_id, claimant_fraternity_member_id, stripe_session_id, total_amount_cents, shipping_cents, platform_fee_cents, chapter_donation_cents, status)
      VALUES ($1, $2, $3, $4, $5, $6, $7, 'PENDING')
      RETURNING *`,
     [
       claim.listing_id,
-      claim.claimant_member_id,
+      claim.claimant_fraternity_member_id,
       claim.stripe_session_id,
       claim.total_amount_cents,
       claim.shipping_cents,
@@ -1417,7 +1420,7 @@ export async function getStewardActivity(): Promise<Array<{
       COUNT(CASE WHEN sl.status = 'CLAIMED' THEN 1 END) as claimed_listings,
       COALESCE(SUM(sc.chapter_donation_cents), 0) as total_donations_cents
      FROM stewards s
-     JOIN members m ON s.member_id = m.id
+     JOIN fraternity_members m ON s.fraternity_member_id = m.id
      LEFT JOIN steward_listings sl ON s.id = sl.steward_id
      LEFT JOIN steward_claims sc ON sl.id = sc.listing_id AND sc.status = 'PAID'
      GROUP BY s.id, m.name

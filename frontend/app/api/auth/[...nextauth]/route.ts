@@ -88,7 +88,7 @@ const authOptions: NextAuthOptions = {
             idToken: cognitoResult.idToken,
             refreshToken: cognitoResult.refreshToken,
             role: userData.role,
-            memberId: userData.member_id,
+            memberId: userData.fraternity_member_id,
             sellerId: userData.seller_id,
             promoterId: userData.promoter_id,
             stewardId: userData.steward_id,
@@ -204,7 +204,7 @@ const authOptions: NextAuthOptions = {
                   if (userResponse.ok) {
                     const userData = await userResponse.json();
                     token.role = userData.role;
-                    token.memberId = userData.member_id;
+                    token.memberId = userData.fraternity_member_id;
                     token.sellerId = userData.seller_id;
                     token.promoterId = userData.promoter_id;
                     token.stewardId = userData.steward_id;

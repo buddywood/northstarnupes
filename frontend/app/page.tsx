@@ -91,7 +91,7 @@ export default async function Home() {
                   <p className="font-semibold text-sm text-midnight-navy dark:text-gray-100 line-clamp-2">{product.name}</p>
                   {/* Verification badges under title */}
                   <div className="flex flex-col items-start gap-2 my-1">
-                    {product.seller_member_id ? (
+                    {product.seller_fraternity_member_id ? (
                       <VerificationBadge type="brother" className="text-xs" />
                     ) : product.seller_name ? (
                       <VerificationBadge type="seller" className="text-xs" />
@@ -107,12 +107,12 @@ export default async function Home() {
                   {product.seller_name && (
                     <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                       <p className="text-xs text-midnight-navy/60 dark:text-gray-400">
-                        by {product.seller_member_id 
+                        by {product.seller_fraternity_member_id 
                           ? `Brother ${product.seller_name}` 
                           : (product.seller_business_name || product.seller_name)}
                       </p>
                       <UserRoleBadges
-                        is_member={product.is_member}
+                        is_member={product.is_fraternity_member}
                         is_seller={product.is_seller}
                         is_promoter={product.is_promoter}
                         is_steward={product.is_steward}
@@ -151,7 +151,7 @@ export default async function Home() {
                 .slice(0, 2);
               
               // Get role information from the first product
-              const is_member = firstProduct?.is_member;
+              const is_fraternity_member = firstProduct?.is_fraternity_member;
               const is_seller = firstProduct?.is_seller;
               const is_promoter = firstProduct?.is_promoter;
               const is_steward = firstProduct?.is_steward;
@@ -173,9 +173,9 @@ export default async function Home() {
                   <div className="flex flex-col items-center gap-2 mb-2">
                     <p className="font-semibold text-midnight-navy dark:text-gray-100">{seller.name}</p>
                     {/* Role badges */}
-                    {(is_member !== undefined || is_seller !== undefined || is_promoter !== undefined || is_steward !== undefined) && (
+                    {(is_fraternity_member !== undefined || is_seller !== undefined || is_promoter !== undefined || is_steward !== undefined) && (
                       <UserRoleBadges
-                        is_member={is_member}
+                        is_member={is_fraternity_member}
                         is_seller={is_seller}
                         is_promoter={is_promoter}
                         is_steward={is_steward}

@@ -42,7 +42,7 @@ export interface Brother {
 }
 
 export interface Seller extends Brother {
-  member_id: number | null; // Foreign key to members table (sellers can optionally be members)
+  fraternity_member_id: number | null; // Foreign key to fraternity_members table (sellers can optionally be fraternity members)
   sponsoring_chapter_id: number;
   business_name: string | null;
   business_email: string | null;
@@ -97,7 +97,7 @@ export interface Product {
   attributes?: ProductAttributeValue[]; // Optional, loaded separately
   // Seller-related fields (from JOIN with sellers and members tables)
   seller_name?: string;
-  seller_member_id?: number | null;
+  seller_fraternity_member_id?: number | null;
   seller_sponsoring_chapter_id?: number | null;
   seller_initiated_chapter_id?: number | null;
 }
@@ -163,7 +163,7 @@ export interface User {
   email: string;
   role: 'ADMIN' | 'SELLER' | 'PROMOTER' | 'CONSUMER' | 'STEWARD';
   onboarding_status: 'PRE_COGNITO' | 'COGNITO_CONFIRMED' | 'ONBOARDING_STARTED' | 'ONBOARDING_FINISHED';
-  member_id: number | null;
+  fraternity_member_id: number | null;
   seller_id: number | null;
   promoter_id: number | null;
   steward_id: number | null;
@@ -175,7 +175,7 @@ export interface User {
 
 export interface Steward {
   id: number;
-  member_id: number;
+  fraternity_member_id: number;
   sponsoring_chapter_id: number;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
   verification_status: 'PENDING' | 'VERIFIED' | 'FAILED' | 'MANUAL_REVIEW';
@@ -196,7 +196,7 @@ export interface StewardListing {
   chapter_donation_cents: number;
   sponsoring_chapter_id: number;
   status: 'ACTIVE' | 'CLAIMED' | 'REMOVED';
-  claimed_by_member_id: number | null;
+  claimed_by_fraternity_member_id: number | null;
   claimed_at: Date | null;
   created_at: Date;
   updated_at: Date;
@@ -205,7 +205,7 @@ export interface StewardListing {
 export interface StewardClaim {
   id: number;
   listing_id: number;
-  claimant_member_id: number;
+  claimant_fraternity_member_id: number;
   stripe_session_id: string | null;
   total_amount_cents: number;
   shipping_cents: number;

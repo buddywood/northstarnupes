@@ -29,11 +29,11 @@ async function deletePromoter(email: string) {
     }
     
     // Check if promoter is linked to a user
-    const userResult = await pool.query('SELECT id, email, role, member_id FROM users WHERE promoter_id = $1', [promoter.id]);
+    const userResult = await pool.query('SELECT id, email, role, fraternity_member_id FROM users WHERE promoter_id = $1', [promoter.id]);
     if (userResult.rows.length > 0) {
       const user = userResult.rows[0];
       console.log(`⚠️  Warning: This promoter is linked to user account: ${user.email}`);
-      console.log(`   User role: ${user.role}, has member_id: ${user.member_id ? 'yes' : 'no'}`);
+      console.log(`   User role: ${user.role}, has fraternity_member_id: ${user.fraternity_member_id ? 'yes' : 'no'}`);
     }
     
     // Delete events first (foreign key constraint)
@@ -42,21 +42,21 @@ async function deletePromoter(email: string) {
       console.log(`✅ Deleted ${eventCount} event(s)`);
     }
     
-    // Update user account - change role to CONSUMER if they have member_id, otherwise delete user
+    // Update user account - change role to CONSUMER if they have fraternity_member_id, otherwise delete user
     if (userResult.rows.length > 0) {
       const user = userResult.rows[0];
       if (user.role === 'PROMOTER') {
-        if (user.member_id) {
-          // User has member_id, change role to CONSUMER
+        if (user.fraternity_member_id) {
+          // User has fraternity_member_id, change role to CONSUMER
           await pool.query(
             'UPDATE users SET promoter_id = NULL, role = $1 WHERE promoter_id = $2',
             ['CONSUMER', promoter.id]
           );
           console.log(`✅ Changed user role to CONSUMER and cleared promoter_id`);
         } else {
-          // User doesn't have member_id, delete the user since they were likely created just for promoter
+          // User doesn't have fraternity_member_id, delete the user since they were likely created just for promoter
           await pool.query('DELETE FROM users WHERE id = $1', [user.id]);
-          console.log(`✅ Deleted user account (no member_id, was created for promoter)`);
+          console.log(`✅ Deleted user account (no fraternity_member_id, was created for promoter)`);
         }
       } else {
         // User has a different role, just clear promoter_id

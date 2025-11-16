@@ -380,7 +380,7 @@ describe('Registration Flow Tests', () => {
       (queries.createSeller as jest.Mock).mockResolvedValue({
         id: 1,
         ...sellerApplication,
-        member_id: 1,
+        fraternity_member_id: 1,
         status: 'PENDING',
         store_logo_url: 'https://s3.amazonaws.com/store-logos/logo.jpg',
         headshot_url: 'https://s3.amazonaws.com/headshots/headshot.jpg',
@@ -396,7 +396,7 @@ describe('Registration Flow Tests', () => {
         id: 1,
         email: sellerApplication.email,
         role: 'CONSUMER',
-        member_id: 1,
+        fraternity_member_id: 1,
       });
 
       // Mock: Link user to seller
@@ -414,7 +414,7 @@ describe('Registration Flow Tests', () => {
       (queries.getSellerById as jest.Mock).mockResolvedValue({
         id: 1,
         ...sellerApplication,
-        member_id: 1,
+        fraternity_member_id: 1,
         status: 'APPROVED',
         stripe_account_id: 'acct_test123',
       });
@@ -472,7 +472,7 @@ describe('Registration Flow Tests', () => {
       (queries.createSeller as jest.Mock).mockResolvedValue({
         id: 1,
         ...sellerApplication,
-        member_id: 1,
+        fraternity_member_id: 1,
         status: 'PENDING',
       });
 
@@ -480,7 +480,7 @@ describe('Registration Flow Tests', () => {
       (queries.getUserByEmail as jest.Mock).mockResolvedValue({
         id: 1,
         email: sellerApplication.email,
-        member_id: 1,
+        fraternity_member_id: 1,
       });
       (queries.linkUserToSeller as jest.Mock).mockResolvedValue(undefined);
       (stripeService.createConnectAccount as jest.Mock).mockResolvedValue({ id: 'acct_test123' });
@@ -584,12 +584,12 @@ describe('Registration Flow Tests', () => {
       });
 
       // Mock: No existing steward
-      (queries.getStewardByMemberId as jest.Mock).mockResolvedValue(null);
+      (queries.getStewardByFraternityMemberId as jest.Mock).mockResolvedValue(null);
 
       // Mock: Steward creation
       (queries.createSteward as jest.Mock).mockResolvedValue({
         id: 1,
-        member_id: 1,
+        fraternity_member_id: 1,
         sponsoring_chapter_id: stewardApplication.sponsoring_chapter_id,
         status: 'PENDING',
         created_at: new Date(),
@@ -607,7 +607,7 @@ describe('Registration Flow Tests', () => {
 
       (queries.getStewardById as jest.Mock).mockResolvedValue({
         id: 1,
-        member_id: 1,
+        fraternity_member_id: 1,
         sponsoring_chapter_id: stewardApplication.sponsoring_chapter_id,
         status: 'APPROVED',
         stripe_account_id: 'acct_steward123',
@@ -753,7 +753,7 @@ describe('Registration Flow Tests', () => {
       expect(response.body.code).toBe('USER_LINKING_FAILED');
       // Verify cleanup was attempted
       expect(pool.query).toHaveBeenCalledWith(
-        'DELETE FROM members WHERE id = $1',
+        'DELETE FROM fraternity_members WHERE id = $1',
         [1]
       );
     });

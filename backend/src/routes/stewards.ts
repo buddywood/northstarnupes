@@ -4,7 +4,7 @@ import multer from 'multer';
 import { 
   createSteward, 
   getStewardById, 
-  getStewardByMemberId,
+  getStewardByFraternityMemberId,
   createStewardListing,
   getStewardListings,
   getStewardListingById,
@@ -62,7 +62,7 @@ router.post('/apply', authenticate, async (req: Request, res: Response) => {
     }
 
     // Check if steward already exists
-    const existingSteward = await getStewardByMemberId(req.user.memberId);
+    const existingSteward = await getStewardByFraternityMemberId(req.user.memberId);
     if (existingSteward) {
       return res.status(400).json({ error: 'You have already applied to be a steward' });
     }
@@ -71,7 +71,7 @@ router.post('/apply', authenticate, async (req: Request, res: Response) => {
 
     // Create steward application
     const steward = await createSteward({
-      member_id: req.user.memberId,
+      fraternity_member_id: req.user.memberId,
       sponsoring_chapter_id: body.sponsoring_chapter_id,
     });
 
@@ -100,7 +100,7 @@ router.post('/apply', authenticate, async (req: Request, res: Response) => {
           await linkUserToSteward(req.user.id, steward.id);
         }
 
-        console.log(`Auto-approved verified member steward: ${member.name || 'Unknown'} (member_id: ${member.id})`);
+        console.log(`Auto-approved verified member steward: ${member.name || 'Unknown'} (fraternity_member_id: ${member.id})`);
 
         // Fetch updated steward to return correct status
         const updatedSteward = await getStewardById(steward.id);
@@ -135,7 +135,7 @@ router.get('/profile', authenticate, requireSteward, async (req: Request, res: R
     }
 
     // Get member and chapter info
-    const member = await getMemberById(steward.member_id);
+    const member = await getMemberById(steward.fraternity_member_id);
     const chapterResult = await pool.query('SELECT * FROM chapters WHERE id = $1', [steward.sponsoring_chapter_id]);
     const chapter = chapterResult.rows[0];
 
@@ -320,7 +320,7 @@ router.get('/marketplace', authenticate, requireVerifiedMember, async (req: Requ
     const enrichedListings = await Promise.all(
       listings.map(async (listing) => {
         const steward = await getStewardById(listing.steward_id);
-        const member = steward ? await getMemberById(steward.member_id) : null;
+        const member = steward ? await getMemberById(steward.fraternity_member_id) : null;
         const chapterResult = await pool.query('SELECT * FROM chapters WHERE id = $1', [listing.sponsoring_chapter_id]);
         const chapter = chapterResult.rows[0];
 

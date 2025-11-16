@@ -25,21 +25,21 @@ async function fixOrphanedMember(emailOrCognitoSub?: string) {
       
       const user = userResult.rows[0];
       
-      if (!user.member_id) {
-        console.log('✅ User does not have a member_id set');
+      if (!user.fraternity_member_id) {
+        console.log('✅ User does not have a fraternity_member_id set');
         return;
       }
       
-      // Check if member exists
-      const memberResult = await pool.query('SELECT * FROM members WHERE id = $1', [user.member_id]);
+      // Check if fraternity_member exists
+      const memberResult = await pool.query('SELECT * FROM fraternity_members WHERE id = $1', [user.fraternity_member_id]);
       
       if (memberResult.rows.length === 0) {
-        console.log(`⚠️  User has member_id ${user.member_id} but member record doesn't exist`);
-        console.log(`🔧 Clearing orphaned member_id...`);
+        console.log(`⚠️  User has fraternity_member_id ${user.fraternity_member_id} but fraternity_member record doesn't exist`);
+        console.log(`🔧 Clearing orphaned fraternity_member_id...`);
         
         await pool.query(
           `UPDATE users 
-           SET member_id = NULL, 
+           SET fraternity_member_id = NULL, 
                onboarding_status = 'ONBOARDING_STARTED',
                updated_at = CURRENT_TIMESTAMP 
            WHERE id = $1 
@@ -47,47 +47,47 @@ async function fixOrphanedMember(emailOrCognitoSub?: string) {
           [user.id]
         );
         
-        console.log('✅ Cleared orphaned member_id. User can now complete registration.');
+        console.log('✅ Cleared orphaned fraternity_member_id. User can now complete registration.');
       } else {
         console.log('✅ Member record exists. No action needed.');
       }
     } else {
-      // Find all orphaned member references
-      console.log('🔍 Checking for users with orphaned member_id references...');
+      // Find all orphaned fraternity_member references
+      console.log('🔍 Checking for users with orphaned fraternity_member_id references...');
       
       const result = await pool.query(`
-        SELECT u.id, u.email, u.cognito_sub, u.member_id, u.onboarding_status
+        SELECT u.id, u.email, u.cognito_sub, u.fraternity_member_id, u.onboarding_status
         FROM users u
-        WHERE u.member_id IS NOT NULL
+        WHERE u.fraternity_member_id IS NOT NULL
         AND NOT EXISTS (
-          SELECT 1 FROM members m WHERE m.id = u.member_id
+          SELECT 1 FROM fraternity_members m WHERE m.id = u.fraternity_member_id
         )
       `);
       
       if (result.rows.length === 0) {
-        console.log('✅ No orphaned member references found');
+        console.log('✅ No orphaned fraternity_member references found');
         return;
       }
       
-      console.log(`⚠️  Found ${result.rows.length} user(s) with orphaned member_id:`);
+      console.log(`⚠️  Found ${result.rows.length} user(s) with orphaned fraternity_member_id:`);
       result.rows.forEach((user: any) => {
-        console.log(`   - ${user.email} (member_id: ${user.member_id})`);
+        console.log(`   - ${user.email} (fraternity_member_id: ${user.fraternity_member_id})`);
       });
       
-      console.log(`\n🔧 Clearing orphaned member_id references...`);
+      console.log(`\n🔧 Clearing orphaned fraternity_member_id references...`);
       
       await pool.query(`
         UPDATE users 
-        SET member_id = NULL, 
+        SET fraternity_member_id = NULL, 
             onboarding_status = 'ONBOARDING_STARTED',
             updated_at = CURRENT_TIMESTAMP 
-        WHERE member_id IS NOT NULL
+        WHERE fraternity_member_id IS NOT NULL
         AND NOT EXISTS (
-          SELECT 1 FROM members m WHERE m.id = users.member_id
+          SELECT 1 FROM fraternity_members m WHERE m.id = users.fraternity_member_id
         )
       `);
       
-      console.log(`✅ Cleared ${result.rows.length} orphaned member_id reference(s).`);
+      console.log(`✅ Cleared ${result.rows.length} orphaned fraternity_member_id reference(s).`);
       console.log(`   Users can now complete registration again.`);
     }
   } catch (error: any) {

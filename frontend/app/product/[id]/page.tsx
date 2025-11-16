@@ -96,7 +96,7 @@ export default function ProductPage() {
   // Debug: Check role data
   console.log('Product seller role data:', {
     seller_name: product.seller_name,
-    is_member: product.is_member,
+    is_fraternity_member: product.is_fraternity_member,
     is_seller: product.is_seller,
     is_steward: product.is_steward,
     is_promoter: product.is_promoter,
@@ -139,7 +139,7 @@ export default function ProductPage() {
                 <h1 className="text-3xl font-display font-bold text-midnight-navy dark:text-gray-100 mb-3">{product.name}</h1>
                 {/* Verification badges under title */}
                 <div className="flex flex-wrap items-center gap-2">
-                  {product.seller_member_id && (
+                  {product.seller_fraternity_member_id && (
                     <>
                       <VerificationBadge type="brother" />
                       {/* If seller is a member, they should have an initiated chapter */}
@@ -172,12 +172,12 @@ export default function ProductPage() {
                 <div className="mb-6 p-4 bg-cream/50 dark:bg-gray-900/50 rounded-lg border border-frost-gray dark:border-gray-800">
                   <div className="flex items-center gap-2 mb-2 flex-wrap">
                     <p className="text-sm font-semibold text-midnight-navy dark:text-gray-200">
-                      Sold by {product.seller_member_id ? 'Brother ' : ''}{product.seller_name}
+                      Sold by {product.seller_fraternity_member_id ? 'Brother ' : ''}{product.seller_name}
                     </p>
                     {/* Role badges - show all applicable roles */}
-                    {product.is_member !== undefined || product.is_seller !== undefined ? (
+                    {product.is_fraternity_member !== undefined || product.is_seller !== undefined ? (
                       <UserRoleBadges
-                        is_member={product.is_member}
+                        is_member={product.is_fraternity_member}
                         is_seller={product.is_seller}
                         is_promoter={product.is_promoter}
                         is_steward={product.is_steward}

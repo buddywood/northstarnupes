@@ -61,10 +61,10 @@ export interface Product {
   category_id: number | null;
   seller_name?: string;
   seller_business_name?: string | null;
-  seller_member_id?: number | null;
+  seller_fraternity_member_id?: number | null;
   seller_sponsoring_chapter_id?: number | null;
   seller_initiated_chapter_id?: number | null;
-  is_member?: boolean;
+  is_fraternity_member?: boolean;
   is_seller?: boolean;
   is_promoter?: boolean;
   is_steward?: boolean;
@@ -76,7 +76,7 @@ export interface Seller {
   id: number;
   email: string;
   name: string;
-  member_id?: number | null;
+  fraternity_member_id?: number | null;
   sponsoring_chapter_id: number;
   business_name: string | null;
   vendor_license_number: string | null;
@@ -114,10 +114,10 @@ export interface Event {
   max_attendees: number | null;
   promoter_name?: string;
   promoter_email?: string;
-  promoter_member_id?: number | null;
+  promoter_fraternity_member_id?: number | null;
   promoter_sponsoring_chapter_id?: number | null;
   promoter_initiated_chapter_id?: number | null;
-  is_member?: boolean;
+  is_fraternity_member?: boolean;
   is_promoter?: boolean;
   is_steward?: boolean;
   is_seller?: boolean;
@@ -616,7 +616,7 @@ export async function unlikePost(postId: number): Promise<void> {
 // Steward API functions
 export interface Steward {
   id: number;
-  member_id: number;
+  fraternity_member_id: number;
   sponsoring_chapter_id: number;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
   verification_status: 'PENDING' | 'VERIFIED' | 'FAILED' | 'MANUAL_REVIEW';
@@ -638,7 +638,7 @@ export interface StewardListing {
   chapter_donation_cents: number;
   sponsoring_chapter_id: number;
   status: 'ACTIVE' | 'CLAIMED' | 'REMOVED';
-  claimed_by_member_id: number | null;
+  claimed_by_fraternity_member_id: number | null;
   claimed_at: string | null;
   created_at: string;
   updated_at: string;

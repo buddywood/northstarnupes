@@ -113,8 +113,8 @@ export default function ProfilePage() {
           
           if (verifyResponse.ok) {
             const userData = await verifyResponse.json();
-            if (!userData.member_id) {
-              console.log('Profile page: Backend has no member_id, refreshing session and redirecting');
+            if (!userData.fraternity_member_id) {
+              console.log('Profile page: Backend has no fraternity_member_id, refreshing session and redirecting');
               setIsRedirecting(true);
               await updateSession();
               window.location.href = '/register';

@@ -363,12 +363,12 @@ router.post('/draft', upload.single('headshot'), async (req: Request, res: Respo
     let existingDraft;
     if (membershipNumber) {
       existingDraft = await pool.query(
-        'SELECT id, cognito_sub, registration_status FROM members WHERE cognito_sub = $1 OR email = $2 OR (membership_number = $3 AND registration_status = \'DRAFT\')',
+        'SELECT id, cognito_sub, registration_status FROM fraternity_members WHERE cognito_sub = $1 OR email = $2 OR (membership_number = $3 AND registration_status = \'DRAFT\')',
         [cognito_sub, email, membershipNumber]
       );
     } else {
       existingDraft = await pool.query(
-        'SELECT id, cognito_sub, registration_status FROM members WHERE cognito_sub = $1 OR email = $2',
+        'SELECT id, cognito_sub, registration_status FROM fraternity_members WHERE cognito_sub = $1 OR email = $2',
         [cognito_sub, email]
       );
     }
@@ -557,7 +557,7 @@ router.post('/draft', upload.single('headshot'), async (req: Request, res: Respo
       // If so, we should update that draft instead of creating a duplicate
       if (parsedData.membership_number) {
         const existingDraftByMembership = await pool.query(
-          `SELECT id FROM members 
+          `SELECT id FROM fraternity_members 
            WHERE membership_number = $1 
            AND registration_status = 'DRAFT'`,
           [parsedData.membership_number]
@@ -826,7 +826,7 @@ router.get('/draft/:cognitoSub', async (req: Request, res: Response) => {
     const { cognitoSub } = req.params;
 
     const result = await pool.query(
-      'SELECT * FROM members WHERE cognito_sub = $1 AND registration_status = $2',
+      'SELECT * FROM fraternity_members WHERE cognito_sub = $1 AND registration_status = $2',
       [cognitoSub, 'DRAFT']
     );
 
@@ -906,7 +906,7 @@ router.post('/register', upload.single('headshot'), async (req: Request, res: Re
     let existingHeadshotUrl: string | null = null;
     if (body.cognito_sub) {
       existingDraft = await pool.query(
-        'SELECT id, registration_status, headshot_url FROM members WHERE cognito_sub = $1',
+        'SELECT id, registration_status, headshot_url FROM fraternity_members WHERE cognito_sub = $1',
         [body.cognito_sub]
       );
       if (existingDraft.rows.length > 0) {
@@ -928,11 +928,11 @@ router.post('/register', upload.single('headshot'), async (req: Request, res: Re
        SELECT id FROM promoters WHERE email = $1 
        UNION 
        SELECT s.id FROM sellers s 
-       INNER JOIN members m ON s.member_id = m.id 
+       INNER JOIN fraternity_members m ON s.fraternity_member_id = m.id 
        WHERE m.membership_number = $2
        UNION
        SELECT p.id FROM promoters p 
-       INNER JOIN members m ON p.member_id = m.id 
+       INNER JOIN fraternity_members m ON p.fraternity_member_id = m.id 
        WHERE m.membership_number = $2
        UNION 
        SELECT id FROM members 
@@ -947,11 +947,11 @@ router.post('/register', upload.single('headshot'), async (req: Request, res: Re
        SELECT id FROM promoters WHERE email = $1 
        UNION 
        SELECT s.id FROM sellers s 
-       INNER JOIN members m ON s.member_id = m.id 
+       INNER JOIN fraternity_members m ON s.fraternity_member_id = m.id 
        WHERE m.membership_number = $2
        UNION
        SELECT p.id FROM promoters p 
-       INNER JOIN members m ON p.member_id = m.id 
+       INNER JOIN fraternity_members m ON p.fraternity_member_id = m.id 
        WHERE m.membership_number = $2
        UNION 
        SELECT id FROM members 
@@ -1087,7 +1087,7 @@ router.post('/register', upload.single('headshot'), async (req: Request, res: Re
             email: body.email,
             role: 'CONSUMER',
             onboarding_status: 'ONBOARDING_FINISHED',
-            member_id: member.id,
+            fraternity_member_id: member.id,
           });
         } else {
           // Link existing user to member and update onboarding status
@@ -1106,7 +1106,7 @@ router.post('/register', upload.single('headshot'), async (req: Request, res: Re
         // If user linking fails, we have an orphaned member record
         // Try to clean up the member record we just created
         try {
-          await pool.query('DELETE FROM members WHERE id = $1', [member.id]);
+          await pool.query('DELETE FROM fraternity_members WHERE id = $1', [member.id]);
           console.log(`Cleaned up orphaned member record ${member.id} due to user linking failure`);
         } catch (cleanupError) {
           console.error('Failed to clean up orphaned member record:', cleanupError);
@@ -1168,11 +1168,11 @@ router.get('/', authenticate, async (req: Request, res: Response) => {
         CASE WHEN s.id IS NOT NULL AND s.status = 'APPROVED' THEN true ELSE false END as is_seller,
         CASE WHEN pr.id IS NOT NULL AND pr.status = 'APPROVED' THEN true ELSE false END as is_promoter,
         CASE WHEN st.id IS NOT NULL AND st.status = 'APPROVED' THEN true ELSE false END as is_steward
-      FROM members m
+      FROM fraternity_members m
       LEFT JOIN chapters c ON m.initiated_chapter_id = c.id
-      LEFT JOIN sellers s ON m.id = s.member_id AND s.status = 'APPROVED'
-      LEFT JOIN promoters pr ON m.id = pr.member_id AND pr.status = 'APPROVED'
-      LEFT JOIN stewards st ON m.id = st.member_id AND st.status = 'APPROVED'
+      LEFT JOIN sellers s ON m.id = s.fraternity_member_id AND s.status = 'APPROVED'
+      LEFT JOIN promoters pr ON m.id = pr.fraternity_member_id AND pr.status = 'APPROVED'
+      LEFT JOIN stewards st ON m.id = st.fraternity_member_id AND st.status = 'APPROVED'
       WHERE m.verification_status = 'VERIFIED'
     `;
     
@@ -1229,27 +1229,27 @@ router.get('/profile', authenticate, async (req: Request, res: Response) => {
 
     const result = await pool.query(
       `SELECT m.*, c.name as chapter_name
-       FROM members m
+       FROM fraternity_members m
        LEFT JOIN chapters c ON m.initiated_chapter_id = c.id
        WHERE m.id = $1`,
       [req.user.memberId]
     );
 
     if (result.rows.length === 0) {
-      // Member doesn't exist but user has member_id set - this is an orphaned reference
+      // Member doesn't exist but user has fraternity_member_id set - this is an orphaned reference
       // Clear it so user can complete registration
-      console.warn(`Orphaned member_id detected: user ${req.user.id} has member_id ${req.user.memberId} but member doesn't exist`);
+      console.warn(`Orphaned fraternity_member_id detected: user ${req.user.id} has fraternity_member_id ${req.user.memberId} but fraternity_member doesn't exist`);
       try {
         await pool.query(
           `UPDATE users 
-           SET member_id = NULL, 
+           SET fraternity_member_id = NULL, 
                onboarding_status = 'ONBOARDING_STARTED',
                updated_at = CURRENT_TIMESTAMP 
            WHERE id = $1`,
           [req.user.id]
         );
       } catch (cleanupError) {
-        console.error('Error clearing orphaned member_id:', cleanupError);
+        console.error('Error clearing orphaned fraternity_member_id:', cleanupError);
       }
       return res.status(404).json({ 
         error: 'Member profile not found',

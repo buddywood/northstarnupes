@@ -8,14 +8,14 @@ async function verify() {
       console.log('\nProduct Data:');
       console.log('  ID:', product.id);
       console.log('  Name:', product.name);
-      console.log('  Seller Member ID:', product.seller_member_id);
+      console.log('  Seller Fraternity Member ID:', product.seller_fraternity_member_id);
       console.log('  Seller Initiated Chapter ID:', product.seller_initiated_chapter_id);
       console.log('  Seller Sponsoring Chapter ID:', product.seller_sponsoring_chapter_id);
       
-      if (product.seller_member_id) {
+      if (product.seller_fraternity_member_id) {
         const memberResult = await pool.query(
-          'SELECT id, name, initiated_chapter_id FROM members WHERE id = $1',
-          [product.seller_member_id]
+          'SELECT id, name, initiated_chapter_id FROM fraternity_members WHERE id = $1',
+          [product.seller_fraternity_member_id]
         );
         if (memberResult.rows.length > 0) {
           const member = memberResult.rows[0];

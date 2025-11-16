@@ -23,13 +23,13 @@ async function deleteTestUser(email: string) {
       id: user.id,
       email: user.email,
       role: user.role,
-      member_id: user.member_id,
+      fraternity_member_id: user.fraternity_member_id,
       seller_id: user.seller_id,
       promoter_id: user.promoter_id,
     });
     
     // Store IDs before deleting user
-    const memberId = user.member_id;
+    const memberId = user.fraternity_member_id;
     const sellerId = user.seller_id;
     const promoterId = user.promoter_id;
     
@@ -41,7 +41,7 @@ async function deleteTestUser(email: string) {
     // Now delete associated records
     if (memberId) {
       console.log(`🗑️  Deleting member record (id: ${memberId})...`);
-      await pool.query('DELETE FROM members WHERE id = $1', [memberId]);
+      await pool.query('DELETE FROM fraternity_members WHERE id = $1', [memberId]);
       console.log('✅ Member record deleted');
     }
     

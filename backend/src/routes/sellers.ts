@@ -81,7 +81,7 @@ const optionalAuthenticate = async (req: Request, res: Response, next: any) => {
           cognitoSub: user.cognito_sub,
           email: user.email,
           role: user.role,
-          memberId: user.member_id,
+          memberId: user.fraternity_member_id,
           sellerId: user.seller_id,
           promoterId: user.promoter_id,
           stewardId: user.steward_id,
@@ -130,7 +130,7 @@ router.post('/apply', optionalAuthenticate, upload.fields([
       // Try to find member by email if not logged in
       // This allows verified members to get auto-approved even if they're not logged in
       const memberResult = await pool.query(
-        'SELECT id, verification_status FROM members WHERE email = $1',
+        'SELECT id, verification_status FROM fraternity_members WHERE email = $1',
         [body.email]
       );
       if (memberResult.rows.length > 0) {
@@ -176,7 +176,7 @@ router.post('/apply', optionalAuthenticate, upload.fields([
     // Create seller record with member_id if available
     const seller = await createSeller({
       ...body,
-      member_id: memberId,
+      fraternity_member_id: memberId,
       headshot_url: headshotUrl,
       store_logo_url: storeLogoUrl,
       social_links: body.social_links || {},
@@ -185,7 +185,7 @@ router.post('/apply', optionalAuthenticate, upload.fields([
     // Auto-approve if seller is a verified member (verified members can sell anything)
     if (memberId) {
       const memberResult = await pool.query(
-        'SELECT verification_status FROM members WHERE id = $1',
+        'SELECT verification_status FROM fraternity_members WHERE id = $1',
         [memberId]
       );
       

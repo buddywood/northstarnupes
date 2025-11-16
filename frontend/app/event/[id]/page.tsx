@@ -115,7 +115,7 @@ export default function EventPage() {
                 <h1 className="text-3xl font-display font-bold text-midnight-navy dark:text-gray-100 mb-3">{event.title}</h1>
                 {/* Verification badges under title */}
                 <div className="flex flex-wrap items-center gap-2">
-                  {event.promoter_member_id && (
+                  {event.promoter_fraternity_member_id && (
                     <>
                       <VerificationBadge type="brother" />
                       {event.promoter_initiated_chapter_id && (
@@ -181,12 +181,12 @@ export default function EventPage() {
                 <div className="mb-6 p-4 bg-cream/50 dark:bg-gray-900/50 rounded-lg border border-frost-gray dark:border-gray-800">
                   <div className="flex items-center gap-2 mb-2 flex-wrap">
                     <p className="text-sm font-semibold text-midnight-navy dark:text-gray-200">
-                      Promoted by {event.promoter_member_id ? 'Brother ' : ''}{event.promoter_name}
+                      Promoted by {event.promoter_fraternity_member_id ? 'Brother ' : ''}{event.promoter_name}
                     </p>
                     {/* Role badges - show all applicable roles */}
-                    {event.is_member !== undefined || event.is_promoter !== undefined ? (
+                    {event.is_fraternity_member !== undefined || event.is_promoter !== undefined ? (
                       <UserRoleBadges
-                        is_member={event.is_member}
+                        is_member={event.is_fraternity_member}
                         is_seller={event.is_seller}
                         is_promoter={event.is_promoter}
                         is_steward={event.is_steward}

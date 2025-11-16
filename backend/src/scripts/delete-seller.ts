@@ -29,11 +29,11 @@ async function deleteSeller(email: string) {
     }
     
     // Check if seller is linked to a user
-    const userResult = await pool.query('SELECT id, email, role, member_id FROM users WHERE seller_id = $1', [seller.id]);
+    const userResult = await pool.query('SELECT id, email, role, fraternity_member_id FROM users WHERE seller_id = $1', [seller.id]);
     if (userResult.rows.length > 0) {
       const user = userResult.rows[0];
       console.log(`⚠️  Warning: This seller is linked to user account: ${user.email}`);
-      console.log(`   User role: ${user.role}, has member_id: ${user.member_id ? 'yes' : 'no'}`);
+      console.log(`   User role: ${user.role}, has fraternity_member_id: ${user.fraternity_member_id ? 'yes' : 'no'}`);
     }
     
     // Delete products first (foreign key constraint)
@@ -42,23 +42,23 @@ async function deleteSeller(email: string) {
       console.log(`✅ Deleted ${productCount} product(s)`);
     }
     
-    // Update user account - change role to CONSUMER if they have member_id, otherwise we'll need to handle differently
+    // Update user account - change role to CONSUMER if they have fraternity_member_id, otherwise we'll need to handle differently
     if (userResult.rows.length > 0) {
       const user = userResult.rows[0];
       if (user.role === 'SELLER') {
-        if (user.member_id) {
-          // User has member_id, change role to CONSUMER
+        if (user.fraternity_member_id) {
+          // User has fraternity_member_id, change role to CONSUMER
           await pool.query(
             'UPDATE users SET seller_id = NULL, role = $1 WHERE seller_id = $2',
             ['CONSUMER', seller.id]
           );
           console.log(`✅ Changed user role to CONSUMER and cleared seller_id`);
         } else {
-          // User doesn't have member_id, we need to delete the user or set onboarding_status
+          // User doesn't have fraternity_member_id, we need to delete the user or set onboarding_status
           // For safety, let's just clear seller_id and change role - but this might fail
-          // Actually, let's delete the user if they don't have member_id since they were likely created just for seller
+          // Actually, let's delete the user if they don't have fraternity_member_id since they were likely created just for seller
           await pool.query('DELETE FROM users WHERE id = $1', [user.id]);
-          console.log(`✅ Deleted user account (no member_id, was created for seller)`);
+          console.log(`✅ Deleted user account (no fraternity_member_id, was created for seller)`);
         }
       } else {
         // User has a different role, just clear seller_id

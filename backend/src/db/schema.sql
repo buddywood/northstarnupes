@@ -18,8 +18,8 @@ CREATE TABLE IF NOT EXISTS chapters (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Members table - must be created before sellers/promoters that reference it
-CREATE TABLE IF NOT EXISTS members (
+-- Fraternity Members table - must be created before sellers/promoters that reference it
+CREATE TABLE IF NOT EXISTS fraternity_members (
   id SERIAL PRIMARY KEY,
   email VARCHAR(255) NOT NULL UNIQUE,
   name VARCHAR(255),
@@ -53,7 +53,7 @@ CREATE TABLE IF NOT EXISTS sellers (
   id SERIAL PRIMARY KEY,
   email VARCHAR(255) NOT NULL UNIQUE,
   name VARCHAR(255) NOT NULL,
-  member_id INTEGER REFERENCES members(id),
+  fraternity_member_id INTEGER REFERENCES fraternity_members(id),
   sponsoring_chapter_id INTEGER NOT NULL REFERENCES chapters(id),
   business_name VARCHAR(255),
   vendor_license_number VARCHAR(100) NOT NULL,
@@ -138,7 +138,7 @@ CREATE TABLE IF NOT EXISTS promoters (
   id SERIAL PRIMARY KEY,
   email VARCHAR(255) NOT NULL UNIQUE,
   name VARCHAR(255) NOT NULL,
-  member_id INTEGER REFERENCES members(id),
+  fraternity_member_id INTEGER REFERENCES fraternity_members(id),
   sponsoring_chapter_id INTEGER REFERENCES chapters(id),
   headshot_url TEXT,
   social_links JSONB DEFAULT '{}',
@@ -182,7 +182,7 @@ CREATE TABLE IF NOT EXISTS industries (
 -- Stewards table - must be created before users table (users references stewards)
 CREATE TABLE IF NOT EXISTS stewards (
   id SERIAL PRIMARY KEY,
-  member_id INTEGER NOT NULL UNIQUE REFERENCES members(id),
+  fraternity_member_id INTEGER NOT NULL UNIQUE REFERENCES fraternity_members(id),
   sponsoring_chapter_id INTEGER NOT NULL REFERENCES chapters(id),
   status VARCHAR(20) DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'APPROVED', 'REJECTED')),
   verification_status VARCHAR(20) DEFAULT 'PENDING' CHECK (verification_status IN ('PENDING', 'VERIFIED', 'FAILED', 'MANUAL_REVIEW')),
@@ -199,7 +199,7 @@ CREATE TABLE IF NOT EXISTS users (
   email VARCHAR(255) NOT NULL UNIQUE,
   role VARCHAR(20) NOT NULL CHECK (role IN ('ADMIN', 'SELLER', 'PROMOTER', 'CONSUMER', 'STEWARD')),
   onboarding_status VARCHAR(50) DEFAULT 'PRE_COGNITO' CHECK (onboarding_status IN ('PRE_COGNITO', 'COGNITO_CONFIRMED', 'ONBOARDING_STARTED', 'ONBOARDING_FINISHED')),
-  member_id INTEGER REFERENCES members(id),
+  fraternity_member_id INTEGER REFERENCES fraternity_members(id),
   seller_id INTEGER REFERENCES sellers(id),
   promoter_id INTEGER REFERENCES promoters(id),
   steward_id INTEGER REFERENCES stewards(id),
@@ -210,18 +210,18 @@ CREATE TABLE IF NOT EXISTS users (
   -- Ensure only one foreign key is set based on role
   CONSTRAINT check_role_foreign_key CHECK (
     (role = 'CONSUMER' AND seller_id IS NULL AND promoter_id IS NULL AND steward_id IS NULL AND (
-      (member_id IS NOT NULL) OR 
-      (member_id IS NULL AND onboarding_status != 'ONBOARDING_FINISHED')
+      (fraternity_member_id IS NOT NULL) OR 
+      (fraternity_member_id IS NULL AND onboarding_status != 'ONBOARDING_FINISHED')
     )) OR
-    (role = 'SELLER' AND seller_id IS NOT NULL AND member_id IS NULL AND promoter_id IS NULL AND steward_id IS NULL) OR
-    (role = 'PROMOTER' AND promoter_id IS NOT NULL AND member_id IS NULL AND seller_id IS NULL AND steward_id IS NULL) OR
-    (role = 'STEWARD' AND steward_id IS NOT NULL AND member_id IS NOT NULL AND (
+    (role = 'SELLER' AND seller_id IS NOT NULL AND fraternity_member_id IS NULL AND promoter_id IS NULL AND steward_id IS NULL) OR
+    (role = 'PROMOTER' AND promoter_id IS NOT NULL AND fraternity_member_id IS NULL AND seller_id IS NULL AND steward_id IS NULL) OR
+    (role = 'STEWARD' AND steward_id IS NOT NULL AND fraternity_member_id IS NOT NULL AND (
       (seller_id IS NULL AND promoter_id IS NULL) OR
       (seller_id IS NOT NULL AND promoter_id IS NULL) OR
       (seller_id IS NULL AND promoter_id IS NOT NULL) OR
       (seller_id IS NOT NULL AND promoter_id IS NOT NULL)
     )) OR
-    (role = 'ADMIN' AND member_id IS NULL AND seller_id IS NULL AND promoter_id IS NULL AND steward_id IS NULL)
+    (role = 'ADMIN' AND fraternity_member_id IS NULL AND seller_id IS NULL AND promoter_id IS NULL AND steward_id IS NULL)
   )
 );
 
@@ -236,7 +236,7 @@ CREATE TABLE IF NOT EXISTS steward_listings (
   chapter_donation_cents INTEGER NOT NULL CHECK (chapter_donation_cents >= 0),
   sponsoring_chapter_id INTEGER NOT NULL REFERENCES chapters(id),
   status VARCHAR(20) DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'CLAIMED', 'REMOVED')),
-  claimed_by_member_id INTEGER REFERENCES members(id),
+  claimed_by_fraternity_member_id INTEGER REFERENCES fraternity_members(id),
   claimed_at TIMESTAMP,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -246,7 +246,7 @@ CREATE TABLE IF NOT EXISTS steward_listings (
 CREATE TABLE IF NOT EXISTS steward_claims (
   id SERIAL PRIMARY KEY,
   listing_id INTEGER NOT NULL REFERENCES steward_listings(id),
-  claimant_member_id INTEGER NOT NULL REFERENCES members(id),
+  claimant_fraternity_member_id INTEGER NOT NULL REFERENCES fraternity_members(id),
   stripe_session_id VARCHAR(255) UNIQUE,
   total_amount_cents INTEGER NOT NULL CHECK (total_amount_cents >= 0),
   shipping_cents INTEGER NOT NULL CHECK (shipping_cents >= 0),
@@ -268,7 +268,8 @@ CREATE TABLE IF NOT EXISTS platform_settings (
 
 -- Indexes for better query performance
 CREATE INDEX IF NOT EXISTS idx_sellers_status ON sellers(status);
-CREATE INDEX IF NOT EXISTS idx_sellers_member_id ON sellers(member_id);
+-- Note: Indexes for fraternity_member_id columns are created by migration 016 after columns are renamed
+-- CREATE INDEX IF NOT EXISTS idx_sellers_fraternity_member_id ON sellers(fraternity_member_id);
 CREATE INDEX IF NOT EXISTS idx_sellers_invitation_token ON sellers(invitation_token);
 CREATE INDEX IF NOT EXISTS idx_products_seller ON products(seller_id);
 -- Note: idx_products_category is created by migration 013
@@ -277,30 +278,30 @@ CREATE INDEX IF NOT EXISTS idx_orders_product ON orders(product_id);
 CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
 CREATE INDEX IF NOT EXISTS idx_orders_stripe_session ON orders(stripe_session_id);
 CREATE INDEX IF NOT EXISTS idx_promoters_status ON promoters(status);
-CREATE INDEX IF NOT EXISTS idx_promoters_member_id ON promoters(member_id);
-CREATE INDEX IF NOT EXISTS idx_members_email ON members(email);
-CREATE INDEX IF NOT EXISTS idx_members_membership_number ON members(membership_number);
-CREATE INDEX IF NOT EXISTS idx_members_initiated_chapter ON members(initiated_chapter_id);
+-- CREATE INDEX IF NOT EXISTS idx_promoters_fraternity_member_id ON promoters(fraternity_member_id);
+CREATE INDEX IF NOT EXISTS idx_fraternity_members_email ON fraternity_members(email);
+CREATE INDEX IF NOT EXISTS idx_fraternity_members_membership_number ON fraternity_members(membership_number);
+CREATE INDEX IF NOT EXISTS idx_fraternity_members_initiated_chapter ON fraternity_members(initiated_chapter_id);
 CREATE INDEX IF NOT EXISTS idx_events_promoter ON events(promoter_id);
 CREATE INDEX IF NOT EXISTS idx_events_date ON events(event_date);
 CREATE INDEX IF NOT EXISTS idx_events_sponsored_chapter ON events(sponsored_chapter_id);
 CREATE INDEX IF NOT EXISTS idx_users_cognito_sub ON users(cognito_sub);
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
-CREATE INDEX IF NOT EXISTS idx_users_member_id ON users(member_id);
+-- CREATE INDEX IF NOT EXISTS idx_users_fraternity_member_id ON users(fraternity_member_id);
 CREATE INDEX IF NOT EXISTS idx_users_seller_id ON users(seller_id);
 CREATE INDEX IF NOT EXISTS idx_users_promoter_id ON users(promoter_id);
 CREATE INDEX IF NOT EXISTS idx_users_steward_id ON users(steward_id);
 CREATE INDEX IF NOT EXISTS idx_industries_active ON industries(is_active);
 CREATE INDEX IF NOT EXISTS idx_industries_display_order ON industries(display_order);
-CREATE INDEX IF NOT EXISTS idx_stewards_member_id ON stewards(member_id);
+-- CREATE INDEX IF NOT EXISTS idx_stewards_fraternity_member_id ON stewards(fraternity_member_id);
 CREATE INDEX IF NOT EXISTS idx_stewards_sponsoring_chapter ON stewards(sponsoring_chapter_id);
 CREATE INDEX IF NOT EXISTS idx_stewards_status ON stewards(status);
 CREATE INDEX IF NOT EXISTS idx_steward_listings_steward ON steward_listings(steward_id);
 CREATE INDEX IF NOT EXISTS idx_steward_listings_status ON steward_listings(status);
 CREATE INDEX IF NOT EXISTS idx_steward_listings_sponsoring_chapter ON steward_listings(sponsoring_chapter_id);
 CREATE INDEX IF NOT EXISTS idx_steward_claims_listing ON steward_claims(listing_id);
-CREATE INDEX IF NOT EXISTS idx_steward_claims_claimant ON steward_claims(claimant_member_id);
+-- CREATE INDEX IF NOT EXISTS idx_steward_claims_claimant_fraternity_member ON steward_claims(claimant_fraternity_member_id);
 CREATE INDEX IF NOT EXISTS idx_steward_claims_status ON steward_claims(status);
 CREATE INDEX IF NOT EXISTS idx_steward_claims_stripe_session ON steward_claims(stripe_session_id);
 
@@ -334,8 +335,8 @@ DROP TRIGGER IF EXISTS update_promoters_updated_at ON promoters;
 CREATE TRIGGER update_promoters_updated_at BEFORE UPDATE ON promoters
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-DROP TRIGGER IF EXISTS update_members_updated_at ON members;
-CREATE TRIGGER update_members_updated_at BEFORE UPDATE ON members
+DROP TRIGGER IF EXISTS update_fraternity_members_updated_at ON fraternity_members;
+CREATE TRIGGER update_fraternity_members_updated_at BEFORE UPDATE ON fraternity_members
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 DROP TRIGGER IF EXISTS update_events_updated_at ON events;

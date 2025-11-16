@@ -140,7 +140,7 @@ export default async function CollectionsPage({ searchParams }: CollectionsPageP
                         
                         {/* Brother Details */}
                         <div className="flex flex-wrap items-center gap-4 mt-3 mb-2">
-                          {seller.member_id && (
+                          {seller.fraternity_member_id && (
                             <div className="flex items-center gap-1.5 text-sm text-midnight-navy/70">
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -241,7 +241,7 @@ export default async function CollectionsPage({ searchParams }: CollectionsPageP
                             </p>
                             {/* Verification badges under title */}
                             <div className="flex flex-col items-start gap-2 mb-2">
-                              {product.seller_member_id ? (
+                              {product.seller_fraternity_member_id ? (
                                 <VerificationBadge type="brother" className="text-xs" />
                               ) : product.seller_name ? (
                                 <VerificationBadge type="seller" className="text-xs" />

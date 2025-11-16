@@ -86,12 +86,12 @@ export default function EventCard({ event, chapterName }: EventCardProps) {
           {event.promoter_name && (
             <div className="flex items-center gap-2 mb-3 flex-wrap">
               <p className="text-xs text-midnight-navy/50">
-                Promoted by {event.promoter_member_id ? 'Brother ' : ''}{event.promoter_name}
+                Promoted by {event.promoter_fraternity_member_id ? 'Brother ' : ''}{event.promoter_name}
               </p>
               {/* Role badges for promoter */}
-              {(event.is_member !== undefined || event.is_promoter !== undefined || event.is_seller !== undefined || event.is_steward !== undefined) && (
+              {(event.is_fraternity_member !== undefined || event.is_promoter !== undefined || event.is_seller !== undefined || event.is_steward !== undefined) && (
                 <UserRoleBadges
-                  is_member={event.is_member}
+                  is_member={event.is_fraternity_member}
                   is_seller={event.is_seller}
                   is_promoter={event.is_promoter}
                   is_steward={event.is_steward}

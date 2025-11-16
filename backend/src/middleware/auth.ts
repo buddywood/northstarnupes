@@ -60,27 +60,27 @@ export async function authenticate(
       return;
     }
 
-    // Validate member_id if it exists - check if member record actually exists
-    let memberId = user.member_id;
+    // Validate fraternity_member_id if it exists - check if fraternity_member record actually exists
+    let memberId = user.fraternity_member_id;
     if (memberId) {
-      const memberCheck = await pool.query('SELECT id FROM members WHERE id = $1', [memberId]);
+      const memberCheck = await pool.query('SELECT id FROM fraternity_members WHERE id = $1', [memberId]);
       if (memberCheck.rows.length === 0) {
-        // Orphaned member_id detected - clear it
-        console.warn(`Orphaned member_id detected in authenticate middleware: user ${user.id} has member_id ${memberId} but member doesn't exist`);
+        // Orphaned fraternity_member_id detected - clear it
+        console.warn(`Orphaned fraternity_member_id detected in authenticate middleware: user ${user.id} has fraternity_member_id ${memberId} but fraternity_member doesn't exist`);
         try {
           await pool.query(
             `UPDATE users 
-             SET member_id = NULL, 
+             SET fraternity_member_id = NULL, 
                  onboarding_status = 'ONBOARDING_STARTED',
                  updated_at = CURRENT_TIMESTAMP 
              WHERE id = $1`,
             [user.id]
           );
           memberId = null;
-          user.member_id = null;
+          user.fraternity_member_id = null;
           user.onboarding_status = 'ONBOARDING_STARTED';
         } catch (cleanupError) {
-          console.error('Error clearing orphaned member_id in authenticate:', cleanupError);
+          console.error('Error clearing orphaned fraternity_member_id in authenticate:', cleanupError);
         }
       }
     }

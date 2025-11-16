@@ -270,7 +270,7 @@ function ShopPageContent() {
                       { id: '', label: 'All Sellers', value: '' },
                       ...sellers.map((seller) => ({
                         id: seller.id,
-                        label: seller.member_id 
+                        label: seller.fraternity_member_id 
                           ? `Brother ${seller.name}` 
                           : (seller.business_name || seller.name),
                         value: seller.id,
@@ -354,7 +354,7 @@ function ShopPageContent() {
               {selectedSeller && (() => {
                 const seller = sellers.find(s => s.id === selectedSeller);
                 if (!seller) return '';
-                const displayName = seller.member_id 
+                const displayName = seller.fraternity_member_id 
                   ? `Brother ${seller.name}` 
                   : (seller.business_name || seller.name);
                 return ` by ${displayName}`;
@@ -449,7 +449,7 @@ function ShopPageContent() {
                   </p>
                   {/* Verification badges under title */}
                   <div className="flex flex-col items-start gap-2 mb-2">
-                    {product.seller_member_id ? (
+                    {product.seller_fraternity_member_id ? (
                       <VerificationBadge type="brother" className="text-xs" />
                     ) : product.seller_name ? (
                       <VerificationBadge type="seller" className="text-xs" />
@@ -465,12 +465,12 @@ function ShopPageContent() {
                   {product.seller_name && (
                     <div className="flex items-center gap-1.5 mb-2 flex-wrap">
                       <p className="text-xs text-midnight-navy/60">
-                        by {product.seller_member_id 
+                        by {product.seller_fraternity_member_id 
                           ? `Brother ${product.seller_name}` 
                           : (product.seller_business_name || product.seller_name)}
                       </p>
                       <UserRoleBadges
-                        is_member={product.is_member}
+                        is_member={product.is_fraternity_member}
                         is_seller={product.is_seller}
                         is_promoter={product.is_promoter}
                         is_steward={product.is_steward}
