@@ -12,8 +12,8 @@
     "backend"
   ],
   "engines": {
-    "node": "20.x",
-    "npm": "10.x"
+    "node": ">=20.x",
+    "npm": ">=10.x"
   },
   "scripts": {
     "install:all": "npm install && cd frontend && npm install && cd ../backend && npm install",
