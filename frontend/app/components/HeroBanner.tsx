@@ -23,7 +23,7 @@ export default function HeroBanner() {
     !(userRole === 'SELLER' && memberId);
 
   return (
-    <section className="relative flex flex-col items-center justify-center text-center py-12 sm:py-16 md:py-20 lg:py-24 px-4 sm:px-6 bg-gradient-to-br from-crimson to-midnight-navy text-white overflow-hidden min-h-[400px] sm:min-h-[500px] md:min-h-[600px]">
+    <section className="relative flex flex-col items-center justify-center text-center py-6 sm:py-8 md:py-10 lg:py-12 px-4 sm:px-6 bg-gradient-to-br from-crimson to-midnight-navy text-white overflow-hidden min-h-[200px] sm:min-h-[250px] md:min-h-[300px]">
 
       {/* Radial vignette + glow */}
       <div 
@@ -35,7 +35,7 @@ export default function HeroBanner() {
       />
 
       {/* Logo block */}
-      <div className="mb-[58px] sm:mb-[66px] flex justify-center relative">
+      <div className="mb-[29px] sm:mb-[33px] flex justify-center relative">
 
         {/* Soft background glow */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -62,7 +62,7 @@ export default function HeroBanner() {
       {/* Headline + Subtext */}
       <div className="relative z-10 text-center max-w-4xl mx-auto px-2 sm:px-4 w-full">
 
-        <h1 className="text-[28px] sm:text-[36px] md:text-[44px] lg:text-[56px] font-display font-bold mb-10 sm:mb-12 px-2 leading-tight">
+        <h1 className="text-[28px] sm:text-[36px] md:text-[44px] lg:text-[56px] font-display font-bold mb-5 sm:mb-6 px-2 leading-tight">
           One Tribe. One Step. One Kappa.
         </h1>
 
