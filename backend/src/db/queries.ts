@@ -210,10 +210,17 @@ export async function getProductById(id: number): Promise<Product | null> {
             s.status as seller_status, 
             s.member_id as seller_member_id, 
             s.sponsoring_chapter_id as seller_sponsoring_chapter_id,
-            m.initiated_chapter_id as seller_initiated_chapter_id
+            s.email as seller_email,
+            m.initiated_chapter_id as seller_initiated_chapter_id,
+            CASE WHEN s.member_id IS NOT NULL THEN true ELSE false END as is_member,
+            CASE WHEN s.status = 'APPROVED' THEN true ELSE false END as is_seller,
+            CASE WHEN st.id IS NOT NULL THEN true ELSE false END as is_steward,
+            CASE WHEN pr.id IS NOT NULL THEN true ELSE false END as is_promoter
      FROM products p
      JOIN sellers s ON p.seller_id = s.id
      LEFT JOIN members m ON s.member_id = m.id
+     LEFT JOIN stewards st ON s.member_id = st.member_id AND st.status = 'APPROVED'
+     LEFT JOIN promoters pr ON (s.member_id = pr.member_id OR s.email = pr.email) AND pr.status = 'APPROVED'
      WHERE p.id = $1`,
     [id]
   );
@@ -225,23 +232,40 @@ export async function getProductById(id: number): Promise<Product | null> {
   const product = result.rows[0];
   // Load attributes for the product
   const attributes = await getProductAttributeValues(id);
-  return { ...product, attributes };
+  // Load images for the product
+  const images = await getProductImages(id);
+  return { ...product, attributes, images };
 }
 
 export async function getActiveProducts(): Promise<Product[]> {
   const result = await pool.query(
-    `SELECT p.*, s.name as seller_name, s.business_name as seller_business_name, s.status as seller_status, s.member_id as seller_member_id, s.sponsoring_chapter_id as seller_sponsoring_chapter_id
+    `SELECT p.*, 
+            s.name as seller_name, 
+            s.business_name as seller_business_name, 
+            s.status as seller_status, 
+            s.member_id as seller_member_id, 
+            s.sponsoring_chapter_id as seller_sponsoring_chapter_id,
+            s.email as seller_email,
+            m.initiated_chapter_id as seller_initiated_chapter_id,
+            CASE WHEN s.member_id IS NOT NULL THEN true ELSE false END as is_member,
+            CASE WHEN s.status = 'APPROVED' THEN true ELSE false END as is_seller,
+            CASE WHEN st.id IS NOT NULL THEN true ELSE false END as is_steward,
+            CASE WHEN pr.id IS NOT NULL THEN true ELSE false END as is_promoter
      FROM products p
      JOIN sellers s ON p.seller_id = s.id
+     LEFT JOIN members m ON s.member_id = m.id
+     LEFT JOIN stewards st ON s.member_id = st.member_id AND st.status = 'APPROVED'
+     LEFT JOIN promoters pr ON (s.member_id = pr.member_id OR s.email = pr.email) AND pr.status = 'APPROVED'
      WHERE s.status = 'APPROVED'
      ORDER BY p.created_at DESC`
   );
   
-  // Load attributes for all products
+  // Load attributes and images for all products
   const productsWithAttributes = await Promise.all(
     result.rows.map(async (product) => {
       const attributes = await getProductAttributeValues(product.id);
-      return { ...product, attributes };
+      const images = await getProductImages(product.id);
+      return { ...product, attributes, images };
     })
   );
   
@@ -250,19 +274,34 @@ export async function getActiveProducts(): Promise<Product[]> {
 
 export async function getProductsBySeller(sellerId: number): Promise<Product[]> {
   const result = await pool.query(
-    `SELECT p.*, s.name as seller_name, s.business_name as seller_business_name, s.status as seller_status, s.member_id as seller_member_id, s.sponsoring_chapter_id as seller_sponsoring_chapter_id
+    `SELECT p.*, 
+            s.name as seller_name, 
+            s.business_name as seller_business_name, 
+            s.status as seller_status, 
+            s.member_id as seller_member_id, 
+            s.sponsoring_chapter_id as seller_sponsoring_chapter_id,
+            s.email as seller_email,
+            m.initiated_chapter_id as seller_initiated_chapter_id,
+            CASE WHEN s.member_id IS NOT NULL THEN true ELSE false END as is_member,
+            CASE WHEN s.status = 'APPROVED' THEN true ELSE false END as is_seller,
+            CASE WHEN st.id IS NOT NULL THEN true ELSE false END as is_steward,
+            CASE WHEN pr.id IS NOT NULL THEN true ELSE false END as is_promoter
      FROM products p
      JOIN sellers s ON p.seller_id = s.id
+     LEFT JOIN members m ON s.member_id = m.id
+     LEFT JOIN stewards st ON s.member_id = st.member_id AND st.status = 'APPROVED'
+     LEFT JOIN promoters pr ON (s.member_id = pr.member_id OR s.email = pr.email) AND pr.status = 'APPROVED'
      WHERE p.seller_id = $1
      ORDER BY p.created_at DESC`,
     [sellerId]
   );
   
-  // Load attributes for all products
+  // Load attributes and images for all products
   const productsWithAttributes = await Promise.all(
     result.rows.map(async (product) => {
       const attributes = await getProductAttributeValues(product.id);
-      return { ...product, attributes };
+      const images = await getProductImages(product.id);
+      return { ...product, attributes, images };
     })
   );
   
@@ -375,6 +414,43 @@ export async function deleteProductAttributeValue(productId: number, attributeDe
   await pool.query(
     'DELETE FROM product_attribute_values WHERE product_id = $1 AND attribute_definition_id = $2',
     [productId, attributeDefinitionId]
+  );
+}
+
+// Product Images functions
+export interface ProductImage {
+  id: number;
+  product_id: number;
+  image_url: string;
+  display_order: number;
+  created_at: Date;
+  updated_at: Date;
+}
+
+export async function getProductImages(productId: number): Promise<ProductImage[]> {
+  const result = await pool.query(
+    'SELECT * FROM product_images WHERE product_id = $1 ORDER BY display_order, id',
+    [productId]
+  );
+  return result.rows;
+}
+
+export async function addProductImage(productId: number, imageUrl: string, displayOrder: number = 0): Promise<ProductImage> {
+  const result = await pool.query(
+    'INSERT INTO product_images (product_id, image_url, display_order) VALUES ($1, $2, $3) RETURNING *',
+    [productId, imageUrl, displayOrder]
+  );
+  return result.rows[0];
+}
+
+export async function deleteProductImage(imageId: number): Promise<void> {
+  await pool.query('DELETE FROM product_images WHERE id = $1', [imageId]);
+}
+
+export async function updateProductImageOrder(imageId: number, displayOrder: number): Promise<void> {
+  await pool.query(
+    'UPDATE product_images SET display_order = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+    [displayOrder, imageId]
   );
 }
 
@@ -578,7 +654,25 @@ export async function createEvent(event: {
 }
 
 export async function getEventById(id: number): Promise<Event | null> {
-  const result = await pool.query('SELECT * FROM events WHERE id = $1', [id]);
+  const result = await pool.query(
+    `SELECT e.*,
+            pr.name as promoter_name,
+            pr.email as promoter_email,
+            pr.member_id as promoter_member_id,
+            pr.sponsoring_chapter_id as promoter_sponsoring_chapter_id,
+            m.initiated_chapter_id as promoter_initiated_chapter_id,
+            CASE WHEN pr.member_id IS NOT NULL THEN true ELSE false END as is_member,
+            CASE WHEN pr.status = 'APPROVED' THEN true ELSE false END as is_promoter,
+            CASE WHEN st.id IS NOT NULL THEN true ELSE false END as is_steward,
+            CASE WHEN s.id IS NOT NULL AND s.status = 'APPROVED' THEN true ELSE false END as is_seller
+     FROM events e
+     JOIN promoters pr ON e.promoter_id = pr.id
+     LEFT JOIN members m ON pr.member_id = m.id
+     LEFT JOIN stewards st ON pr.member_id = st.member_id AND st.status = 'APPROVED'
+     LEFT JOIN sellers s ON pr.member_id = s.member_id AND s.status = 'APPROVED'
+     WHERE e.id = $1`,
+    [id]
+  );
   return result.rows[0] || null;
 }
 

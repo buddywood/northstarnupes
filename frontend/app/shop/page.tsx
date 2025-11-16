@@ -1,39 +1,67 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
-import { fetchProducts, fetchChapters, fetchSellersWithProducts, type Product, type Chapter, type SellerWithProducts } from '@/lib/api';
+import { useEffect, useState, useMemo, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { fetchProducts, fetchChapters, fetchSellersWithProducts, fetchProductCategories, type Product, type Chapter, type SellerWithProducts, type ProductCategory } from '@/lib/api';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import VerificationBadge from '../components/VerificationBadge';
 import Skeleton, { SkeletonLoader } from '../components/Skeleton';
 import SearchableSelect from '../components/SearchableSelect';
+import UserRoleBadges from '../components/UserRoleBadges';
 import Image from 'next/image';
 import Link from 'next/link';
 
 type SortOption = 'name' | 'price-low' | 'price-high' | 'newest';
 
-export default function ShopPage() {
+function ShopPageContent() {
+  const searchParams = useSearchParams();
+  const roleFilter = searchParams.get('role'); // 'seller', 'steward', or null
   const [products, setProducts] = useState<Product[]>([]);
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [sellers, setSellers] = useState<SellerWithProducts[]>([]);
+  const [categories, setCategories] = useState<ProductCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedChapter, setSelectedChapter] = useState<number | null>(null);
   const [selectedSeller, setSelectedSeller] = useState<number | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [sortBy, setSortBy] = useState<SortOption>('newest');
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 1000]);
 
   useEffect(() => {
     Promise.all([
-      fetchProducts().catch(() => []),
-      fetchChapters().catch(() => []),
-      fetchSellersWithProducts().catch(() => [])
+      fetchProducts().catch((err) => {
+        console.error('Error fetching products:', err);
+        return [];
+      }),
+      fetchChapters().catch((err) => {
+        console.error('Error fetching chapters:', err);
+        return [];
+      }),
+      fetchSellersWithProducts().catch((err) => {
+        console.error('Error fetching sellers:', err);
+        return [];
+      }),
+      fetchProductCategories().catch((err) => {
+        console.error('Error fetching categories:', err);
+        return [];
+      })
     ])
-      .then(([productsData, chaptersData, sellersData]) => {
+      .then(([productsData, chaptersData, sellersData, categoriesData]) => {
         setProducts(productsData);
         setChapters(chaptersData);
         setSellers(sellersData);
+        // Sort categories by display_order, then by name
+        const sortedCategories = [...categoriesData].sort((a, b) => {
+          if (a.display_order !== b.display_order) {
+            return a.display_order - b.display_order;
+          }
+          return a.name.localeCompare(b.name);
+        });
+        setCategories(sortedCategories);
+        console.log('Categories loaded:', sortedCategories);
         
         // Calculate max price for price range filter
         if (productsData.length > 0) {
@@ -80,6 +108,18 @@ export default function ShopPage() {
       filtered = filtered.filter(product => product.seller_id === selectedSeller);
     }
 
+    // Filter by category
+    if (selectedCategory) {
+      filtered = filtered.filter(product => product.category_id === selectedCategory);
+    }
+
+    // Filter by role
+    if (roleFilter === 'seller') {
+      filtered = filtered.filter(product => product.is_seller === true);
+    } else if (roleFilter === 'steward') {
+      filtered = filtered.filter(product => product.is_steward === true);
+    }
+
     // Filter by price range
     filtered = filtered.filter(product => {
       const price = product.price_cents / 100;
@@ -104,25 +144,65 @@ export default function ShopPage() {
     });
 
     return filtered;
-  }, [products, searchQuery, selectedChapter, selectedSeller, sortBy, priceRange]);
+  }, [products, searchQuery, selectedChapter, selectedSeller, selectedCategory, sortBy, priceRange, roleFilter]);
+
+  // Hero header content based on role filter
+  const getHeroContent = () => {
+    if (roleFilter === 'seller') {
+      return {
+        title: 'Sellers',
+        subtitle: 'Shop products from verified Kappa Alpha Psi brothers and friends of Kappa',
+        becomeLink: '/seller-setup-intro',
+        becomeText: 'Become a Seller'
+      };
+    } else if (roleFilter === 'steward') {
+      return {
+        title: 'Stewards',
+        subtitle: 'Discover exclusive products from our dedicated stewards',
+        becomeLink: '/steward-setup',
+        becomeText: 'Become a Steward'
+      };
+    }
+    return null;
+  };
+
+  const heroContent = getHeroContent();
 
   return (
-    <div className="min-h-screen bg-cream text-midnight-navy">
+    <div className="min-h-screen bg-cream dark:bg-black text-midnight-navy dark:text-gray-100">
       <Header />
       
+      {/* Hero Header for filtered pages */}
+      {heroContent && (
+        <section className="bg-gradient-to-br from-crimson to-midnight-navy text-white py-12 px-4">
+          <div className="max-w-7xl mx-auto text-center">
+            <h1 className="text-4xl md:text-5xl font-display font-bold mb-4">{heroContent.title}</h1>
+            <p className="text-lg md:text-xl text-white/90 mb-8 max-w-2xl mx-auto">{heroContent.subtitle}</p>
+            <Link
+              href={heroContent.becomeLink}
+              className="inline-block bg-white text-crimson px-6 py-3 rounded-lg font-semibold hover:bg-cream transition-colors shadow-lg hover:shadow-xl"
+            >
+              {heroContent.becomeText}
+            </Link>
+          </div>
+        </section>
+      )}
+      
       <main className="max-w-7xl mx-auto px-4 py-12">
-        {/* Page Header */}
-        <div className="text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-display font-bold text-midnight-navy mb-4">
-            Shop
-          </h1>
-          <p className="text-lg text-midnight-navy/70 max-w-2xl mx-auto">
-            Discover authentic fraternity merchandise from verified brothers. Every purchase supports our community.
-          </p>
-        </div>
+        {/* Page Header - only show if not showing role hero */}
+        {!heroContent && (
+          <div className="text-center mb-12">
+            <h1 className="text-4xl md:text-5xl font-display font-bold text-midnight-navy dark:text-gray-100 mb-4">
+              Shop
+            </h1>
+            <p className="text-lg text-midnight-navy/70 dark:text-gray-300 max-w-2xl mx-auto">
+              Discover authentic fraternity merchandise from verified brothers. Every purchase supports our community.
+            </p>
+          </div>
+        )}
 
         {/* Filters and Search */}
-        <div className="mb-8 space-y-4">
+        <div className="mb-8 space-y-3">
           {/* Search Bar */}
           <div className="relative">
             <svg 
@@ -142,91 +222,122 @@ export default function ShopPage() {
             />
           </div>
 
-          {/* Filters Row */}
-          <div className="flex flex-col lg:flex-row gap-4">
-            {/* Chapter Filter */}
-            <div className="flex-1">
-              <SearchableSelect
-                options={[
-                  { id: '', label: 'All Chapters', value: '' },
-                  ...chapters.map((chapter) => ({
-                    id: chapter.id,
-                    label: chapter.name,
-                    value: chapter.id,
-                  }))
-                ]}
-                value={selectedChapter ? String(selectedChapter) : ''}
-                onChange={(value) => setSelectedChapter(value ? parseInt(value) : null)}
-                placeholder="All Chapters"
-                className="w-full"
-              />
-            </div>
+          {/* Filters Row - Grouped in subtle panel */}
+          <div className="bg-white border border-frost-gray rounded-lg p-4 shadow-sm">
+            <div className="flex flex-col gap-4">
+              {/* Top Row: Category, Chapter, Seller, Sort */}
+              <div className="flex flex-col lg:flex-row gap-4">
+                {/* Category Filter */}
+                <div className="flex-1">
+                  <SearchableSelect
+                    options={[
+                      { id: '', label: 'All Categories', value: '' },
+                      ...categories.map((category) => ({
+                        id: category.id,
+                        label: category.name,
+                        value: category.id,
+                      }))
+                    ]}
+                    value={selectedCategory ? String(selectedCategory) : ''}
+                    onChange={(value) => setSelectedCategory(value ? parseInt(value) : null)}
+                    placeholder="All Categories"
+                    className="w-full"
+                  />
+                </div>
 
-            {/* Seller Filter */}
-            <div className="flex-1">
-              <SearchableSelect
-                options={[
-                  { id: '', label: 'All Sellers', value: '' },
-                  ...sellers.map((seller) => ({
-                    id: seller.id,
-                    label: seller.member_id 
-                      ? `Brother ${seller.name}` 
-                      : (seller.business_name || seller.name),
-                    value: seller.id,
-                  }))
-                ]}
-                value={selectedSeller ? String(selectedSeller) : ''}
-                onChange={(value) => setSelectedSeller(value ? parseInt(value) : null)}
-                placeholder="All Sellers"
-                className="w-full"
-              />
-            </div>
+                {/* Chapter Filter */}
+                <div className="flex-1">
+                  <SearchableSelect
+                    options={[
+                      { id: '', label: 'All Chapters', value: '' },
+                      ...chapters.map((chapter) => ({
+                        id: chapter.id,
+                        label: chapter.name,
+                        value: chapter.id,
+                      }))
+                    ]}
+                    value={selectedChapter ? String(selectedChapter) : ''}
+                    onChange={(value) => setSelectedChapter(value ? parseInt(value) : null)}
+                    placeholder="All Chapters"
+                    className="w-full"
+                  />
+                </div>
 
-            {/* Sort Options */}
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as SortOption)}
-              className="px-4 py-2 pr-10 border border-frost-gray rounded-lg focus:ring-2 focus:ring-crimson focus:border-transparent text-midnight-navy bg-white appearance-none bg-[url('data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2012%2012%22%3E%3Cpath%20fill%3D%22%23121212%22%20d%3D%22M6%209L1%204h10z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[length:12px_12px] bg-[right_10px_center]"
-            >
-              <option value="newest">Newest First</option>
-              <option value="name">Name (A-Z)</option>
-              <option value="price-low">Price: Low to High</option>
-              <option value="price-high">Price: High to Low</option>
-            </select>
-          </div>
+                {/* Seller Filter */}
+                <div className="flex-1">
+                  <SearchableSelect
+                    options={[
+                      { id: '', label: 'All Sellers', value: '' },
+                      ...sellers.map((seller) => ({
+                        id: seller.id,
+                        label: seller.member_id 
+                          ? `Brother ${seller.name}` 
+                          : (seller.business_name || seller.name),
+                        value: seller.id,
+                      }))
+                    ]}
+                    value={selectedSeller ? String(selectedSeller) : ''}
+                    onChange={(value) => setSelectedSeller(value ? parseInt(value) : null)}
+                    placeholder="All Sellers"
+                    className="w-full"
+                  />
+                </div>
 
-          {/* Price Range Filter */}
-          <div className="bg-white p-4 rounded-lg border border-frost-gray">
-            <label className="block text-sm font-medium mb-2 text-midnight-navy">
-              Price Range: ${priceRange[0]} - ${priceRange[1]}
-            </label>
-            <div className="flex gap-4 items-center">
-              <input
-                type="range"
-                min="0"
-                max={priceRange[1]}
-                value={priceRange[0]}
-                onChange={(e) => {
-                  const newMin = parseInt(e.target.value);
-                  setPriceRange([newMin, Math.max(newMin, priceRange[1])]);
-                }}
-                className="flex-1"
-              />
-              <input
-                type="range"
-                min={priceRange[0]}
-                max={priceRange[1] || 1000}
-                value={priceRange[1]}
-                onChange={(e) => {
-                  const newMax = parseInt(e.target.value);
-                  setPriceRange([Math.min(priceRange[0], newMax), newMax]);
-                }}
-                className="flex-1"
-              />
-            </div>
-            <div className="flex justify-between text-xs text-midnight-navy/60 mt-2">
-              <span>$0</span>
-              <span>${priceRange[1] || 1000}+</span>
+                {/* Sort Options */}
+                <SearchableSelect
+                  options={[
+                    { id: 'newest', label: 'Newest First', value: 'newest' },
+                    { id: 'name', label: 'Name (A-Z)', value: 'name' },
+                    { id: 'price-low', label: 'Price: Low to High', value: 'price-low' },
+                    { id: 'price-high', label: 'Price: High to Low', value: 'price-high' },
+                  ]}
+                  value={sortBy}
+                  onChange={(value) => setSortBy(value as SortOption)}
+                  placeholder="Sort by..."
+                  className="min-w-[180px]"
+                />
+              </div>
+
+              {/* Price Range Filter */}
+              <div className="pt-2 border-t border-frost-gray/50">
+                <label className="block text-sm font-medium mb-2 text-midnight-navy">
+                  Price Range: ${priceRange[0]} - ${priceRange[1]}
+                </label>
+                <div 
+                  className="dual-range-container"
+                  style={{
+                    '--range-start': `${(priceRange[0] / (priceRange[1] || 1000)) * 100}`,
+                    '--range-width': `${((priceRange[1] - priceRange[0]) / (priceRange[1] || 1000)) * 100}`
+                  } as React.CSSProperties}
+                >
+                  <input
+                    type="range"
+                    min="0"
+                    max={priceRange[1] || 1000}
+                    value={priceRange[0]}
+                    onChange={(e) => {
+                      const newMin = parseInt(e.target.value);
+                      setPriceRange([newMin, Math.max(newMin, priceRange[1])]);
+                    }}
+                    className="flex-1"
+                  />
+                  <input
+                    type="range"
+                    min="0"
+                    max={priceRange[1] || 1000}
+                    value={priceRange[1]}
+                    onChange={(e) => {
+                      const newMax = parseInt(e.target.value);
+                      setPriceRange([Math.min(priceRange[0], newMax), newMax]);
+                    }}
+                    className="flex-1"
+                  />
+                </div>
+                <div className="flex justify-between text-xs text-midnight-navy/60 mt-2">
+                  <span>$0</span>
+                  <span>${priceRange[1] || 1000}+</span>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -235,6 +346,10 @@ export default function ShopPage() {
             <div className="text-sm text-midnight-navy/60">
               Showing {filteredAndSortedProducts.length} {filteredAndSortedProducts.length === 1 ? 'product' : 'products'}
               {searchQuery && ` matching "${searchQuery}"`}
+              {selectedCategory && (() => {
+                const category = categories.find(c => c.id === selectedCategory);
+                return category ? ` in ${category.name}` : '';
+              })()}
               {selectedChapter && ` from ${getChapterName(selectedChapter)}`}
               {selectedSeller && (() => {
                 const seller = sellers.find(s => s.id === selectedSeller);
@@ -253,7 +368,7 @@ export default function ShopPage() {
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
             {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
               <div key={i} className="bg-white rounded-xl shadow overflow-hidden">
-                <Skeleton variant="card" className="w-full aspect-square" />
+                <Skeleton variant="card" className="w-full aspect-[4/5]" />
                 <div className="p-3 space-y-2">
                   <Skeleton variant="text" className="h-4 w-3/4" />
                   <Skeleton variant="text" className="h-4 w-1/2" />
@@ -282,19 +397,20 @@ export default function ShopPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
             </svg>
             <h3 className="text-xl font-semibold text-midnight-navy mb-2">
-              {searchQuery || selectedChapter || selectedSeller ? 'No products found' : 'No products available'}
+              {searchQuery || selectedChapter || selectedSeller || selectedCategory ? 'No products found' : 'No products available'}
             </h3>
             <p className="text-midnight-navy/60 mb-6">
-              {searchQuery || selectedChapter || selectedSeller
+              {searchQuery || selectedChapter || selectedSeller || selectedCategory
                 ? 'Try adjusting your filters or search query.'
                 : 'Check back soon for new products!'}
             </p>
-            {(searchQuery || selectedChapter || selectedSeller) && (
+            {(searchQuery || selectedChapter || selectedSeller || selectedCategory) && (
               <button
                 onClick={() => {
                   setSearchQuery('');
                   setSelectedChapter(null);
                   setSelectedSeller(null);
+                  setSelectedCategory(null);
                   setPriceRange([0, priceRange[1]]);
                 }}
                 className="bg-crimson text-white px-6 py-2 rounded-full font-semibold hover:bg-crimson/90 transition"
@@ -311,7 +427,7 @@ export default function ShopPage() {
                 href={`/product/${product.id}`}
                 className="bg-white rounded-xl overflow-hidden shadow hover:shadow-md transition relative group"
               >
-                <div className="aspect-square relative bg-cream">
+                <div className="aspect-[4/5] relative bg-cream">
                   {product.image_url ? (
                     <Image
                       src={product.image_url}
@@ -326,36 +442,41 @@ export default function ShopPage() {
                       </svg>
                     </div>
                   )}
-                  {/* Verification badges - consistent with product details page */}
-                  {product.seller_member_id ? (
-                    <div className="absolute top-2 right-2 z-10">
-                      <VerificationBadge type="brother" />
-                    </div>
-                  ) : product.seller_name ? (
-                    <div className="absolute top-2 right-2 z-10">
-                      <VerificationBadge type="seller" />
-                    </div>
-                  ) : null}
                 </div>
                 <div className="p-3">
                   <p className="font-semibold text-sm text-midnight-navy line-clamp-2 mb-1 group-hover:text-crimson transition">
                     {product.name}
                   </p>
-                  {product.seller_sponsoring_chapter_id && (
-                    <div className="mb-2">
+                  {/* Verification badges under title */}
+                  <div className="flex flex-col items-start gap-2 mb-2">
+                    {product.seller_member_id ? (
+                      <VerificationBadge type="brother" className="text-xs" />
+                    ) : product.seller_name ? (
+                      <VerificationBadge type="seller" className="text-xs" />
+                    ) : null}
+                    {product.seller_sponsoring_chapter_id && (
                       <VerificationBadge 
                         type="sponsored-chapter" 
                         chapterName={getChapterName(product.seller_sponsoring_chapter_id || null)}
                         className="text-xs"
                       />
-                    </div>
-                  )}
+                    )}
+                  </div>
                   {product.seller_name && (
-                    <p className="text-xs text-midnight-navy/60 mb-2">
-                      by {product.seller_member_id 
-                        ? `Brother ${product.seller_name}` 
-                        : (product.seller_business_name || product.seller_name)}
-                    </p>
+                    <div className="flex items-center gap-1.5 mb-2 flex-wrap">
+                      <p className="text-xs text-midnight-navy/60">
+                        by {product.seller_member_id 
+                          ? `Brother ${product.seller_name}` 
+                          : (product.seller_business_name || product.seller_name)}
+                      </p>
+                      <UserRoleBadges
+                        is_member={product.is_member}
+                        is_seller={product.is_seller}
+                        is_promoter={product.is_promoter}
+                        is_steward={product.is_steward}
+                        size="sm"
+                      />
+                    </div>
                   )}
                   <p className="text-crimson font-bold text-sm">${(product.price_cents / 100).toFixed(2)}</p>
                 </div>
@@ -367,6 +488,14 @@ export default function ShopPage() {
 
       <Footer />
     </div>
+  );
+}
+
+export default function ShopPage() {
+  return (
+    <Suspense fallback={<SkeletonLoader />}>
+      <ShopPageContent />
+    </Suspense>
   );
 }
 

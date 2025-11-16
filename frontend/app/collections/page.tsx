@@ -5,6 +5,7 @@ import type { SellerWithProducts } from '@/lib/api';
 import Image from 'next/image';
 import Header from '../components/Header';
 import VerificationBadge from '../components/VerificationBadge';
+import UserRoleBadges from '../components/UserRoleBadges';
 import ScrollToSeller from './ScrollToSeller';
 import Footer from '../components/Footer';
 
@@ -218,7 +219,7 @@ export default async function CollectionsPage({ searchParams }: CollectionsPageP
                           href={`/product/${product.id}`}
                           className="group bg-cream rounded-xl overflow-hidden shadow hover:shadow-lg transition-all duration-200 hover:-translate-y-1"
                         >
-                          <div className="aspect-square relative bg-white">
+                          <div className="aspect-[4/5] relative bg-white">
                             {product.image_url ? (
                               <Image
                                 src={product.image_url}
@@ -233,30 +234,26 @@ export default async function CollectionsPage({ searchParams }: CollectionsPageP
                                 </svg>
                               </div>
                             )}
-                            {/* Verification badges - consistent with product details page */}
-                            {product.seller_member_id ? (
-                              <div className="absolute top-2 right-2 z-10">
-                                <VerificationBadge type="brother" />
-                              </div>
-                            ) : product.seller_name ? (
-                              <div className="absolute top-2 right-2 z-10">
-                                <VerificationBadge type="seller" />
-                              </div>
-                            ) : null}
                           </div>
                           <div className="p-3">
                             <p className="font-semibold text-sm text-midnight-navy line-clamp-2 mb-1 group-hover:text-crimson transition">
                               {product.name}
                             </p>
-                            {product.seller_sponsoring_chapter_id && (
-                              <div className="mb-2">
+                            {/* Verification badges under title */}
+                            <div className="flex flex-col items-start gap-2 mb-2">
+                              {product.seller_member_id ? (
+                                <VerificationBadge type="brother" className="text-xs" />
+                              ) : product.seller_name ? (
+                                <VerificationBadge type="seller" className="text-xs" />
+                              ) : null}
+                              {product.seller_sponsoring_chapter_id && (
                                 <VerificationBadge 
                                   type="sponsored-chapter" 
                                   chapterName={getChapterName(product.seller_sponsoring_chapter_id || null)}
                                   className="text-xs"
                                 />
-                              </div>
-                            )}
+                              )}
+                            </div>
                             <p className="text-crimson font-bold text-sm">
                               ${(product.price_cents / 100).toFixed(2)}
                             </p>

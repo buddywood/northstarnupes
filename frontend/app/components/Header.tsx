@@ -112,9 +112,9 @@ export default function Header() {
 
   const navLinks = [
     { href: '/shop', label: 'Shop' },
-    { href: '/collections', label: 'Sellers' },
-    { href: '/promote', label: 'Promoters' },
-    { href: '/steward-marketplace', label: 'Stewards' },
+    { href: '/shop?role=seller', label: 'Sellers' },
+    { href: '/shop?role=steward', label: 'Stewards' },
+    { href: '/events', label: 'Promoters' },
     { href: '/events', label: 'Events' },
   ];
 

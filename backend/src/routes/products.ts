@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import type { Router as ExpressRouter } from 'express';
 import multer from 'multer';
-import { createProduct, getActiveProducts, getProductById, getSellerById, getAllProductCategories, getCategoryAttributeDefinitions, setProductAttributeValue } from '../db/queries';
+import { createProduct, getActiveProducts, getProductById, getSellerById, getAllProductCategories, getCategoryAttributeDefinitions, setProductAttributeValue, addProductImage } from '../db/queries';
 import { uploadToS3 } from '../services/s3';
 import { z } from 'zod';
 import pool from '../db/connection';
@@ -11,7 +11,8 @@ const router: ExpressRouter = Router();
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB limit
+    fileSize: 5 * 1024 * 1024, // 5MB limit per file
+    files: 10, // Maximum 10 images per product
   },
 });
 
@@ -34,6 +35,29 @@ router.get('/', async (req: Request, res: Response) => {
   }
 });
 
+// Get all product categories - MUST be before /:id route
+router.get('/categories', async (req: Request, res: Response) => {
+  try {
+    const categories = await getAllProductCategories();
+    res.json(categories);
+  } catch (error) {
+    console.error('Error fetching product categories:', error);
+    res.status(500).json({ error: 'Failed to fetch product categories' });
+  }
+});
+
+// Get attribute definitions for a category - MUST be before /:id route
+router.get('/categories/:categoryId/attributes', async (req: Request, res: Response) => {
+  try {
+    const categoryId = parseInt(req.params.categoryId);
+    const attributes = await getCategoryAttributeDefinitions(categoryId);
+    res.json(attributes);
+  } catch (error) {
+    console.error('Error fetching category attributes:', error);
+    res.status(500).json({ error: 'Failed to fetch category attributes' });
+  }
+});
+
 router.get('/:id', async (req: Request, res: Response) => {
   try {
     const productId = parseInt(req.params.id);
@@ -50,7 +74,7 @@ router.get('/:id', async (req: Request, res: Response) => {
   }
 });
 
-router.post('/', upload.single('image'), async (req: Request, res: Response) => {
+router.post('/', upload.array('images', 10), async (req: Request, res: Response) => {
   try {
     const body = createProductSchema.parse({
       ...req.body,
@@ -95,13 +119,17 @@ router.post('/', upload.single('image'), async (req: Request, res: Response) => 
       // If seller is both verified seller AND verified member, they can sell anything (no restriction)
     }
 
-    // Upload image to S3
+    // Upload images to S3
     let imageUrl: string | undefined;
-    if (req.file) {
+    const imageFiles = req.files as Express.Multer.File[];
+    
+    if (imageFiles && imageFiles.length > 0) {
+      // Upload first image and set as primary image_url (for backward compatibility)
+      const firstImage = imageFiles[0];
       const uploadResult = await uploadToS3(
-        req.file.buffer,
-        req.file.originalname,
-        req.file.mimetype,
+        firstImage.buffer,
+        firstImage.originalname,
+        firstImage.mimetype,
         'products'
       );
       imageUrl = uploadResult.url;
@@ -112,6 +140,20 @@ router.post('/', upload.single('image'), async (req: Request, res: Response) => 
       image_url: imageUrl,
       is_kappa_branded: isKappaBranded,
     });
+
+    // Upload additional images to product_images table
+    if (imageFiles && imageFiles.length > 0) {
+      for (let i = 0; i < imageFiles.length; i++) {
+        const file = imageFiles[i];
+        const uploadResult = await uploadToS3(
+          file.buffer,
+          file.originalname,
+          file.mimetype,
+          'products'
+        );
+        await addProductImage(product.id, uploadResult.url, i);
+      }
+    }
 
     // Handle product attributes if provided
     if (req.body.attributes && Array.isArray(req.body.attributes)) {
@@ -133,10 +175,11 @@ router.post('/', upload.single('image'), async (req: Request, res: Response) => 
       }
     }
 
-    // Load attributes and return complete product
-    const { getProductAttributeValues } = await import('../db/queries');
+    // Load attributes and images and return complete product
+    const { getProductAttributeValues, getProductImages } = await import('../db/queries');
     const attributes = await getProductAttributeValues(product.id);
-    const productWithAttributes = { ...product, attributes };
+    const images = await getProductImages(product.id);
+    const productWithAttributes = { ...product, attributes, images };
 
     res.status(201).json(productWithAttributes);
   } catch (error) {
@@ -146,29 +189,6 @@ router.post('/', upload.single('image'), async (req: Request, res: Response) => 
     }
     console.error('Error creating product:', error);
     res.status(500).json({ error: 'Failed to create product' });
-  }
-});
-
-// Get all product categories
-router.get('/categories', async (req: Request, res: Response) => {
-  try {
-    const categories = await getAllProductCategories();
-    res.json(categories);
-  } catch (error) {
-    console.error('Error fetching product categories:', error);
-    res.status(500).json({ error: 'Failed to fetch product categories' });
-  }
-});
-
-// Get attribute definitions for a category
-router.get('/categories/:categoryId/attributes', async (req: Request, res: Response) => {
-  try {
-    const categoryId = parseInt(req.params.categoryId);
-    const attributes = await getCategoryAttributeDefinitions(categoryId);
-    res.json(attributes);
-  } catch (error) {
-    console.error('Error fetching category attributes:', error);
-    res.status(500).json({ error: 'Failed to fetch category attributes' });
   }
 });
 

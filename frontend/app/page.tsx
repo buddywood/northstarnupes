@@ -4,6 +4,7 @@ import Image from 'next/image';
 import Header from './components/Header';
 import HeroBanner from './components/HeroBanner';
 import VerificationBadge from './components/VerificationBadge';
+import UserRoleBadges from './components/UserRoleBadges';
 import ImpactBanner from './components/ImpactBanner';
 import EventCard from './components/EventCard';
 import Footer from './components/Footer';
@@ -70,7 +71,7 @@ export default async function Home() {
                 href={`/product/${product.id}`}
                 className="bg-white dark:bg-black rounded-xl overflow-hidden shadow hover:shadow-md dark:shadow-black/50 dark:hover:shadow-lg transition relative"
               >
-                <div className="aspect-square relative bg-cream dark:bg-gray-900">
+                <div className="aspect-[4/5] relative bg-cream dark:bg-gray-900">
                   {product.image_url ? (
                     <Image
                       src={product.image_url}
@@ -85,34 +86,39 @@ export default async function Home() {
                       </svg>
                     </div>
                   )}
-                  {/* Verification badge overlay - consistent with product details page */}
-                  {product.seller_member_id ? (
-                    <div className="absolute top-2 right-2 z-10">
-                      <VerificationBadge type="brother" />
-                    </div>
-                  ) : product.seller_name ? (
-                    <div className="absolute top-2 right-2 z-10">
-                      <VerificationBadge type="seller" />
-                    </div>
-                  ) : null}
                 </div>
                 <div className="p-3">
                   <p className="font-semibold text-sm text-midnight-navy dark:text-gray-100 line-clamp-2">{product.name}</p>
-                  {product.seller_sponsoring_chapter_id && (
-                    <div className="my-1">
+                  {/* Verification badges under title */}
+                  <div className="flex flex-col items-start gap-2 my-1">
+                    {product.seller_member_id ? (
+                      <VerificationBadge type="brother" className="text-xs" />
+                    ) : product.seller_name ? (
+                      <VerificationBadge type="seller" className="text-xs" />
+                    ) : null}
+                    {product.seller_sponsoring_chapter_id && (
                       <VerificationBadge 
                         type="sponsored-chapter" 
                         chapterName={getChapterName(product.seller_sponsoring_chapter_id || null)}
                         className="text-xs"
                       />
-                    </div>
-                  )}
+                    )}
+                  </div>
                   {product.seller_name && (
-                    <p className="text-xs text-midnight-navy/60 dark:text-gray-400 mt-1">
-                      by {product.seller_member_id 
-                        ? `Brother ${product.seller_name}` 
-                        : (product.seller_business_name || product.seller_name)}
-                    </p>
+                    <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                      <p className="text-xs text-midnight-navy/60 dark:text-gray-400">
+                        by {product.seller_member_id 
+                          ? `Brother ${product.seller_name}` 
+                          : (product.seller_business_name || product.seller_name)}
+                      </p>
+                      <UserRoleBadges
+                        is_member={product.is_member}
+                        is_seller={product.is_seller}
+                        is_promoter={product.is_promoter}
+                        is_steward={product.is_steward}
+                        size="sm"
+                      />
+                    </div>
                   )}
                   <p className="text-crimson font-bold text-sm mt-1">${(product.price_cents / 100).toFixed(2)}</p>
                 </div>
@@ -144,6 +150,12 @@ export default async function Home() {
                 .toUpperCase()
                 .slice(0, 2);
               
+              // Get role information from the first product
+              const is_member = firstProduct?.is_member;
+              const is_seller = firstProduct?.is_seller;
+              const is_promoter = firstProduct?.is_promoter;
+              const is_steward = firstProduct?.is_steward;
+              
               return (
                 <div key={i} className="bg-white dark:bg-black rounded-xl shadow dark:shadow-black/50 p-6 flex flex-col items-center text-center relative">
                   {/* Brother verification badge */}
@@ -158,7 +170,19 @@ export default async function Home() {
                       className="object-cover"
                     />
                   </div>
-                  <p className="font-semibold text-midnight-navy dark:text-gray-100">{seller.name}</p>
+                  <div className="flex flex-col items-center gap-2 mb-2">
+                    <p className="font-semibold text-midnight-navy dark:text-gray-100">{seller.name}</p>
+                    {/* Role badges */}
+                    {(is_member !== undefined || is_seller !== undefined || is_promoter !== undefined || is_steward !== undefined) && (
+                      <UserRoleBadges
+                        is_member={is_member}
+                        is_seller={is_seller}
+                        is_promoter={is_promoter}
+                        is_steward={is_steward}
+                        size="sm"
+                      />
+                    )}
+                  </div>
                   {chapterName && (
                     <div className="mt-2 mb-3">
                       <VerificationBadge 

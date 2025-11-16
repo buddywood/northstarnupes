@@ -1,5 +1,5 @@
 import pool from './connection';
-import { createPromoter, createProduct, createSeller, getAllChapters, createEvent, getAllProductCategories } from './queries';
+import { createPromoter, createProduct, createSeller, getAllChapters, createEvent, getAllProductCategories, createSteward, updateStewardStatus } from './queries';
 import dotenv from 'dotenv';
 import path from 'path';
 
@@ -306,6 +306,272 @@ const sampleEvents = [
     max_attendees: 80,
   },
 ];
+
+// Sample steward sellers data
+const stewardSellers = [
+  {
+    name: "Robert Thompson",
+    email: "robert.thompson@example.com",
+    membership_number: "KAP-2018-089",
+    business_name: "Steward Heritage Goods",
+    vendor_license_number: "VL-2024-006",
+  },
+  {
+    name: "Christopher Anderson",
+    email: "christopher.anderson@example.com",
+    membership_number: "KAP-2017-156",
+    business_name: "Legacy Steward Shop",
+    vendor_license_number: "VL-2024-007",
+  },
+  {
+    name: "Daniel Martinez",
+    email: "daniel.martinez@example.com",
+    membership_number: "KAP-2019-234",
+    business_name: null,
+    vendor_license_number: "VL-2024-008",
+  },
+];
+
+// Sample products for steward sellers
+const stewardProducts = [
+  {
+    name: "Vintage Kappa Letterman Jacket",
+    description: "Authentic vintage letterman jacket from the 1980s. Features original Kappa Alpha Psi embroidery. Excellent condition with minor wear.",
+    price_cents: 12500, // $125.00
+    image_url: "https://images.unsplash.com/photo-1551028719-00167b16eac5?w=500&h=500&fit=crop",
+    category: "Heritage / Legacy Item",
+    seller_email: "robert.thompson@example.com",
+  },
+  {
+    name: "Founders' Day Commemorative Plaque",
+    description: "Handcrafted wooden plaque commemorating the founding of Kappa Alpha Psi. Features brass engraving and custom frame.",
+    price_cents: 8500, // $85.00
+    image_url: "https://images.unsplash.com/photo-1586953208448-b95a79798f07?w=500&h=500&fit=crop",
+    category: "Heritage / Legacy Item",
+    seller_email: "robert.thompson@example.com",
+  },
+  {
+    name: "Classic Kappa Sweater",
+    description: "Vintage wool sweater with embroidered Kappa Alpha Psi letters. From the 1990s, excellent condition. Perfect for collectors.",
+    price_cents: 9500, // $95.00
+    image_url: "https://images.unsplash.com/photo-1556821840-3a63f95609a7?w=500&h=500&fit=crop",
+    category: "Outerwear",
+    seller_email: "christopher.anderson@example.com",
+  },
+  {
+    name: "Historic Chapter Photo Collection",
+    description: "Rare collection of vintage chapter photos from the 1970s-1990s. Professionally preserved and framed. Limited availability.",
+    price_cents: 15000, // $150.00
+    image_url: "https://images.unsplash.com/photo-1511578314322-379afb476865?w=500&h=500&fit=crop",
+    category: "Art & Prints",
+    seller_email: "christopher.anderson@example.com",
+  },
+  {
+    name: "Kappa Alpha Psi Antique Pocket Watch",
+    description: "Beautiful antique pocket watch with Kappa Alpha Psi engraving. Gold-plated, fully functional. A true collector's item.",
+    price_cents: 18000, // $180.00
+    image_url: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500&h=500&fit=crop",
+    category: "Heritage / Legacy Item",
+    seller_email: "daniel.martinez@example.com",
+  },
+  {
+    name: "Vintage Kappa Ties Collection",
+    description: "Set of 3 vintage silk ties from different eras. Each features unique Kappa Alpha Psi patterns. Perfect for formal events.",
+    price_cents: 6500, // $65.00
+    image_url: "https://images.unsplash.com/photo-1594938291220-94d21225f65a?w=500&h=500&fit=crop",
+    category: "Apparel",
+    seller_email: "daniel.martinez@example.com",
+  },
+];
+
+async function seedStewardSellers(): Promise<void> {
+  console.log('🛡️  Seeding steward sellers...');
+
+  try {
+    // Get all chapters to use for initiated/sponsoring chapters
+    const chapters = await getAllChapters();
+    const collegiateChapters = chapters.filter(c => c.type === 'Collegiate' && c.status === 'Active');
+    
+    if (collegiateChapters.length === 0) {
+      console.warn('⚠️  No active collegiate chapters found. Using any available chapters...');
+    }
+
+    const availableChapters = collegiateChapters.length > 0 ? collegiateChapters : chapters;
+    
+    if (availableChapters.length === 0) {
+      console.error('❌ No chapters found. Please seed chapters first using: npm run seed:chapters');
+      return;
+    }
+
+    // Get product categories
+    const categories = await getAllProductCategories();
+    const categoryMap = new Map(categories.map(cat => [cat.name, cat.id]));
+
+    // Get or create steward sellers
+    const stewardSellersList = [];
+    for (const stewardData of stewardSellers) {
+      try {
+        // Check if member already exists
+        const existingMember = await pool.query(
+          'SELECT id FROM members WHERE email = $1',
+          [stewardData.email]
+        );
+
+        let memberId: number;
+        if (existingMember.rows.length > 0) {
+          memberId = existingMember.rows[0].id;
+          // Update member with initiated chapter if not set
+          const initiatedChapter = availableChapters[Math.floor(Math.random() * availableChapters.length)];
+          await pool.query(
+            'UPDATE members SET initiated_chapter_id = COALESCE(initiated_chapter_id, $1) WHERE id = $2',
+            [initiatedChapter.id, memberId]
+          );
+        } else {
+          // Create new member
+          const initiatedChapter = availableChapters[Math.floor(Math.random() * availableChapters.length)];
+          const memberResult = await pool.query(
+            `INSERT INTO members (
+              email, name, membership_number, registration_status, 
+              initiated_chapter_id, verification_status
+            ) VALUES ($1, $2, $3, $4, $5, 'VERIFIED')
+            RETURNING id`,
+            [
+              stewardData.email,
+              stewardData.name,
+              stewardData.membership_number,
+              'COMPLETE',
+              initiatedChapter.id,
+            ]
+          );
+          memberId = memberResult.rows[0].id;
+        }
+
+        // Check if steward already exists
+        const existingSteward = await pool.query(
+          'SELECT id FROM stewards WHERE member_id = $1',
+          [memberId]
+        );
+
+        let stewardId: number;
+        if (existingSteward.rows.length > 0) {
+          stewardId = existingSteward.rows[0].id;
+          // Approve steward if not already approved
+          await updateStewardStatus(stewardId, 'APPROVED');
+        } else {
+          // Create new steward
+          const sponsoringChapter = availableChapters[Math.floor(Math.random() * availableChapters.length)];
+          const steward = await createSteward({
+            member_id: memberId,
+            sponsoring_chapter_id: sponsoringChapter.id,
+          });
+          stewardId = steward.id;
+          // Approve the steward
+          await updateStewardStatus(stewardId, 'APPROVED');
+        }
+
+        // Check if seller already exists
+        const existingSeller = await pool.query(
+          'SELECT id FROM sellers WHERE email = $1',
+          [stewardData.email]
+        );
+
+        let sellerId: number;
+        if (existingSeller.rows.length > 0) {
+          sellerId = existingSeller.rows[0].id;
+          // Update seller to ensure it's linked to the member
+          await pool.query(
+            'UPDATE sellers SET member_id = $1, status = $2 WHERE id = $3',
+            [memberId, 'APPROVED', sellerId]
+          );
+        } else {
+          // Create new seller
+          const sponsoringChapter = availableChapters[Math.floor(Math.random() * availableChapters.length)];
+          const seller = await createSeller({
+            email: stewardData.email,
+            name: stewardData.name,
+            member_id: memberId,
+            sponsoring_chapter_id: sponsoringChapter.id,
+            business_name: stewardData.business_name,
+            vendor_license_number: stewardData.vendor_license_number,
+            social_links: {
+              instagram: `@${stewardData.name.toLowerCase().replace(' ', '')}`,
+            },
+          });
+          sellerId = seller.id;
+          // Approve the seller
+          await pool.query(
+            'UPDATE sellers SET status = $1 WHERE id = $2',
+            ['APPROVED', sellerId]
+          );
+        }
+
+        const memberResult = await pool.query('SELECT initiated_chapter_id FROM members WHERE id = $1', [memberId]);
+        const chapterId = memberResult.rows[0]?.initiated_chapter_id;
+        const chapterResult = await pool.query('SELECT name FROM chapters WHERE id = $1', [chapterId]);
+        const chapterName = chapterResult.rows[0]?.name || 'Unknown';
+        
+        console.log(`  ✓ Created/updated steward seller: ${stewardData.name} (steward ID: ${stewardId}, seller ID: ${sellerId}, initiated at ${chapterName})`);
+        
+        stewardSellersList.push({
+          stewardId,
+          sellerId,
+          email: stewardData.email,
+        });
+      } catch (error) {
+        console.error(`  ❌ Error seeding steward seller ${stewardData.email}:`, error);
+      }
+    }
+
+    // Create products for steward sellers
+    let inserted = 0;
+    let skipped = 0;
+
+    for (const productData of stewardProducts) {
+      try {
+        // Check if product already exists
+        const existing = await pool.query(
+          'SELECT id FROM products WHERE name = $1',
+          [productData.name]
+        );
+
+        if (existing.rows.length > 0) {
+          skipped++;
+          continue;
+        }
+
+        // Find seller by email
+        const seller = stewardSellersList.find(s => s.email === productData.seller_email);
+        if (!seller) {
+          console.warn(`  ⚠️  Seller not found for product ${productData.name}, skipping...`);
+          skipped++;
+          continue;
+        }
+
+        // Get category ID from category name
+        const categoryId = productData.category ? categoryMap.get(productData.category) || null : null;
+
+        await createProduct({
+          seller_id: seller.sellerId,
+          name: productData.name,
+          description: productData.description,
+          price_cents: productData.price_cents,
+          image_url: productData.image_url,
+          category_id: categoryId || undefined,
+        });
+
+        inserted++;
+      } catch (error) {
+        console.error(`  ❌ Error inserting steward product ${productData.name}:`, error);
+      }
+    }
+
+    console.log(`  ✓ Inserted ${inserted} steward products (${skipped} skipped)`);
+    console.log(`  ✓ Created/updated ${stewardSellersList.length} steward sellers\n`);
+  } catch (error) {
+    console.error('❌ Error seeding steward sellers:', error);
+    throw error;
+  }
+}
 
 async function seedProducts(): Promise<void> {
   console.log('📦 Seeding products and sellers...');
@@ -801,6 +1067,9 @@ async function main() {
     // Seed products and sellers
     await seedProducts();
     
+    // Seed steward sellers (must be after regular sellers)
+    await seedStewardSellers();
+    
     // Seed promoters
     await seedPromoters();
     
@@ -828,4 +1097,4 @@ if (require.main === module) {
   main();
 }
 
-export { seedProducts, seedPromoters, seedEvents, clearTestData };
+export { seedProducts, seedPromoters, seedEvents, seedStewardSellers, clearTestData };

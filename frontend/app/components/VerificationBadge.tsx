@@ -25,7 +25,7 @@ export default function VerificationBadge({
             fill="currentColor"
           />
         </svg>
-        <span>Brother</span>
+        <span>Verified</span>
       </div>
     );
   }

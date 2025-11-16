@@ -42,6 +42,15 @@ export interface ProductAttributeValue {
   created_at: string;
 }
 
+export interface ProductImage {
+  id: number;
+  product_id: number;
+  image_url: string;
+  display_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Product {
   id: number;
   seller_id: number;
@@ -55,7 +64,12 @@ export interface Product {
   seller_member_id?: number | null;
   seller_sponsoring_chapter_id?: number | null;
   seller_initiated_chapter_id?: number | null;
+  is_member?: boolean;
+  is_seller?: boolean;
+  is_promoter?: boolean;
+  is_steward?: boolean;
   attributes?: ProductAttributeValue[];
+  images?: ProductImage[];
 }
 
 export interface Seller {
@@ -99,6 +113,14 @@ export interface Event {
   ticket_price_cents: number;
   max_attendees: number | null;
   promoter_name?: string;
+  promoter_email?: string;
+  promoter_member_id?: number | null;
+  promoter_sponsoring_chapter_id?: number | null;
+  promoter_initiated_chapter_id?: number | null;
+  is_member?: boolean;
+  is_promoter?: boolean;
+  is_steward?: boolean;
+  is_seller?: boolean;
 }
 
 export interface Order {
@@ -314,6 +336,20 @@ export async function submitPromoterApplication(formData: FormData): Promise<Pro
   if (!res.ok) {
     const error = await res.json();
     throw new Error(error.error || 'Failed to submit application');
+  }
+  return res.json();
+}
+
+export async function createEvent(formData: FormData): Promise<Event> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_URL}/api/events`, {
+    method: 'POST',
+    headers,
+    body: formData,
+  });
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.error || 'Failed to create event');
   }
   return res.json();
 }

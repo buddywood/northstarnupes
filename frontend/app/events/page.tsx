@@ -1,15 +1,19 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { fetchEvents, fetchChapters, type Event, type Chapter } from '@/lib/api';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import EventCard from '../components/EventCard';
 import Skeleton, { SkeletonLoader } from '../components/Skeleton';
+import Link from 'next/link';
 
 type FilterType = 'all' | 'upcoming' | 'past';
 
-export default function EventsPage() {
+function EventsPageContent() {
+  const searchParams = useSearchParams();
+  const showPromoterHero = searchParams.get('role') === 'promoter';
   const [events, setEvents] = useState<Event[]>([]);
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [loading, setLoading] = useState(true);
@@ -83,19 +87,43 @@ export default function EventsPage() {
   }, [events, filter, searchQuery, selectedChapter]);
 
   return (
-    <div className="min-h-screen bg-cream text-midnight-navy">
+    <div className="min-h-screen bg-cream dark:bg-black text-midnight-navy dark:text-gray-100">
       <Header />
       
-      <main className="max-w-7xl mx-auto px-4 py-12">
-        {/* Page Header */}
-        <div className="text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-display font-bold text-midnight-navy mb-4">
-            Events
-          </h1>
-          <p className="text-lg text-midnight-navy/70 max-w-2xl mx-auto">
-            Discover upcoming gatherings, reunions, and chapter events. Connect with brothers and celebrate our community.
-          </p>
+      {/* Hero Header */}
+      <section className="bg-gradient-to-br from-crimson to-midnight-navy text-white py-12 px-4">
+        <div className="max-w-7xl mx-auto text-center">
+          {showPromoterHero ? (
+            <>
+              <h1 className="text-4xl md:text-5xl font-display font-bold mb-4">Promoters</h1>
+              <p className="text-lg md:text-xl text-white/90 mb-8 max-w-2xl mx-auto">
+                Discover events promoted by verified Kappa Alpha Psi brothers and friends of Kappa
+              </p>
+              <Link
+                href="/promoter-setup"
+                className="inline-block bg-white text-crimson px-6 py-3 rounded-lg font-semibold hover:bg-cream transition-colors shadow-lg hover:shadow-xl"
+              >
+                Become a Promoter
+              </Link>
+            </>
+          ) : (
+            <>
+              <h1 className="text-4xl md:text-5xl font-display font-bold mb-4">Events</h1>
+              <p className="text-lg md:text-xl text-white/90 mb-8 max-w-2xl mx-auto">
+                Discover upcoming gatherings, reunions, and chapter events. Connect with brothers and celebrate our community.
+              </p>
+              <Link
+                href="/promoter-setup"
+                className="inline-block bg-white text-crimson px-6 py-3 rounded-lg font-semibold hover:bg-cream transition-colors shadow-lg hover:shadow-xl"
+              >
+                Promote an Event
+              </Link>
+            </>
+          )}
         </div>
+      </section>
+      
+      <main className="max-w-7xl mx-auto px-4 py-12">
 
         {/* Filters and Search */}
         <div className="mb-8 space-y-4">
@@ -258,6 +286,14 @@ export default function EventsPage() {
 
       <Footer />
     </div>
+  );
+}
+
+export default function EventsPage() {
+  return (
+    <Suspense fallback={<SkeletonLoader />}>
+      <EventsPageContent />
+    </Suspense>
   );
 }
 
