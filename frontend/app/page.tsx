@@ -86,11 +86,11 @@ export default async function Home() {
                     </div>
                   )}
                   {/* Verification badge overlay */}
-                  {product.sponsored_chapter_id && (
+                  {product.seller_sponsoring_chapter_id && (
                     <div className="absolute top-2 left-2 z-10">
                       <VerificationBadge 
                         type="sponsored-chapter" 
-                        chapterName={getChapterName(product.sponsored_chapter_id)}
+                        chapterName={getChapterName(product.seller_sponsoring_chapter_id || null)}
                       />
                     </div>
                   )}
@@ -123,8 +123,8 @@ export default async function Home() {
           {featuredSellers.length > 0 ? (
             featuredSellers.map((seller, i) => {
               const firstProduct = seller.products[0];
-              const chapterName = firstProduct?.sponsored_chapter_id 
-                ? getChapterName(firstProduct.sponsored_chapter_id) 
+              const chapterName = firstProduct?.seller_sponsoring_chapter_id 
+                ? getChapterName(firstProduct.seller_sponsoring_chapter_id) 
                 : null;
               
               // Generate initials for avatar

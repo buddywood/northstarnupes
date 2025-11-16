@@ -72,6 +72,29 @@ CREATE TABLE IF NOT EXISTS sellers (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Product Categories table
+CREATE TABLE IF NOT EXISTS product_categories (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(100) NOT NULL UNIQUE,
+  display_order INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Category Attribute Definitions table
+CREATE TABLE IF NOT EXISTS category_attribute_definitions (
+  id SERIAL PRIMARY KEY,
+  category_id INTEGER NOT NULL REFERENCES product_categories(id) ON DELETE CASCADE,
+  attribute_name VARCHAR(100) NOT NULL,
+  attribute_type VARCHAR(50) NOT NULL CHECK (attribute_type IN ('TEXT', 'SELECT', 'NUMBER', 'BOOLEAN')),
+  is_required BOOLEAN DEFAULT false,
+  display_order INTEGER NOT NULL DEFAULT 0,
+  options JSONB,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(category_id, attribute_name)
+);
+
 -- Products table
 CREATE TABLE IF NOT EXISTS products (
   id SERIAL PRIMARY KEY,
@@ -80,9 +103,21 @@ CREATE TABLE IF NOT EXISTS products (
   description TEXT,
   price_cents INTEGER NOT NULL CHECK (price_cents > 0),
   image_url TEXT,
-  sponsored_chapter_id INTEGER REFERENCES chapters(id),
+  category_id INTEGER REFERENCES product_categories(id),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Product Attribute Values table
+CREATE TABLE IF NOT EXISTS product_attribute_values (
+  id SERIAL PRIMARY KEY,
+  product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  attribute_definition_id INTEGER NOT NULL REFERENCES category_attribute_definitions(id) ON DELETE CASCADE,
+  value_text TEXT,
+  value_number NUMERIC,
+  value_boolean BOOLEAN,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(product_id, attribute_definition_id)
 );
 
 -- Orders table
@@ -236,7 +271,8 @@ CREATE INDEX IF NOT EXISTS idx_sellers_status ON sellers(status);
 CREATE INDEX IF NOT EXISTS idx_sellers_member_id ON sellers(member_id);
 CREATE INDEX IF NOT EXISTS idx_sellers_invitation_token ON sellers(invitation_token);
 CREATE INDEX IF NOT EXISTS idx_products_seller ON products(seller_id);
-CREATE INDEX IF NOT EXISTS idx_products_sponsored_chapter ON products(sponsored_chapter_id);
+-- Note: idx_products_category is created by migration 013
+-- Note: Category attribute indexes are created by migration 014
 CREATE INDEX IF NOT EXISTS idx_orders_product ON orders(product_id);
 CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
 CREATE INDEX IF NOT EXISTS idx_orders_stripe_session ON orders(stripe_session_id);

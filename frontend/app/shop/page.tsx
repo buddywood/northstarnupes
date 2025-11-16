@@ -71,7 +71,7 @@ export default function ShopPage() {
 
     // Filter by chapter
     if (selectedChapter) {
-      filtered = filtered.filter(product => product.sponsored_chapter_id === selectedChapter);
+      filtered = filtered.filter(product => product.seller_sponsoring_chapter_id === selectedChapter);
     }
 
     // Filter by seller
@@ -309,11 +309,11 @@ export default function ShopPage() {
                     </div>
                   )}
                   {/* Verification badges */}
-                  {product.sponsored_chapter_id && (
+                  {product.seller_sponsoring_chapter_id && (
                     <div className="absolute top-2 left-2 z-10">
                       <VerificationBadge 
                         type="sponsored-chapter" 
-                        chapterName={getChapterName(product.sponsored_chapter_id)}
+                        chapterName={getChapterName(product.seller_sponsoring_chapter_id || null)}
                       />
                     </div>
                   )}

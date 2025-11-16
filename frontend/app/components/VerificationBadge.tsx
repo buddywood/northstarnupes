@@ -46,7 +46,7 @@ export default function VerificationBadge({
             fill="currentColor"
           />
         </svg>
-        <span>Sponsored by {chapterName}</span>
+        <span>Sponsoring by {chapterName}</span>
       </div>
     );
   }

@@ -233,11 +233,11 @@ export default async function CollectionsPage({ searchParams }: CollectionsPageP
                                 </svg>
                               </div>
                             )}
-                            {product.sponsored_chapter_id && (
+                            {product.seller_sponsoring_chapter_id && (
                               <div className="absolute top-2 left-2 z-10">
                                 <VerificationBadge 
                                   type="sponsored-chapter" 
-                                  chapterName={getChapterName(product.sponsored_chapter_id)}
+                                  chapterName={getChapterName(product.seller_sponsoring_chapter_id || null)}
                                 />
                               </div>
                             )}

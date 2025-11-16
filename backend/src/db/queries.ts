@@ -1,5 +1,5 @@
 import pool from './connection';
-import { Chapter, Seller, Product, Order, Promoter, Event, User, Steward, StewardListing, StewardClaim, PlatformSetting } from '../types';
+import { Chapter, Seller, Product, ProductCategory, CategoryAttributeDefinition, ProductAttributeValue, Order, Promoter, Event, User, Steward, StewardListing, StewardClaim, PlatformSetting } from '../types';
 
 export interface Industry {
   id: number;
@@ -182,11 +182,11 @@ export async function createProduct(product: {
   description: string;
   price_cents: number;
   image_url?: string;
-  sponsored_chapter_id?: number;
+  category_id?: number | null;
   is_kappa_branded?: boolean;
 }): Promise<Product> {
   const result = await pool.query(
-    `INSERT INTO products (seller_id, name, description, price_cents, image_url, sponsored_chapter_id, is_kappa_branded)
+    `INSERT INTO products (seller_id, name, description, price_cents, image_url, category_id, is_kappa_branded)
      VALUES ($1, $2, $3, $4, $5, $6, $7)
      RETURNING *`,
     [
@@ -195,7 +195,7 @@ export async function createProduct(product: {
       product.description,
       product.price_cents,
       product.image_url || null,
-      product.sponsored_chapter_id || null,
+      product.category_id || null,
       product.is_kappa_branded ?? false,
     ]
   );
@@ -203,13 +203,19 @@ export async function createProduct(product: {
 }
 
 export async function getProductById(id: number): Promise<Product | null> {
-  const result = await pool.query('SELECT * FROM products WHERE id = $1', [id]);
+  const result = await pool.query(
+    `SELECT p.*, s.name as seller_name, s.status as seller_status, s.member_id as seller_member_id, s.sponsoring_chapter_id as seller_sponsoring_chapter_id
+     FROM products p
+     JOIN sellers s ON p.seller_id = s.id
+     WHERE p.id = $1`,
+    [id]
+  );
   return result.rows[0] || null;
 }
 
 export async function getActiveProducts(): Promise<Product[]> {
   const result = await pool.query(
-    `SELECT p.*, s.name as seller_name, s.status as seller_status
+    `SELECT p.*, s.name as seller_name, s.status as seller_status, s.sponsoring_chapter_id as seller_sponsoring_chapter_id
      FROM products p
      JOIN sellers s ON p.seller_id = s.id
      WHERE s.status = 'APPROVED'
@@ -233,7 +239,7 @@ export async function updateProduct(
     description?: string;
     price_cents?: number;
     image_url?: string;
-    sponsored_chapter_id?: number;
+    category_id?: number | null;
   }
 ): Promise<Product | null> {
   const fields: string[] = [];
@@ -256,9 +262,9 @@ export async function updateProduct(
     fields.push(`image_url = $${paramIndex++}`);
     values.push(updates.image_url);
   }
-  if (updates.sponsored_chapter_id !== undefined) {
-    fields.push(`sponsored_chapter_id = $${paramIndex++}`);
-    values.push(updates.sponsored_chapter_id);
+  if (updates.category_id !== undefined) {
+    fields.push(`category_id = $${paramIndex++}`);
+    values.push(updates.category_id || null);
   }
 
   if (fields.length === 0) {
@@ -274,6 +280,65 @@ export async function updateProduct(
 
   const result = await pool.query(query, values);
   return result.rows[0] || null;
+}
+
+// Product Category queries
+export async function getAllProductCategories(): Promise<ProductCategory[]> {
+  const result = await pool.query(
+    'SELECT * FROM product_categories ORDER BY display_order ASC, name ASC'
+  );
+  return result.rows;
+}
+
+export async function getProductCategoryById(id: number): Promise<ProductCategory | null> {
+  const result = await pool.query('SELECT * FROM product_categories WHERE id = $1', [id]);
+  return result.rows[0] || null;
+}
+
+// Category Attribute Definition queries
+export async function getCategoryAttributeDefinitions(categoryId: number): Promise<CategoryAttributeDefinition[]> {
+  const result = await pool.query(
+    'SELECT * FROM category_attribute_definitions WHERE category_id = $1 ORDER BY display_order ASC',
+    [categoryId]
+  );
+  return result.rows;
+}
+
+export async function getCategoryAttributeDefinitionById(id: number): Promise<CategoryAttributeDefinition | null> {
+  const result = await pool.query('SELECT * FROM category_attribute_definitions WHERE id = $1', [id]);
+  return result.rows[0] || null;
+}
+
+// Product Attribute Value queries
+export async function getProductAttributeValues(productId: number): Promise<ProductAttributeValue[]> {
+  const result = await pool.query(
+    'SELECT * FROM product_attribute_values WHERE product_id = $1',
+    [productId]
+  );
+  return result.rows;
+}
+
+export async function setProductAttributeValue(
+  productId: number,
+  attributeDefinitionId: number,
+  value: { text?: string; number?: number; boolean?: boolean }
+): Promise<ProductAttributeValue> {
+  const result = await pool.query(
+    `INSERT INTO product_attribute_values (product_id, attribute_definition_id, value_text, value_number, value_boolean)
+     VALUES ($1, $2, $3, $4, $5)
+     ON CONFLICT (product_id, attribute_definition_id)
+     DO UPDATE SET value_text = EXCLUDED.value_text, value_number = EXCLUDED.value_number, value_boolean = EXCLUDED.value_boolean
+     RETURNING *`,
+    [productId, attributeDefinitionId, value.text || null, value.number || null, value.boolean ?? null]
+  );
+  return result.rows[0];
+}
+
+export async function deleteProductAttributeValue(productId: number, attributeDefinitionId: number): Promise<void> {
+  await pool.query(
+    'DELETE FROM product_attribute_values WHERE product_id = $1 AND attribute_definition_id = $2',
+    [productId, attributeDefinitionId]
+  );
 }
 
 // Order queries

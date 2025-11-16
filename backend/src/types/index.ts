@@ -53,6 +53,36 @@ export interface Seller extends Brother {
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
 }
 
+export interface ProductCategory {
+  id: number;
+  name: string;
+  display_order: number;
+  created_at: Date;
+  updated_at: Date;
+}
+
+export interface CategoryAttributeDefinition {
+  id: number;
+  category_id: number;
+  attribute_name: string;
+  attribute_type: 'TEXT' | 'SELECT' | 'NUMBER' | 'BOOLEAN';
+  is_required: boolean;
+  display_order: number;
+  options: string[] | null;
+  created_at: Date;
+  updated_at: Date;
+}
+
+export interface ProductAttributeValue {
+  id: number;
+  product_id: number;
+  attribute_definition_id: number;
+  value_text: string | null;
+  value_number: number | null;
+  value_boolean: boolean | null;
+  created_at: Date;
+}
+
 export interface Product {
   id: number;
   seller_id: number;
@@ -60,10 +90,11 @@ export interface Product {
   description: string;
   price_cents: number;
   image_url: string | null;
-  sponsored_chapter_id: number | null;
+  category_id: number | null;
   is_kappa_branded: boolean; // Indicates if product is Kappa Alpha Psi branded merchandise
   created_at: Date;
   updated_at: Date;
+  attributes?: ProductAttributeValue[]; // Optional, loaded separately
 }
 
 export interface Order {

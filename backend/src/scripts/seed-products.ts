@@ -1,5 +1,5 @@
 import pool from '../db/connection';
-import { createProduct } from '../db/queries';
+import { createProduct, getAllProductCategories } from '../db/queries';
 import { createSeller } from '../db/queries';
 import { getAllChapters } from '../db/queries';
 
@@ -199,18 +199,12 @@ async function seedProducts(): Promise<void> {
         // Assign to random seller
         const seller = sellers[Math.floor(Math.random() * sellers.length)];
         
-        // Randomly assign sponsored chapter (50% chance)
-        const sponsoredChapter = Math.random() > 0.5 
-          ? collegiateChapters[Math.floor(Math.random() * collegiateChapters.length)].id
-          : null;
-
         await createProduct({
           seller_id: seller.id,
           name: productData.name,
           description: productData.description,
           price_cents: productData.price_cents,
           image_url: productData.image_url,
-          sponsored_chapter_id: sponsoredChapter || undefined,
         });
 
         inserted++;

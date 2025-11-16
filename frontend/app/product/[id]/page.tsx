@@ -10,6 +10,7 @@ import Link from 'next/link';
 import Header from '../../components/Header';
 import Footer from '../../components/Footer';
 import VerificationBadge from '../../components/VerificationBadge';
+import RoleDiamondBadge from '../../components/RoleDiamondBadge';
 import { SkeletonLoader } from '../../components/Skeleton';
 
 export default function ProductPage() {
@@ -20,7 +21,6 @@ export default function ProductPage() {
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [loading, setLoading] = useState(true);
   const [checkingOut, setCheckingOut] = useState(false);
-  const [email, setEmail] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -41,12 +41,6 @@ export default function ProductPage() {
     }
   }, [params.id]);
 
-  // Pre-populate email if user is authenticated
-  useEffect(() => {
-    if (sessionStatus === 'authenticated' && session?.user?.email && !email) {
-      setEmail(session.user.email);
-    }
-  }, [sessionStatus, session, email]);
 
   const getChapterName = (chapterId: number | null) => {
     if (!chapterId) return null;
@@ -56,13 +50,19 @@ export default function ProductPage() {
 
   const handleCheckout = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!product || !email) return;
+    if (!product) return;
+
+    // Require authentication for checkout
+    if (sessionStatus !== 'authenticated' || !session?.user?.email) {
+      setError('Please sign in to purchase this item');
+      return;
+    }
 
     setCheckingOut(true);
     setError('');
 
     try {
-      const { url } = await createCheckoutSession(product.id, email);
+      const { url } = await createCheckoutSession(product.id, session.user.email);
       window.location.href = url;
     } catch (err: any) {
       setError(err.message || 'Failed to start checkout');
@@ -89,6 +89,8 @@ export default function ProductPage() {
     );
   }
 
+  const chapterName = getChapterName(product.seller_sponsoring_chapter_id || null);
+
   return (
     <div className="min-h-screen bg-cream dark:bg-black">
       <Header />
@@ -104,11 +106,11 @@ export default function ProductPage() {
                   className="object-cover"
                 />
                 {/* Verification badge overlays */}
-                {product.sponsored_chapter_id && (
+                {product.seller_sponsoring_chapter_id && (
                   <div className="absolute top-3 left-3 z-10">
                     <VerificationBadge 
                       type="sponsored-chapter" 
-                      chapterName={getChapterName(product.sponsored_chapter_id)}
+                      chapterName={chapterName}
                     />
                   </div>
                 )}
@@ -120,27 +122,42 @@ export default function ProductPage() {
               </div>
             )}
             <div className="md:w-1/2 p-8">
-              <div className="flex items-start justify-between mb-4">
+              <div className="flex items-center gap-3 mb-4">
                 <h1 className="text-3xl font-display font-bold text-midnight-navy dark:text-gray-100">{product.name}</h1>
                 {product.seller_name && (
                   <VerificationBadge type="brother" />
                 )}
               </div>
-              {product.sponsored_chapter_id && (
+              {product.seller_sponsoring_chapter_id && (
                 <div className="mb-4">
                   <VerificationBadge 
                     type="sponsored-chapter" 
-                    chapterName={getChapterName(product.sponsored_chapter_id)}
+                    chapterName={chapterName}
                   />
                 </div>
               )}
               <p className="text-midnight-navy/70 dark:text-gray-300 mb-6">{product.description}</p>
+              
+              {/* Subtle divider */}
+              <div className="border-t border-frost-gray/50 dark:border-gray-800/50 mb-6"></div>
+              
+              {/* Seller info with badge */}
               {product.seller_name && (
-                <div className="mb-4">
-                  <p className="text-sm text-midnight-navy/60 dark:text-gray-400 mb-2">Sold by {product.seller_name}</p>
+                <div className="mb-6 p-4 bg-cream/50 dark:bg-gray-900/50 rounded-lg border border-frost-gray dark:border-gray-800">
+                  <div className="flex items-center gap-2 mb-2">
+                    <p className="text-sm font-semibold text-midnight-navy dark:text-gray-200">
+                      Sold by {product.seller_member_id ? 'Brother ' : ''}{product.seller_name}
+                    </p>
+                    <RoleDiamondBadge role="SELLER" />
+                  </div>
+                  {chapterName && (
+                    <p className="text-xs text-midnight-navy/70 dark:text-gray-400">
+                      This item supports the <span className="font-medium">{chapterName} chapter</span>
+                    </p>
+                  )}
                   <Link 
                     href={`/collections?seller=${product.seller_id}`}
-                    className="text-sm text-crimson font-medium hover:underline inline-flex items-center gap-1"
+                    className="text-sm text-crimson font-medium hover:underline inline-flex items-center gap-1 mt-2"
                   >
                     Shop Collection
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -149,42 +166,32 @@ export default function ProductPage() {
                   </Link>
                 </div>
               )}
-              <p className="text-4xl font-bold text-crimson mb-8">
+
+              <p className="text-4xl font-bold text-crimson mb-12">
                 ${(product.price_cents / 100).toFixed(2)}
               </p>
 
               <form onSubmit={handleCheckout} className="space-y-4">
-                <div>
-                  <label htmlFor="email" className="block text-sm font-medium mb-2 text-midnight-navy dark:text-gray-300">
-                    Email Address
-                  </label>
-                  <input
-                    type="email"
-                    id="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    className="w-full px-4 py-2 border border-frost-gray dark:border-gray-800 rounded-lg focus:ring-2 focus:ring-crimson focus:border-transparent text-midnight-navy dark:text-gray-100 bg-white dark:bg-black"
-                    placeholder="your@email.com"
-                  />
-                  {sessionStatus === 'authenticated' && session?.user?.email === email && (
-                    <p className="mt-1 text-xs text-midnight-navy/60 dark:text-gray-400">
-                      Using email from your account
-                    </p>
-                  )}
-                </div>
-
                 {error && (
                   <div className="text-red-600 text-sm">{error}</div>
                 )}
 
-                <button
-                  type="submit"
-                  disabled={checkingOut || !email}
-                  className="w-full bg-crimson text-white py-3 rounded-lg font-semibold hover:bg-crimson/90 transition disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg"
-                >
-                  {checkingOut ? 'Processing...' : 'Buy Now'}
-                </button>
+                {sessionStatus === 'authenticated' && session?.user?.email ? (
+                  <button
+                    type="submit"
+                    disabled={checkingOut}
+                    className="w-full bg-crimson text-white py-3 rounded-lg font-semibold hover:bg-crimson/90 transition disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg"
+                  >
+                    {checkingOut ? 'Processing...' : 'Buy Now'}
+                  </button>
+                ) : (
+                  <Link
+                    href="/login"
+                    className="w-full bg-crimson text-white py-3 rounded-lg font-semibold hover:bg-crimson/90 transition shadow-md hover:shadow-lg text-center block"
+                  >
+                    Sign In to Purchase
+                  </Link>
+                )}
               </form>
             </div>
           </div>

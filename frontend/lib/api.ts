@@ -12,6 +12,36 @@ export interface Chapter {
   contact_email: string | null;
 }
 
+export interface ProductCategory {
+  id: number;
+  name: string;
+  display_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CategoryAttributeDefinition {
+  id: number;
+  category_id: number;
+  attribute_name: string;
+  attribute_type: 'TEXT' | 'SELECT' | 'NUMBER' | 'BOOLEAN';
+  is_required: boolean;
+  display_order: number;
+  options: string[] | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProductAttributeValue {
+  id: number;
+  product_id: number;
+  attribute_definition_id: number;
+  value_text: string | null;
+  value_number: number | null;
+  value_boolean: boolean | null;
+  created_at: string;
+}
+
 export interface Product {
   id: number;
   seller_id: number;
@@ -19,8 +49,11 @@ export interface Product {
   description: string;
   price_cents: number;
   image_url: string | null;
-  sponsored_chapter_id: number | null;
+  category_id: number | null;
   seller_name?: string;
+  seller_member_id?: number | null;
+  seller_sponsoring_chapter_id?: number | null;
+  attributes?: ProductAttributeValue[];
 }
 
 export interface Seller {
@@ -128,6 +161,18 @@ export async function fetchProducts(): Promise<Product[]> {
 export async function fetchProduct(id: number): Promise<Product> {
   const res = await fetch(`${API_URL}/api/products/${id}`);
   if (!res.ok) throw new Error('Failed to fetch product');
+  return res.json();
+}
+
+export async function fetchProductCategories(): Promise<ProductCategory[]> {
+  const res = await fetch(`${API_URL}/api/products/categories`);
+  if (!res.ok) throw new Error('Failed to fetch product categories');
+  return res.json();
+}
+
+export async function fetchCategoryAttributeDefinitions(categoryId: number): Promise<CategoryAttributeDefinition[]> {
+  const res = await fetch(`${API_URL}/api/products/categories/${categoryId}/attributes`);
+  if (!res.ok) throw new Error('Failed to fetch category attribute definitions');
   return res.json();
 }
 

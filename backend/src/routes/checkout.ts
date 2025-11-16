@@ -33,6 +33,9 @@ router.post('/:productId', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Seller is not approved or does not have a Stripe account' });
     }
 
+    // Use seller's sponsoring_chapter_id instead of product's sponsored_chapter_id
+    const chapterId = (product as any).seller_sponsoring_chapter_id || seller.sponsoring_chapter_id || undefined;
+
     // Create checkout session
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
     const session = await createCheckoutSession({
@@ -43,7 +46,7 @@ router.post('/:productId', async (req: Request, res: Response) => {
       buyerEmail: body.buyer_email,
       successUrl: `${frontendUrl}/success?session_id={CHECKOUT_SESSION_ID}`,
       cancelUrl: `${frontendUrl}/cancel`,
-      chapterId: product.sponsored_chapter_id || undefined,
+      chapterId: chapterId,
     });
 
     // Create order record
@@ -52,7 +55,7 @@ router.post('/:productId', async (req: Request, res: Response) => {
       buyer_email: body.buyer_email,
       amount_cents: product.price_cents,
       stripe_session_id: session.id,
-      chapter_id: product.sponsored_chapter_id || undefined,
+      chapter_id: chapterId,
     });
 
     res.json({ sessionId: session.id, url: session.url });

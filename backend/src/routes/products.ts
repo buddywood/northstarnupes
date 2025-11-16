@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import type { Router as ExpressRouter } from 'express';
 import multer from 'multer';
-import { createProduct, getActiveProducts, getProductById, getSellerById } from '../db/queries';
+import { createProduct, getActiveProducts, getProductById, getSellerById, getAllProductCategories, getCategoryAttributeDefinitions } from '../db/queries';
 import { uploadToS3 } from '../services/s3';
 import { z } from 'zod';
 import pool from '../db/connection';
@@ -20,7 +20,7 @@ const createProductSchema = z.object({
   name: z.string().min(1),
   description: z.string(),
   price_cents: z.number().int().positive(),
-  sponsored_chapter_id: z.number().int().positive().optional(),
+  category_id: z.number().int().positive().nullable().optional(),
   is_kappa_branded: z.boolean().optional(),
 });
 
@@ -56,7 +56,7 @@ router.post('/', upload.single('image'), async (req: Request, res: Response) => 
       ...req.body,
       seller_id: parseInt(req.body.seller_id),
       price_cents: parseInt(req.body.price_cents),
-      sponsored_chapter_id: req.body.sponsored_chapter_id ? parseInt(req.body.sponsored_chapter_id) : undefined,
+      category_id: req.body.category_id ? parseInt(req.body.category_id) : null,
       is_kappa_branded: req.body.is_kappa_branded !== undefined ? req.body.is_kappa_branded === 'true' || req.body.is_kappa_branded === true : undefined,
     });
 
@@ -121,6 +121,29 @@ router.post('/', upload.single('image'), async (req: Request, res: Response) => 
     }
     console.error('Error creating product:', error);
     res.status(500).json({ error: 'Failed to create product' });
+  }
+});
+
+// Get all product categories
+router.get('/categories', async (req: Request, res: Response) => {
+  try {
+    const categories = await getAllProductCategories();
+    res.json(categories);
+  } catch (error) {
+    console.error('Error fetching product categories:', error);
+    res.status(500).json({ error: 'Failed to fetch product categories' });
+  }
+});
+
+// Get attribute definitions for a category
+router.get('/categories/:categoryId/attributes', async (req: Request, res: Response) => {
+  try {
+    const categoryId = parseInt(req.params.categoryId);
+    const attributes = await getCategoryAttributeDefinitions(categoryId);
+    res.json(attributes);
+  } catch (error) {
+    console.error('Error fetching category attributes:', error);
+    res.status(500).json({ error: 'Failed to fetch category attributes' });
   }
 });
 
