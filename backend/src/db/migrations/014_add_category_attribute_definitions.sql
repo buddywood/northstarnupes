@@ -102,6 +102,17 @@ BEGIN
   FROM product_categories WHERE name = 'Footwear'
   ON CONFLICT (category_id, attribute_name) DO NOTHING;
 
+  -- Accessories attributes
+  INSERT INTO category_attribute_definitions (category_id, attribute_name, attribute_type, is_required, display_order, options)
+  SELECT id, 'Color', 'SELECT', false, 1, '["Black", "White", "Navy", "Brown", "Tan", "Gold", "Silver", "Brass", "Other"]'::jsonb
+  FROM product_categories WHERE name = 'Accessories'
+  ON CONFLICT (category_id, attribute_name) DO NOTHING;
+
+  INSERT INTO category_attribute_definitions (category_id, attribute_name, attribute_type, is_required, display_order)
+  SELECT id, 'Material', 'TEXT', false, 2
+  FROM product_categories WHERE name = 'Accessories'
+  ON CONFLICT (category_id, attribute_name) DO NOTHING;
+
   -- Electronics attributes
   INSERT INTO category_attribute_definitions (category_id, attribute_name, attribute_type, is_required, display_order)
   SELECT id, 'Model', 'TEXT', false, 1
@@ -148,6 +159,17 @@ BEGIN
   INSERT INTO category_attribute_definitions (category_id, attribute_name, attribute_type, is_required, display_order)
   SELECT id, 'Frame Included', 'BOOLEAN', false, 3
   FROM product_categories WHERE name = 'Art & Prints'
+  ON CONFLICT (category_id, attribute_name) DO NOTHING;
+
+  -- Books & Media attributes
+  INSERT INTO category_attribute_definitions (category_id, attribute_name, attribute_type, is_required, display_order)
+  SELECT id, 'Dimensions', 'TEXT', false, 1
+  FROM product_categories WHERE name = 'Books & Media'
+  ON CONFLICT (category_id, attribute_name) DO NOTHING;
+
+  INSERT INTO category_attribute_definitions (category_id, attribute_name, attribute_type, is_required, display_order)
+  SELECT id, 'Medium', 'TEXT', false, 2
+  FROM product_categories WHERE name = 'Books & Media'
   ON CONFLICT (category_id, attribute_name) DO NOTHING;
 
   -- Cigar Lounge Essentials attributes

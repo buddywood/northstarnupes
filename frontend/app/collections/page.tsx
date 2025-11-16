@@ -233,19 +233,30 @@ export default async function CollectionsPage({ searchParams }: CollectionsPageP
                                 </svg>
                               </div>
                             )}
-                            {product.seller_sponsoring_chapter_id && (
-                              <div className="absolute top-2 left-2 z-10">
-                                <VerificationBadge 
-                                  type="sponsored-chapter" 
-                                  chapterName={getChapterName(product.seller_sponsoring_chapter_id || null)}
-                                />
+                            {/* Verification badges - consistent with product details page */}
+                            {product.seller_member_id ? (
+                              <div className="absolute top-2 right-2 z-10">
+                                <VerificationBadge type="brother" />
                               </div>
-                            )}
+                            ) : product.seller_name ? (
+                              <div className="absolute top-2 right-2 z-10">
+                                <VerificationBadge type="seller" />
+                              </div>
+                            ) : null}
                           </div>
                           <div className="p-3">
                             <p className="font-semibold text-sm text-midnight-navy line-clamp-2 mb-1 group-hover:text-crimson transition">
                               {product.name}
                             </p>
+                            {product.seller_sponsoring_chapter_id && (
+                              <div className="mb-2">
+                                <VerificationBadge 
+                                  type="sponsored-chapter" 
+                                  chapterName={getChapterName(product.seller_sponsoring_chapter_id || null)}
+                                  className="text-xs"
+                                />
+                              </div>
+                            )}
                             <p className="text-crimson font-bold text-sm">
                               ${(product.price_cents / 100).toFixed(2)}
                             </p>

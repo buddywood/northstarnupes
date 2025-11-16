@@ -6,6 +6,7 @@ import Header from '../components/Header';
 import Footer from '../components/Footer';
 import VerificationBadge from '../components/VerificationBadge';
 import Skeleton, { SkeletonLoader } from '../components/Skeleton';
+import SearchableSelect from '../components/SearchableSelect';
 import Image from 'next/image';
 import Link from 'next/link';
 
@@ -147,7 +148,7 @@ export default function ShopPage() {
             <select
               value={selectedChapter || ''}
               onChange={(e) => setSelectedChapter(e.target.value ? parseInt(e.target.value) : null)}
-              className="flex-1 px-4 py-2 border border-frost-gray rounded-lg focus:ring-2 focus:ring-crimson focus:border-transparent text-midnight-navy bg-white"
+              className="flex-1 px-4 py-2 pr-10 border border-frost-gray rounded-lg focus:ring-2 focus:ring-crimson focus:border-transparent text-midnight-navy bg-white appearance-none bg-[url('data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2012%2012%22%3E%3Cpath%20fill%3D%22%23121212%22%20d%3D%22M6%209L1%204h10z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[length:12px_12px] bg-[right_10px_center]"
             >
               <option value="">All Chapters</option>
               {chapters.map((chapter) => (
@@ -161,12 +162,14 @@ export default function ShopPage() {
             <select
               value={selectedSeller || ''}
               onChange={(e) => setSelectedSeller(e.target.value ? parseInt(e.target.value) : null)}
-              className="flex-1 px-4 py-2 border border-frost-gray rounded-lg focus:ring-2 focus:ring-crimson focus:border-transparent text-midnight-navy bg-white"
+              className="flex-1 px-4 py-2 pr-10 border border-frost-gray rounded-lg focus:ring-2 focus:ring-crimson focus:border-transparent text-midnight-navy bg-white appearance-none bg-[url('data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2012%2012%22%3E%3Cpath%20fill%3D%22%23121212%22%20d%3D%22M6%209L1%204h10z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[length:12px_12px] bg-[right_10px_center]"
             >
               <option value="">All Sellers</option>
               {sellers.map((seller) => (
                 <option key={seller.id} value={seller.id}>
-                  {seller.name}
+                  {seller.member_id 
+                    ? `Brother ${seller.name}` 
+                    : (seller.business_name || seller.name)}
                 </option>
               ))}
             </select>
@@ -175,7 +178,7 @@ export default function ShopPage() {
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as SortOption)}
-              className="px-4 py-2 border border-frost-gray rounded-lg focus:ring-2 focus:ring-crimson focus:border-transparent text-midnight-navy bg-white"
+              className="px-4 py-2 pr-10 border border-frost-gray rounded-lg focus:ring-2 focus:ring-crimson focus:border-transparent text-midnight-navy bg-white appearance-none bg-[url('data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2012%2012%22%3E%3Cpath%20fill%3D%22%23121212%22%20d%3D%22M6%209L1%204h10z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[length:12px_12px] bg-[right_10px_center]"
             >
               <option value="newest">Newest First</option>
               <option value="name">Name (A-Z)</option>
@@ -225,7 +228,14 @@ export default function ShopPage() {
               Showing {filteredAndSortedProducts.length} {filteredAndSortedProducts.length === 1 ? 'product' : 'products'}
               {searchQuery && ` matching "${searchQuery}"`}
               {selectedChapter && ` from ${getChapterName(selectedChapter)}`}
-              {selectedSeller && ` by ${sellers.find(s => s.id === selectedSeller)?.name}`}
+              {selectedSeller && (() => {
+                const seller = sellers.find(s => s.id === selectedSeller);
+                if (!seller) return '';
+                const displayName = seller.member_id 
+                  ? `Brother ${seller.name}` 
+                  : (seller.business_name || seller.name);
+                return ` by ${displayName}`;
+              })()}
             </div>
           )}
         </div>
@@ -308,27 +318,36 @@ export default function ShopPage() {
                       </svg>
                     </div>
                   )}
-                  {/* Verification badges */}
-                  {product.seller_sponsoring_chapter_id && (
-                    <div className="absolute top-2 left-2 z-10">
-                      <VerificationBadge 
-                        type="sponsored-chapter" 
-                        chapterName={getChapterName(product.seller_sponsoring_chapter_id || null)}
-                      />
-                    </div>
-                  )}
-                  {product.seller_name && (
+                  {/* Verification badges - consistent with product details page */}
+                  {product.seller_member_id ? (
                     <div className="absolute top-2 right-2 z-10">
                       <VerificationBadge type="brother" />
                     </div>
-                  )}
+                  ) : product.seller_name ? (
+                    <div className="absolute top-2 right-2 z-10">
+                      <VerificationBadge type="seller" />
+                    </div>
+                  ) : null}
                 </div>
                 <div className="p-3">
                   <p className="font-semibold text-sm text-midnight-navy line-clamp-2 mb-1 group-hover:text-crimson transition">
                     {product.name}
                   </p>
+                  {product.seller_sponsoring_chapter_id && (
+                    <div className="mb-2">
+                      <VerificationBadge 
+                        type="sponsored-chapter" 
+                        chapterName={getChapterName(product.seller_sponsoring_chapter_id || null)}
+                        className="text-xs"
+                      />
+                    </div>
+                  )}
                   {product.seller_name && (
-                    <p className="text-xs text-midnight-navy/60 mb-2">by {product.seller_name}</p>
+                    <p className="text-xs text-midnight-navy/60 mb-2">
+                      by {product.seller_member_id 
+                        ? `Brother ${product.seller_name}` 
+                        : (product.seller_business_name || product.seller_name)}
+                    </p>
                   )}
                   <p className="text-crimson font-bold text-sm">${(product.price_cents / 100).toFixed(2)}</p>
                 </div>

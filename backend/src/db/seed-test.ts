@@ -120,6 +120,39 @@ const sampleProducts = [
     image_url: "https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=500&h=500&fit=crop",
     category: "Books & Media",
   },
+  // Additional products for non-member sellers
+  {
+    name: "Crimson & Cream Tote Bag",
+    description: "Stylish canvas tote bag featuring Kappa Alpha Psi colors. Perfect for everyday use.",
+    price_cents: 2800, // $28.00
+    image_url: "https://images.unsplash.com/photo-1591561954557-26941169b49e?w=500&h=500&fit=crop",
+    category: "Accessories",
+    seller_email: "sarah.mitchell@example.com", // Assign to non-member seller
+  },
+  {
+    name: "Vintage Kappa Pin Collection",
+    description: "Set of 5 vintage-style Kappa Alpha Psi pins. Collectible items perfect for display.",
+    price_cents: 3200, // $32.00
+    image_url: "https://images.unsplash.com/photo-1611652022419-a9419f74343d?w=500&h=500&fit=crop",
+    category: "Accessories",
+    seller_email: "sarah.mitchell@example.com",
+  },
+  {
+    name: "Heritage Coffee Table Book",
+    description: "Beautiful hardcover coffee table book showcasing Kappa Alpha Psi history and achievements.",
+    price_cents: 4500, // $45.00
+    image_url: "https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=500&h=500&fit=crop",
+    category: "Books & Media",
+    seller_email: "michael.chen@example.com", // Assign to non-member seller
+  },
+  {
+    name: "Custom Engraved Watch",
+    description: "Elegant timepiece with custom Kappa Alpha Psi engraving. Perfect gift for special occasions.",
+    price_cents: 8500, // $85.00
+    image_url: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500&h=500&fit=crop",
+    category: "Accessories",
+    seller_email: "michael.chen@example.com",
+  },
 ];
 
 // Sample sellers data
@@ -130,6 +163,7 @@ const sampleSellers = [
     membership_number: "KAP-2020-001",
     business_name: "Kappa Gear Co.",
     vendor_license_number: "VL-2024-001",
+    is_member: true,
   },
   {
     name: "David Carter",
@@ -137,6 +171,7 @@ const sampleSellers = [
     membership_number: "KAP-2019-045",
     business_name: "Brotherhood Apparel",
     vendor_license_number: "VL-2024-002",
+    is_member: true,
   },
   {
     name: "James Williams",
@@ -144,6 +179,24 @@ const sampleSellers = [
     membership_number: "KAP-2021-123",
     business_name: null,
     vendor_license_number: "VL-2024-003",
+    is_member: true,
+  },
+  // Non-member sellers
+  {
+    name: "Sarah Mitchell",
+    email: "sarah.mitchell@example.com",
+    membership_number: null,
+    business_name: "Crimson Threads",
+    vendor_license_number: "VL-2024-004",
+    is_member: false,
+  },
+  {
+    name: "Michael Chen",
+    email: "michael.chen@example.com",
+    membership_number: null,
+    business_name: "Heritage Goods Co.",
+    vendor_license_number: "VL-2024-005",
+    is_member: false,
   },
 ];
 
@@ -282,25 +335,111 @@ async function seedProducts(): Promise<void> {
     for (const sellerData of sampleSellers) {
       // Check if seller already exists
       const existingSeller = await pool.query(
-        'SELECT id FROM sellers WHERE email = $1',
+        'SELECT id, member_id FROM sellers WHERE email = $1',
         [sellerData.email]
       );
 
       if (existingSeller.rows.length > 0) {
-        console.log(`  Seller ${sellerData.email} already exists, using existing seller`);
-        sellers.push(existingSeller.rows[0]);
+        const seller = existingSeller.rows[0];
+        // Add email to seller object for matching
+        (seller as any).email = sellerData.email;
+        // If seller exists but doesn't have a member_id and should be a member, create/update member
+        if (!seller.member_id && sellerData.is_member) {
+          const initiatedChapter = availableChapters[Math.floor(Math.random() * availableChapters.length)];
+          
+          // Check if member already exists
+          const existingMember = await pool.query(
+            'SELECT id FROM members WHERE email = $1',
+            [sellerData.email]
+          );
+
+          let memberId: number | null = null;
+          if (existingMember.rows.length > 0) {
+            memberId = existingMember.rows[0].id;
+            // Update member with initiated chapter if not set
+            await pool.query(
+              'UPDATE members SET initiated_chapter_id = COALESCE(initiated_chapter_id, $1) WHERE id = $2',
+              [initiatedChapter.id, memberId]
+            );
+          } else {
+            // Create new member
+            const memberResult = await pool.query(
+              `INSERT INTO members (
+                email, name, membership_number, registration_status, 
+                initiated_chapter_id, verification_status
+              ) VALUES ($1, $2, $3, $4, $5, 'VERIFIED')
+              RETURNING id`,
+              [
+                sellerData.email,
+                sellerData.name,
+                sellerData.membership_number,
+                'COMPLETE',
+                initiatedChapter.id,
+              ]
+            );
+            memberId = memberResult.rows[0].id;
+          }
+
+          // Update seller with member_id
+          await pool.query(
+            'UPDATE sellers SET member_id = $1 WHERE id = $2',
+            [memberId, seller.id]
+          );
+          console.log(`  ✓ Updated seller ${sellerData.name} with member (initiated at ${initiatedChapter.name})`);
+        }
+        sellers.push(seller);
       } else {
-        // Create new seller
-        const randomChapter = availableChapters[Math.floor(Math.random() * availableChapters.length)];
+        const sponsoringChapter = availableChapters[Math.floor(Math.random() * availableChapters.length)];
+        let memberId: number | null = null;
+
+        // Only create member if seller should be a member
+        if (sellerData.is_member) {
+          const initiatedChapter = availableChapters[Math.floor(Math.random() * availableChapters.length)];
+          
+          // Check if member already exists
+          const existingMember = await pool.query(
+            'SELECT id FROM members WHERE email = $1',
+            [sellerData.email]
+          );
+
+          if (existingMember.rows.length > 0) {
+            memberId = existingMember.rows[0].id;
+            // Update member with initiated chapter if not set
+            await pool.query(
+              'UPDATE members SET initiated_chapter_id = COALESCE(initiated_chapter_id, $1) WHERE id = $2',
+              [initiatedChapter.id, memberId]
+            );
+          } else {
+            // Create new member
+            const memberResult = await pool.query(
+              `INSERT INTO members (
+                email, name, membership_number, registration_status, 
+                initiated_chapter_id, verification_status
+              ) VALUES ($1, $2, $3, $4, $5, 'VERIFIED')
+              RETURNING id`,
+              [
+                sellerData.email,
+                sellerData.name,
+                sellerData.membership_number,
+                'COMPLETE',
+                initiatedChapter.id,
+              ]
+            );
+            memberId = memberResult.rows[0].id;
+          }
+        }
+
+        // Create new seller (with or without member_id)
         const newSeller = await createSeller({
           email: sellerData.email,
           name: sellerData.name,
-          sponsoring_chapter_id: randomChapter.id,
+          sponsoring_chapter_id: sponsoringChapter.id,
           business_name: sellerData.business_name,
           vendor_license_number: sellerData.vendor_license_number,
           social_links: {
             instagram: `@${sellerData.name.toLowerCase().replace(' ', '')}`,
           },
+          member_id: memberId,
         });
 
         // Approve the seller
@@ -309,7 +448,18 @@ async function seedProducts(): Promise<void> {
           ['APPROVED', newSeller.id]
         );
 
-        console.log(`  ✓ Created and approved seller: ${sellerData.name}`);
+        // Add email to seller object for matching
+        (newSeller as any).email = sellerData.email;
+
+        if (sellerData.is_member) {
+          const memberResult = await pool.query('SELECT initiated_chapter_id FROM members WHERE id = $1', [memberId]);
+          const chapterId = memberResult.rows[0]?.initiated_chapter_id;
+          const chapterResult = await pool.query('SELECT name FROM chapters WHERE id = $1', [chapterId]);
+          const chapterName = chapterResult.rows[0]?.name || 'Unknown';
+          console.log(`  ✓ Created and approved seller: ${sellerData.name} (member, initiated at ${chapterName})`);
+        } else {
+          console.log(`  ✓ Created and approved seller: ${sellerData.name} (non-member)`);
+        }
         sellers.push(newSeller);
       }
     }
@@ -317,22 +467,66 @@ async function seedProducts(): Promise<void> {
     // Create products
     let inserted = 0;
     let skipped = 0;
+    let updated = 0;
 
     for (const productData of sampleProducts) {
       try {
         // Check if product already exists
         const existing = await pool.query(
-          'SELECT id FROM products WHERE name = $1',
+          'SELECT id, category_id FROM products WHERE name = $1',
           [productData.name]
         );
 
         if (existing.rows.length > 0) {
-          skipped++;
+          // Update existing product with category if it doesn't have one
+          const existingProduct = existing.rows[0];
+          const categoryId = productData.category ? categoryMap.get(productData.category) || null : null;
+          
+          if (!existingProduct.category_id && categoryId) {
+            await pool.query(
+              'UPDATE products SET category_id = $1 WHERE id = $2',
+              [categoryId, existingProduct.id]
+            );
+            updated++;
+            console.log(`  ✓ Updated category for existing product: ${productData.name}`);
+          } else {
+            skipped++;
+          }
           continue;
         }
 
-        // Assign to random seller
-        const seller = sellers[Math.floor(Math.random() * sellers.length)];
+        // Assign seller - use specified seller_email if provided, otherwise random
+        let seller;
+        if ((productData as any).seller_email) {
+          // Try to find seller in sellers array by email
+          seller = sellers.find((s: any) => s.email === (productData as any).seller_email);
+          // If not found, query database
+          if (!seller) {
+            const sellerResult = await pool.query(
+              'SELECT id FROM sellers WHERE email = $1',
+              [(productData as any).seller_email]
+            );
+            if (sellerResult.rows.length > 0) {
+              seller = sellers.find(s => s.id === sellerResult.rows[0].id);
+              if (!seller) {
+                // If seller not in sellers array, fetch it
+                const fullSellerResult = await pool.query(
+                  'SELECT * FROM sellers WHERE id = $1',
+                  [sellerResult.rows[0].id]
+                );
+                if (fullSellerResult.rows.length > 0) {
+                  seller = fullSellerResult.rows[0];
+                }
+              }
+            }
+          }
+          // Fallback to random seller if not found
+          if (!seller) {
+            seller = sellers[Math.floor(Math.random() * sellers.length)];
+          }
+        } else {
+          seller = sellers[Math.floor(Math.random() * sellers.length)];
+        }
         
         // Get category ID from category name
         const categoryId = productData.category ? categoryMap.get(productData.category) || null : null;
@@ -352,7 +546,7 @@ async function seedProducts(): Promise<void> {
       }
     }
 
-    console.log(`  ✓ Inserted ${inserted} products (${skipped} skipped)`);
+    console.log(`  ✓ Inserted ${inserted} products, updated ${updated} existing products (${skipped} skipped)`);
     console.log(`  ✓ Used ${sellers.length} sellers\n`);
   } catch (error) {
     console.error('❌ Error seeding products:', error);

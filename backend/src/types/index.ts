@@ -95,6 +95,11 @@ export interface Product {
   created_at: Date;
   updated_at: Date;
   attributes?: ProductAttributeValue[]; // Optional, loaded separately
+  // Seller-related fields (from JOIN with sellers and members tables)
+  seller_name?: string;
+  seller_member_id?: number | null;
+  seller_sponsoring_chapter_id?: number | null;
+  seller_initiated_chapter_id?: number | null;
 }
 
 export interface Order {

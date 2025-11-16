@@ -18,7 +18,7 @@ export default function Logo({
   color = '#F7F4E9' // Default to cream color
 }: LogoProps) {
   const taglineText = tagline === 'primary' 
-    ? 'One Tribe.  One Step.  One Kappa.'
+    ? 'One Family.  One Step.  One Kappa.'
     : 'Connected by the Bond.';
 
   // Determine which logo to use based on variant

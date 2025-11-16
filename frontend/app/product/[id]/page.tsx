@@ -11,6 +11,7 @@ import Header from '../../components/Header';
 import Footer from '../../components/Footer';
 import VerificationBadge from '../../components/VerificationBadge';
 import RoleDiamondBadge from '../../components/RoleDiamondBadge';
+import ProductAttributes from '../../components/ProductAttributes';
 import { SkeletonLoader } from '../../components/Skeleton';
 
 export default function ProductPage() {
@@ -89,7 +90,17 @@ export default function ProductPage() {
     );
   }
 
-  const chapterName = getChapterName(product.seller_sponsoring_chapter_id || null);
+  const sponsoringChapterName = getChapterName(product.seller_sponsoring_chapter_id || null);
+  const initiatedChapterName = getChapterName(product.seller_initiated_chapter_id || null);
+
+  // Debug: Check if we have the data
+  if (product.seller_initiated_chapter_id && !initiatedChapterName) {
+    console.warn('Initiated chapter ID exists but chapter name not found:', {
+      chapterId: product.seller_initiated_chapter_id,
+      chaptersLoaded: chapters.length,
+      availableChapterIds: chapters.map(c => c.id)
+    });
+  }
 
   return (
     <div className="min-h-screen bg-cream dark:bg-black">
@@ -105,38 +116,37 @@ export default function ProductPage() {
                   fill
                   className="object-cover"
                 />
-                {/* Verification badge overlays */}
-                {product.seller_sponsoring_chapter_id && (
-                  <div className="absolute top-3 left-3 z-10">
-                    <VerificationBadge 
-                      type="sponsored-chapter" 
-                      chapterName={chapterName}
-                    />
-                  </div>
-                )}
-                {product.seller_name && (
-                  <div className="absolute top-3 right-3 z-10">
-                    <VerificationBadge type="brother" />
-                  </div>
-                )}
               </div>
             )}
             <div className="md:w-1/2 p-8">
-              <div className="flex items-center gap-3 mb-4">
-                <h1 className="text-3xl font-display font-bold text-midnight-navy dark:text-gray-100">{product.name}</h1>
-                {product.seller_name && (
-                  <VerificationBadge type="brother" />
-                )}
-              </div>
-              {product.seller_sponsoring_chapter_id && (
-                <div className="mb-4">
-                  <VerificationBadge 
-                    type="sponsored-chapter" 
-                    chapterName={chapterName}
-                  />
+              <div className="mb-4">
+                <h1 className="text-3xl font-display font-bold text-midnight-navy dark:text-gray-100 mb-3">{product.name}</h1>
+                {/* Verification badges under title */}
+                <div className="flex flex-wrap items-center gap-2">
+                  {product.seller_member_id && (
+                    <>
+                      <VerificationBadge type="brother" />
+                      {/* If seller is a member, they should have an initiated chapter */}
+                      {product.seller_initiated_chapter_id ? (
+                        <VerificationBadge 
+                          type="initiated-chapter" 
+                          chapterName={initiatedChapterName || `Chapter ${product.seller_initiated_chapter_id}`}
+                        />
+                      ) : (
+                        // Fallback: if member_id exists but no initiated_chapter_id, still show badge
+                        <VerificationBadge 
+                          type="initiated-chapter" 
+                          chapterName="Chapter"
+                        />
+                      )}
+                    </>
+                  )}
                 </div>
-              )}
+              </div>
               <p className="text-midnight-navy/70 dark:text-gray-300 mb-6">{product.description}</p>
+              
+              {/* Product Attributes */}
+              <ProductAttributes product={product} />
               
               {/* Subtle divider */}
               <div className="border-t border-frost-gray/50 dark:border-gray-800/50 mb-6"></div>
@@ -150,9 +160,9 @@ export default function ProductPage() {
                     </p>
                     <RoleDiamondBadge role="SELLER" />
                   </div>
-                  {chapterName && (
+                  {sponsoringChapterName && (
                     <p className="text-xs text-midnight-navy/70 dark:text-gray-400">
-                      This item supports the <span className="font-medium">{chapterName} chapter</span>
+                      This item supports the <span className="font-medium">{sponsoringChapterName} chapter</span>
                     </p>
                   )}
                   <Link 

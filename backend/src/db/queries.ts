@@ -204,32 +204,69 @@ export async function createProduct(product: {
 
 export async function getProductById(id: number): Promise<Product | null> {
   const result = await pool.query(
-    `SELECT p.*, s.name as seller_name, s.status as seller_status, s.member_id as seller_member_id, s.sponsoring_chapter_id as seller_sponsoring_chapter_id
+    `SELECT p.*, 
+            s.name as seller_name, 
+            s.business_name as seller_business_name,
+            s.status as seller_status, 
+            s.member_id as seller_member_id, 
+            s.sponsoring_chapter_id as seller_sponsoring_chapter_id,
+            m.initiated_chapter_id as seller_initiated_chapter_id
      FROM products p
      JOIN sellers s ON p.seller_id = s.id
+     LEFT JOIN members m ON s.member_id = m.id
      WHERE p.id = $1`,
     [id]
   );
-  return result.rows[0] || null;
+  
+  if (result.rows.length === 0) {
+    return null;
+  }
+  
+  const product = result.rows[0];
+  // Load attributes for the product
+  const attributes = await getProductAttributeValues(id);
+  return { ...product, attributes };
 }
 
 export async function getActiveProducts(): Promise<Product[]> {
   const result = await pool.query(
-    `SELECT p.*, s.name as seller_name, s.status as seller_status, s.sponsoring_chapter_id as seller_sponsoring_chapter_id
+    `SELECT p.*, s.name as seller_name, s.business_name as seller_business_name, s.status as seller_status, s.member_id as seller_member_id, s.sponsoring_chapter_id as seller_sponsoring_chapter_id
      FROM products p
      JOIN sellers s ON p.seller_id = s.id
      WHERE s.status = 'APPROVED'
      ORDER BY p.created_at DESC`
   );
-  return result.rows;
+  
+  // Load attributes for all products
+  const productsWithAttributes = await Promise.all(
+    result.rows.map(async (product) => {
+      const attributes = await getProductAttributeValues(product.id);
+      return { ...product, attributes };
+    })
+  );
+  
+  return productsWithAttributes;
 }
 
 export async function getProductsBySeller(sellerId: number): Promise<Product[]> {
   const result = await pool.query(
-    'SELECT * FROM products WHERE seller_id = $1 ORDER BY created_at DESC',
+    `SELECT p.*, s.name as seller_name, s.business_name as seller_business_name, s.status as seller_status, s.member_id as seller_member_id, s.sponsoring_chapter_id as seller_sponsoring_chapter_id
+     FROM products p
+     JOIN sellers s ON p.seller_id = s.id
+     WHERE p.seller_id = $1
+     ORDER BY p.created_at DESC`,
     [sellerId]
   );
-  return result.rows;
+  
+  // Load attributes for all products
+  const productsWithAttributes = await Promise.all(
+    result.rows.map(async (product) => {
+      const attributes = await getProductAttributeValues(product.id);
+      return { ...product, attributes };
+    })
+  );
+  
+  return productsWithAttributes;
 }
 
 export async function updateProduct(

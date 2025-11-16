@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import type { Router as ExpressRouter } from 'express';
 import multer from 'multer';
-import { createProduct, getActiveProducts, getProductById, getSellerById, getAllProductCategories, getCategoryAttributeDefinitions } from '../db/queries';
+import { createProduct, getActiveProducts, getProductById, getSellerById, getAllProductCategories, getCategoryAttributeDefinitions, setProductAttributeValue } from '../db/queries';
 import { uploadToS3 } from '../services/s3';
 import { z } from 'zod';
 import pool from '../db/connection';
@@ -113,7 +113,32 @@ router.post('/', upload.single('image'), async (req: Request, res: Response) => 
       is_kappa_branded: isKappaBranded,
     });
 
-    res.status(201).json(product);
+    // Handle product attributes if provided
+    if (req.body.attributes && Array.isArray(req.body.attributes)) {
+      for (const attr of req.body.attributes) {
+        try {
+          await setProductAttributeValue(
+            product.id,
+            parseInt(attr.attribute_definition_id),
+            {
+              text: attr.value_text || undefined,
+              number: attr.value_number ? parseFloat(attr.value_number) : undefined,
+              boolean: attr.value_boolean !== undefined ? attr.value_boolean === true || attr.value_boolean === 'true' : undefined,
+            }
+          );
+        } catch (error) {
+          console.error(`Error setting attribute ${attr.attribute_definition_id} for product ${product.id}:`, error);
+          // Continue with other attributes even if one fails
+        }
+      }
+    }
+
+    // Load attributes and return complete product
+    const { getProductAttributeValues } = await import('../db/queries');
+    const attributes = await getProductAttributeValues(product.id);
+    const productWithAttributes = { ...product, attributes };
+
+    res.status(201).json(productWithAttributes);
   } catch (error) {
     if (error instanceof z.ZodError) {
       res.status(400).json({ error: 'Validation error', details: error.errors });

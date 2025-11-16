@@ -17,6 +17,7 @@
     "update:provinces": "tsx src/scripts/update-provinces.ts",
     "seed:test": "tsx src/db/seed-test.ts",
     "seed:test:clear": "tsx src/db/seed-test.ts --clear",
+    "seed:attributes": "tsx src/scripts/seed-product-attributes.ts",
     "seed:verification-test": "tsx src/scripts/seed-verification-test.ts",
     "seed:verification-test:clear": "tsx src/scripts/seed-verification-test.ts --clear",
     "verify:members": "tsx src/scripts/verify-members.ts",

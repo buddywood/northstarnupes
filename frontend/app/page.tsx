@@ -85,25 +85,34 @@ export default async function Home() {
                       </svg>
                     </div>
                   )}
-                  {/* Verification badge overlay */}
+                  {/* Verification badge overlay - consistent with product details page */}
+                  {product.seller_member_id ? (
+                    <div className="absolute top-2 right-2 z-10">
+                      <VerificationBadge type="brother" />
+                    </div>
+                  ) : product.seller_name ? (
+                    <div className="absolute top-2 right-2 z-10">
+                      <VerificationBadge type="seller" />
+                    </div>
+                  ) : null}
+                </div>
+                <div className="p-3">
+                  <p className="font-semibold text-sm text-midnight-navy dark:text-gray-100 line-clamp-2">{product.name}</p>
                   {product.seller_sponsoring_chapter_id && (
-                    <div className="absolute top-2 left-2 z-10">
+                    <div className="my-1">
                       <VerificationBadge 
                         type="sponsored-chapter" 
                         chapterName={getChapterName(product.seller_sponsoring_chapter_id || null)}
+                        className="text-xs"
                       />
                     </div>
                   )}
                   {product.seller_name && (
-                    <div className="absolute top-2 right-2 z-10">
-                      <VerificationBadge type="brother" />
-                    </div>
-                  )}
-                </div>
-                <div className="p-3">
-                  <p className="font-semibold text-sm text-midnight-navy dark:text-gray-100 line-clamp-2">{product.name}</p>
-                  {product.seller_name && (
-                    <p className="text-xs text-midnight-navy/60 dark:text-gray-400 mt-1">by {product.seller_name}</p>
+                    <p className="text-xs text-midnight-navy/60 dark:text-gray-400 mt-1">
+                      by {product.seller_member_id 
+                        ? `Brother ${product.seller_name}` 
+                        : (product.seller_business_name || product.seller_name)}
+                    </p>
                   )}
                   <p className="text-crimson font-bold text-sm mt-1">${(product.price_cents / 100).toFixed(2)}</p>
                 </div>

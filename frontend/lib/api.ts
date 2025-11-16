@@ -51,8 +51,10 @@ export interface Product {
   image_url: string | null;
   category_id: number | null;
   seller_name?: string;
+  seller_business_name?: string | null;
   seller_member_id?: number | null;
   seller_sponsoring_chapter_id?: number | null;
+  seller_initiated_chapter_id?: number | null;
   attributes?: ProductAttributeValue[];
 }
 

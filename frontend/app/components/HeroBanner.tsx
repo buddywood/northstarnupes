@@ -63,7 +63,7 @@ export default function HeroBanner() {
       <div className="relative z-10 text-center max-w-4xl mx-auto px-2 sm:px-4 w-full">
 
         <h1 className="text-[28px] sm:text-[36px] md:text-[44px] lg:text-[56px] font-display font-bold mb-5 sm:mb-6 px-2 leading-tight">
-          One Tribe. One Step. One Kappa.
+          One Family. One Step. One Kappa.
         </h1>
 
         <p className="text-sm sm:text-base md:text-lg max-w-xl mx-auto mb-6 sm:mb-8 px-2 text-white/95 tracking-wide font-medium">
