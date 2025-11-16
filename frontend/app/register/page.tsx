@@ -5,6 +5,9 @@ import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { fetchChapters } from '@/lib/api';
 import type { Chapter } from '@/lib/api';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import Image from 'next/image';
 import SearchableSelect from '../components/SearchableSelect';
@@ -966,9 +969,9 @@ export default function RegisterPage() {
               {/* Step 1: Cognito Registration */}
               {cognitoStep === 'signup' ? (
                 <>
-                  <div>
-                    <label className="block text-sm font-medium mb-2 text-midnight-navy">Email Address *</label>
-                    <input
+                  <div className="space-y-2">
+                    <Label className="text-midnight-navy">Email Address *</Label>
+                    <Input
                       type="email"
                       required
                       value={formData.email}
@@ -977,20 +980,20 @@ export default function RegisterPage() {
                         setError('');
                         setErrorCode(null);
                       }}
-                      className="w-full px-4 py-2 border border-frost-gray rounded-lg focus:ring-2 focus:ring-crimson focus:border-transparent text-midnight-navy"
+                      className="text-midnight-navy"
                       placeholder="your@email.com"
                     />
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-medium mb-2 text-midnight-navy">Password *</label>
+                  <div className="space-y-2">
+                    <Label className="text-midnight-navy">Password *</Label>
                     <div className="relative">
-                      <input
+                      <Input
                         type={showPassword ? 'text' : 'password'}
                         required
                         value={formData.password}
                         onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                        className="w-full px-4 py-2 pr-10 border border-frost-gray rounded-lg focus:ring-2 focus:ring-crimson focus:border-transparent text-midnight-navy"
+                        className="text-midnight-navy pr-10"
                         placeholder="Create a strong password"
                         minLength={8}
                       />
@@ -1015,15 +1018,15 @@ export default function RegisterPage() {
                     <PasswordStrengthIndicator password={formData.password} />
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-medium mb-2 text-midnight-navy">Confirm Password *</label>
+                  <div className="space-y-2">
+                    <Label className="text-midnight-navy">Confirm Password *</Label>
                     <div className="relative">
-                      <input
+                      <Input
                         type={showConfirmPassword ? 'text' : 'password'}
                         required
                         value={formData.confirmPassword}
                         onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                        className="w-full px-4 py-2 pr-10 border border-frost-gray rounded-lg focus:ring-2 focus:ring-crimson focus:border-transparent text-midnight-navy"
+                        className="text-midnight-navy pr-10"
                         placeholder="Confirm your password"
                       />
                       <button
@@ -1238,9 +1241,9 @@ export default function RegisterPage() {
                 <p className="text-midnight-navy/70 mb-6">Tell us about yourself</p>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium mb-2 text-midnight-navy">Full Name *</label>
-                <input
+              <div className="space-y-2">
+                <Label className="text-midnight-navy">Full Name *</Label>
+                <Input
                   type="text"
                   required
                   value={formData.name}
@@ -1249,13 +1252,13 @@ export default function RegisterPage() {
                     e.preventDefault();
                     setError('Please enter your full name');
                   }}
-                  className="w-full px-4 py-2 border border-frost-gray rounded-lg focus:ring-2 focus:ring-crimson focus:border-transparent text-midnight-navy"
+                  className="text-midnight-navy"
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium mb-2 text-midnight-navy">Membership Number *</label>
-                <input
+              <div className="space-y-2">
+                <Label className="text-midnight-navy">Membership Number *</Label>
+                <Input
                   type="text"
                   required
                   value={formData.membership_number}
@@ -1264,7 +1267,7 @@ export default function RegisterPage() {
                     e.preventDefault();
                     setError('Please enter your membership number');
                   }}
-                  className="w-full px-4 py-2 border border-frost-gray rounded-lg focus:ring-2 focus:ring-crimson focus:border-transparent text-midnight-navy"
+                  className="text-midnight-navy"
                   placeholder="Your Kappa Alpha Psi membership number"
                 />
               </div>
@@ -1306,8 +1309,8 @@ export default function RegisterPage() {
                 <p className="text-midnight-navy/70 mb-6">Your chapter and line details</p>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium mb-2 text-midnight-navy">Initiated Chapter *</label>
+              <div className="space-y-2">
+                <Label className="text-midnight-navy">Initiated Chapter *</Label>
                 <SearchableSelect
                   required
                   value={formData.initiated_chapter_id}
@@ -1346,39 +1349,39 @@ export default function RegisterPage() {
                   </select>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium mb-2 text-midnight-navy">Initiation Year</label>
-                  <input
+                <div className="space-y-2">
+                  <Label className="text-midnight-navy">Initiation Year</Label>
+                  <Input
                     type="number"
                     min="1900"
                     max={new Date().getFullYear()}
                     value={formData.initiated_year}
                     onChange={(e) => setFormData({ ...formData, initiated_year: e.target.value })}
-                    className="w-full px-4 py-2 border border-frost-gray rounded-lg focus:ring-2 focus:ring-crimson focus:border-transparent text-midnight-navy"
+                    className="text-midnight-navy"
                     placeholder="YYYY"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2 text-midnight-navy">Ship Name</label>
-                  <input
+                <div className="space-y-2">
+                  <Label className="text-midnight-navy">Ship Name</Label>
+                  <Input
                     type="text"
                     value={formData.ship_name}
                     onChange={(e) => setFormData({ ...formData, ship_name: e.target.value })}
-                    className="w-full px-4 py-2 border border-frost-gray rounded-lg focus:ring-2 focus:ring-crimson focus:border-transparent text-midnight-navy"
+                    className="text-midnight-navy"
                     placeholder="Your ship name"
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium mb-2 text-midnight-navy">Line Name</label>
-                  <input
+                <div className="space-y-2">
+                  <Label className="text-midnight-navy">Line Name</Label>
+                  <Input
                     type="text"
                     value={formData.line_name}
                     onChange={(e) => setFormData({ ...formData, line_name: e.target.value })}
-                    className="w-full px-4 py-2 border border-frost-gray rounded-lg focus:ring-2 focus:ring-crimson focus:border-transparent text-midnight-navy"
+                    className="text-midnight-navy"
                     placeholder="Your line name"
                   />
                 </div>

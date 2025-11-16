@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Oswald, Inter, Playfair_Display } from 'next/font/google'
 import Providers from './components/Providers'
 import SessionManager from './components/SessionManager'
+import { Toaster } from '@/components/ui/toaster'
 import './globals.css'
 
 const oswald = Oswald({
@@ -60,6 +61,7 @@ export default function RootLayout({
         <Providers>
           <SessionManager />
           {children}
+          <Toaster />
         </Providers>
       </body>
     </html>

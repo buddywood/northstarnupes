@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { toast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import Image from 'next/image';
 import { getStewardListings, deleteStewardListing, type StewardListing } from '@/lib/api';
@@ -42,8 +43,16 @@ export default function StewardDashboardPage() {
     try {
       await deleteStewardListing(listingId);
       setListings(listings.filter(l => l.id !== listingId));
+      toast({
+        title: 'Success',
+        description: 'Listing deleted successfully',
+      });
     } catch (err: any) {
-      alert(err.message || 'Failed to delete listing');
+      toast({
+        title: 'Error',
+        description: err.message || 'Failed to delete listing',
+        variant: 'destructive',
+      });
     }
   };
 

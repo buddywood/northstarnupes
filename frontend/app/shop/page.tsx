@@ -11,6 +11,7 @@ import Skeleton, { SkeletonLoader } from '../components/Skeleton';
 import SearchableSelect from '../components/SearchableSelect';
 import UserRoleBadges from '../components/UserRoleBadges';
 import StewardshipHowItWorksModal from '../components/StewardshipHowItWorksModal';
+import { Button } from '@/components/ui/button';
 import Image from 'next/image';
 import Link from 'next/link';
 
@@ -497,12 +498,12 @@ function ShopPageContent() {
         ) : error ? (
           <div className="text-center py-12">
             <p className="text-red-600 mb-4">{error}</p>
-            <button
+            <Button
               onClick={() => window.location.reload()}
-              className="bg-crimson text-white px-6 py-2 rounded-full font-semibold hover:bg-crimson/90 transition"
+              className="bg-crimson text-white hover:bg-crimson/90"
             >
               Try Again
-            </button>
+            </Button>
           </div>
         ) : (roleFilter === 'steward' ? filteredAndSortedStewardListings.length === 0 : filteredAndSortedProducts.length === 0) ? (
           <div className="text-center py-16 bg-white rounded-xl border border-frost-gray">
@@ -525,7 +526,7 @@ function ShopPageContent() {
                 : roleFilter === 'steward' ? 'Check back soon for new listings!' : 'Check back soon for new products!'}
             </p>
             {(searchQuery || selectedChapter || selectedSeller || selectedCategory) && (
-              <button
+              <Button
                 onClick={() => {
                   setSearchQuery('');
                   setSelectedChapter(null);
@@ -533,10 +534,10 @@ function ShopPageContent() {
                   setSelectedCategory(null);
                   setPriceRange([0, priceRange[1]]);
                 }}
-                className="bg-crimson text-white px-6 py-2 rounded-full font-semibold hover:bg-crimson/90 transition"
+                className="bg-crimson text-white hover:bg-crimson/90"
               >
                 Clear Filters
-              </button>
+              </Button>
             )}
           </div>
         ) : (

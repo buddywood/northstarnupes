@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { fetchActiveCollegiateChapters, applyToBecomeSteward, getStewardProfile, type Chapter } from '@/lib/api';
+import { Label } from '@/components/ui/label';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import SearchableSelect from '../components/SearchableSelect';
@@ -312,10 +313,10 @@ export default function StewardSetupPage() {
               </div>
             )}
 
-            <div>
-              <label htmlFor="sponsoring_chapter" className="block text-sm font-medium text-midnight-navy mb-2">
+            <div className="space-y-2">
+              <Label htmlFor="sponsoring_chapter" className="text-midnight-navy">
                 Select Your Sponsoring Chapter *
-              </label>
+              </Label>
               <SearchableSelect
                 required
                 value={selectedChapterId?.toString() || ''}

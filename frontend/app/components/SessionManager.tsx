@@ -3,6 +3,14 @@
 import { useEffect, useState } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 
 const SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 const WARNING_TIME_MS = 5 * 60 * 1000; // Show warning 5 minutes before expiry
@@ -111,14 +119,14 @@ export default function SessionManager() {
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
-  if (!session || !showDialog) {
+  if (!session) {
     return null;
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 p-8 text-center">
-        <div className="mb-6">
+    <Dialog open={showDialog} onOpenChange={(open) => !open && handleLogout()}>
+      <DialogContent className="max-w-md text-center">
+        <DialogHeader>
           <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <svg 
               className="w-8 h-8 text-yellow-600" 
@@ -134,33 +142,34 @@ export default function SessionManager() {
               />
             </svg>
           </div>
-          <h2 className="text-2xl font-extrabold text-[#1E2A38] mb-2">
+          <DialogTitle className="text-2xl font-extrabold text-[#1E2A38] mb-2">
             Session Expiring Soon
-          </h2>
-          <p className="text-gray-600 mb-4">
+          </DialogTitle>
+          <DialogDescription className="text-gray-600 mb-4">
             Your session will expire in <strong className="text-crimson">{formatTimeRemaining(timeRemaining)}</strong>
-          </p>
+          </DialogDescription>
           <p className="text-sm text-gray-500">
             Would you like to extend your session to continue working?
           </p>
-        </div>
+        </DialogHeader>
 
-        <div className="flex gap-4 justify-center">
-          <button
+        <div className="flex gap-4 justify-center mt-6">
+          <Button
+            variant="outline"
             onClick={handleLogout}
-            className="px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-full font-semibold hover:bg-gray-50 transition"
+            className="px-6 py-3"
           >
             Log Out
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={handleExtendSession}
-            className="px-6 py-3 bg-[#8A0C13] hover:bg-[#A51720] text-white rounded-full font-semibold transition"
+            className="px-6 py-3 bg-[#8A0C13] hover:bg-[#A51720] text-white"
           >
             Extend Session
-          </button>
+          </Button>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 

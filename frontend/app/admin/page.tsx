@@ -3,6 +3,20 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { signOut } from 'next-auth/react';
+import { toast } from '@/hooks/use-toast';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  TabsContent,
+} from '@/components/ui/tabs';
 import { useAuth } from '@/lib/auth';
 import Skeleton, { SkeletonLoader } from '../components/Skeleton';
 import {
@@ -95,7 +109,11 @@ export default function AdminDashboard() {
     } catch (error: any) {
       console.error('Error loading data:', error);
       if (error?.message?.includes('Unauthorized') || error?.message?.includes('401') || error?.message?.includes('Not authenticated')) {
-        alert('Authentication failed. Please login again.');
+        toast({
+          title: 'Authentication failed',
+          description: 'Please login again.',
+          variant: 'destructive',
+        });
         router.push('/admin/login');
       }
     } finally {
@@ -115,7 +133,11 @@ export default function AdminDashboard() {
       setSelectedItem(null);
     } catch (error) {
       console.error('Error approving seller:', error);
-      alert('Failed to approve seller');
+      toast({
+        title: 'Error',
+        description: 'Failed to approve seller',
+        variant: 'destructive',
+      });
     } finally {
       setProcessing(null);
       setProcessingType(null);
@@ -134,7 +156,11 @@ export default function AdminDashboard() {
       setSelectedItem(null);
     } catch (error) {
       console.error('Error rejecting seller:', error);
-      alert('Failed to reject seller');
+      toast({
+        title: 'Error',
+        description: 'Failed to reject seller',
+        variant: 'destructive',
+      });
     } finally {
       setProcessing(null);
       setProcessingType(null);
@@ -153,7 +179,11 @@ export default function AdminDashboard() {
       setSelectedItem(null);
     } catch (error) {
       console.error('Error approving promoter:', error);
-      alert('Failed to approve promoter');
+      toast({
+        title: 'Error',
+        description: 'Failed to approve promoter',
+        variant: 'destructive',
+      });
     } finally {
       setProcessing(null);
       setProcessingType(null);
@@ -172,7 +202,11 @@ export default function AdminDashboard() {
       setSelectedItem(null);
     } catch (error) {
       console.error('Error rejecting promoter:', error);
-      alert('Failed to reject promoter');
+      toast({
+        title: 'Error',
+        description: 'Failed to reject promoter',
+        variant: 'destructive',
+      });
     } finally {
       setProcessing(null);
       setProcessingType(null);
@@ -191,7 +225,11 @@ export default function AdminDashboard() {
       setSelectedItem(null);
     } catch (error) {
       console.error('Error verifying member:', error);
-      alert('Failed to verify member');
+      toast({
+        title: 'Error',
+        description: 'Failed to verify member',
+        variant: 'destructive',
+      });
     } finally {
       setProcessing(null);
       setProcessingType(null);
@@ -211,7 +249,11 @@ export default function AdminDashboard() {
       setSelectedItem(null);
     } catch (error) {
       console.error('Error rejecting member:', error);
-      alert('Failed to reject member');
+      toast({
+        title: 'Error',
+        description: 'Failed to reject member',
+        variant: 'destructive',
+      });
     } finally {
       setProcessing(null);
       setProcessingType(null);
@@ -247,7 +289,11 @@ export default function AdminDashboard() {
       setSelectedItem(null);
     } catch (error) {
       console.error('Error marking member for review:', error);
-      alert('Failed to mark member for review');
+      toast({
+        title: 'Error',
+        description: 'Failed to mark member for review',
+        variant: 'destructive',
+      });
     } finally {
       setProcessing(null);
       setProcessingType(null);
@@ -301,104 +347,51 @@ export default function AdminDashboard() {
 
       <div className="container mx-auto px-4 py-8">
         <div className="bg-white rounded-lg shadow-lg border border-frost-gray">
-          <div className="border-b border-frost-gray">
-            <div className="flex">
-              <button
-                onClick={() => setActiveTab('members')}
-                className={`px-6 py-4 font-semibold ${
-                  activeTab === 'members'
-                    ? 'border-b-2 border-crimson text-crimson'
-                    : 'text-midnight-navy/70 hover:text-crimson'
-                }`}
-              >
-                Pending Members
-              </button>
-              <button
-                onClick={() => setActiveTab('sellers')}
-                className={`px-6 py-4 font-semibold ${
-                  activeTab === 'sellers'
-                    ? 'border-b-2 border-crimson text-crimson'
-                    : 'text-midnight-navy/70 hover:text-crimson'
-                }`}
-              >
-                Pending Sellers
-              </button>
-              <button
-                onClick={() => setActiveTab('promoters')}
-                className={`px-6 py-4 font-semibold ${
-                  activeTab === 'promoters'
-                    ? 'border-b-2 border-crimson text-crimson'
-                    : 'text-midnight-navy/70 hover:text-crimson'
-                }`}
-              >
-                Pending Promoters
-              </button>
-              <button
-                onClick={() => setActiveTab('orders')}
-                className={`px-6 py-4 font-semibold ${
-                  activeTab === 'orders'
-                    ? 'border-b-2 border-crimson text-crimson'
-                    : 'text-midnight-navy/70 hover:text-crimson'
-                }`}
-              >
-                Orders
-              </button>
-              <button
-                onClick={() => setActiveTab('donations')}
-                className={`px-6 py-4 font-semibold ${
-                  activeTab === 'donations'
-                    ? 'border-b-2 border-crimson text-crimson'
-                    : 'text-midnight-navy/70 hover:text-crimson'
-                }`}
-              >
-                Donations
-              </button>
-              <button
-                onClick={() => setActiveTab('steward-donations')}
-                className={`px-6 py-4 font-semibold ${
-                  activeTab === 'steward-donations'
-                    ? 'border-b-2 border-crimson text-crimson'
-                    : 'text-midnight-navy/70 hover:text-crimson'
-                }`}
-              >
-                Steward Donations
-              </button>
-              <button
-                onClick={() => setActiveTab('steward-activity')}
-                className={`px-6 py-4 font-semibold ${
-                  activeTab === 'steward-activity'
-                    ? 'border-b-2 border-crimson text-crimson'
-                    : 'text-midnight-navy/70 hover:text-crimson'
-                }`}
-              >
-                Steward Activity
-              </button>
-              <button
-                onClick={() => setActiveTab('platform-settings')}
-                className={`px-6 py-4 font-semibold ${
-                  activeTab === 'platform-settings'
-                    ? 'border-b-2 border-crimson text-crimson'
-                    : 'text-midnight-navy/70 hover:text-crimson'
-                }`}
-              >
-                Platform Settings
-              </button>
+          <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as typeof activeTab)} className="w-full">
+            <div className="border-b border-frost-gray">
+              <TabsList className="w-full justify-start bg-transparent h-auto p-0">
+                <TabsTrigger value="members" className="px-6 py-4 font-semibold data-[state=active]:border-b-2 data-[state=active]:border-crimson data-[state=active]:text-crimson data-[state=inactive]:text-midnight-navy/70">
+                  Pending Members
+                </TabsTrigger>
+                <TabsTrigger value="sellers" className="px-6 py-4 font-semibold data-[state=active]:border-b-2 data-[state=active]:border-crimson data-[state=active]:text-crimson data-[state=inactive]:text-midnight-navy/70">
+                  Pending Sellers
+                </TabsTrigger>
+                <TabsTrigger value="promoters" className="px-6 py-4 font-semibold data-[state=active]:border-b-2 data-[state=active]:border-crimson data-[state=active]:text-crimson data-[state=inactive]:text-midnight-navy/70">
+                  Pending Promoters
+                </TabsTrigger>
+                <TabsTrigger value="orders" className="px-6 py-4 font-semibold data-[state=active]:border-b-2 data-[state=active]:border-crimson data-[state=active]:text-crimson data-[state=inactive]:text-midnight-navy/70">
+                  Orders
+                </TabsTrigger>
+                <TabsTrigger value="donations" className="px-6 py-4 font-semibold data-[state=active]:border-b-2 data-[state=active]:border-crimson data-[state=active]:text-crimson data-[state=inactive]:text-midnight-navy/70">
+                  Donations
+                </TabsTrigger>
+                <TabsTrigger value="steward-donations" className="px-6 py-4 font-semibold data-[state=active]:border-b-2 data-[state=active]:border-crimson data-[state=active]:text-crimson data-[state=inactive]:text-midnight-navy/70">
+                  Steward Donations
+                </TabsTrigger>
+                <TabsTrigger value="steward-activity" className="px-6 py-4 font-semibold data-[state=active]:border-b-2 data-[state=active]:border-crimson data-[state=active]:text-crimson data-[state=inactive]:text-midnight-navy/70">
+                  Steward Activity
+                </TabsTrigger>
+                <TabsTrigger value="platform-settings" className="px-6 py-4 font-semibold data-[state=active]:border-b-2 data-[state=active]:border-crimson data-[state=active]:text-crimson data-[state=inactive]:text-midnight-navy/70">
+                  Platform Settings
+                </TabsTrigger>
+              </TabsList>
             </div>
-          </div>
 
-          <div className="p-6">
-            {loading ? (
-              <div className="space-y-4 py-8">
-                <Skeleton variant="card" className="h-24 w-full" />
-                <Skeleton variant="card" className="h-24 w-full" />
-                <Skeleton variant="card" className="h-24 w-full" />
-              </div>
-            ) : activeTab === 'members' ? (
-              <div className="space-y-4">
-                {members.length === 0 ? (
-                  <p className="text-center py-8 text-midnight-navy/70">No pending members</p>
-                ) : (
-                  members.map((member) => (
+            <div className="p-6">
+              {loading ? (
+                <div className="space-y-4 py-8">
+                  <Skeleton variant="card" className="h-24 w-full" />
+                  <Skeleton variant="card" className="h-24 w-full" />
+                  <Skeleton variant="card" className="h-24 w-full" />
+                </div>
+              ) : (
+                <>
+                  <TabsContent value="members" className="mt-0">
+                    <div className="space-y-4">
+                      {members.length === 0 ? (
+                        <p className="text-center py-8 text-midnight-navy/70">No pending members</p>
+                      ) : (
+                        members.map((member) => (
                     <div
                       key={member.id}
                       onClick={() => openDetailModal(member)}
@@ -456,15 +449,16 @@ export default function AdminDashboard() {
                         </button>
                       </div>
                     </div>
-                  ))
-                )}
-              </div>
-            ) : activeTab === 'sellers' ? (
-              <div className="space-y-4">
-                {sellers.length === 0 ? (
-                  <p className="text-center py-8 text-midnight-navy/70">No pending sellers</p>
-                ) : (
-                  sellers.map((seller) => (
+                        ))
+                      )}
+                    </div>
+                  </TabsContent>
+                  <TabsContent value="sellers" className="mt-0">
+                    <div className="space-y-4">
+                      {sellers.length === 0 ? (
+                        <p className="text-center py-8 text-midnight-navy/70">No pending sellers</p>
+                      ) : (
+                        sellers.map((seller) => (
                     <div
                       key={seller.id}
                       onClick={() => openDetailModal(seller)}
@@ -505,15 +499,16 @@ export default function AdminDashboard() {
                         </button>
                       </div>
                     </div>
-                  ))
-                )}
-              </div>
-            ) : activeTab === 'promoters' ? (
-              <div className="space-y-4">
-                {promoters.length === 0 ? (
-                  <p className="text-center py-8 text-midnight-navy/70">No pending promoters</p>
-                ) : (
-                  promoters.map((promoter) => (
+                        ))
+                      )}
+                    </div>
+                  </TabsContent>
+                  <TabsContent value="promoters" className="mt-0">
+                    <div className="space-y-4">
+                      {promoters.length === 0 ? (
+                        <p className="text-center py-8 text-midnight-navy/70">No pending promoters</p>
+                      ) : (
+                        promoters.map((promoter) => (
                     <div
                       key={promoter.id}
                       onClick={() => openDetailModal(promoter)}
@@ -552,11 +547,12 @@ export default function AdminDashboard() {
                         </button>
                       </div>
                     </div>
-                  ))
-                )}
-              </div>
-            ) : activeTab === 'orders' ? (
-              <div className="overflow-x-auto">
+                        ))
+                      )}
+                    </div>
+                  </TabsContent>
+                  <TabsContent value="orders" className="mt-0">
+                    <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
                     <tr className="border-b">
@@ -594,16 +590,17 @@ export default function AdminDashboard() {
                   </tbody>
                 </table>
               </div>
-            ) : activeTab === 'donations' ? (
+            </TabsContent>
+            <TabsContent value="donations" className="mt-0">
               <div>
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-xl font-semibold">Chapter Donations</h2>
-                  <button
+                  <Button
                     onClick={exportCSV}
-                    className="bg-crimson text-white px-4 py-2 rounded hover:bg-crimson/90 transition shadow-md"
+                    className="bg-crimson text-white hover:bg-crimson/90"
                   >
                     Export CSV
-                  </button>
+                  </Button>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full">
@@ -628,7 +625,8 @@ export default function AdminDashboard() {
                   </table>
                 </div>
               </div>
-            ) : activeTab === 'steward-donations' ? (
+            </TabsContent>
+            <TabsContent value="steward-donations" className="mt-0">
               <div>
                 <h2 className="text-xl font-semibold mb-4">Steward Chapter Donations</h2>
                 <div className="overflow-x-auto">
@@ -654,7 +652,8 @@ export default function AdminDashboard() {
                   </table>
                 </div>
               </div>
-            ) : activeTab === 'steward-activity' ? (
+            </TabsContent>
+            <TabsContent value="steward-activity" className="mt-0">
               <div>
                 <h2 className="text-xl font-semibold mb-4">Steward Activity</h2>
                 <div className="overflow-x-auto">
@@ -684,7 +683,8 @@ export default function AdminDashboard() {
                   </table>
                 </div>
               </div>
-            ) : activeTab === 'platform-settings' ? (
+            </TabsContent>
+            <TabsContent value="platform-settings" className="mt-0">
               <div>
                 <h2 className="text-xl font-semibold mb-4">Platform Settings</h2>
                 <div className="space-y-4">
@@ -700,19 +700,25 @@ export default function AdminDashboard() {
                             Current Value: <strong>{setting.value || 'Not set'}</strong>
                           </p>
                         </div>
-                        <button
+                        <Button
                           onClick={() => {
                             const newValue = prompt(`Enter new value for ${setting.key}:`, setting.value || '');
                             if (newValue !== null) {
                               updatePlatformSetting(setting.key, newValue, setting.description || null)
                                 .then(() => loadData())
-                                .catch((err) => alert('Failed to update setting: ' + err.message));
+                                .catch((err) => {
+                                  toast({
+                                    title: 'Error',
+                                    description: `Failed to update setting: ${err.message}`,
+                                    variant: 'destructive',
+                                  });
+                                });
                             }
                           }}
-                          className="bg-crimson text-white px-4 py-2 rounded hover:bg-crimson/90 transition"
+                          className="bg-crimson text-white hover:bg-crimson/90"
                         >
                           Edit
-                        </button>
+                        </Button>
                       </div>
                     </div>
                   ))}
@@ -721,27 +727,24 @@ export default function AdminDashboard() {
                   )}
                 </div>
               </div>
-            ) : null}
-          </div>
+            </TabsContent>
+                </>
+              )}
+            </div>
+          </Tabs>
         </div>
       </div>
 
       {/* Application Detail Modal */}
-      {isModalOpen && selectedItem && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={closeModal}>
-          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto m-4" onClick={(e) => e.stopPropagation()}>
-            <div className="sticky top-0 bg-white border-b border-frost-gray px-6 py-4 flex justify-between items-center">
-              <h2 className="text-2xl font-bold text-midnight-navy">
-                {activeTab === 'members' ? 'Member Application' : activeTab === 'sellers' ? 'Seller Application' : 'Promoter Application'}
-              </h2>
-              <button
-                onClick={closeModal}
-                className="text-gray-500 hover:text-gray-700 text-2xl font-bold"
-              >
-                ×
-              </button>
-            </div>
-            <div className="p-6 space-y-6">
+      <Dialog open={isModalOpen} onOpenChange={(open) => !open && closeModal()}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold text-midnight-navy">
+              {activeTab === 'members' ? 'Member Application' : activeTab === 'sellers' ? 'Seller Application' : 'Promoter Application'}
+            </DialogTitle>
+          </DialogHeader>
+          {selectedItem && (
+            <div className="space-y-6">
               {/* Common fields */}
               {selectedItem.headshot_url && (
                 <div className="flex justify-center">
@@ -944,70 +947,70 @@ export default function AdminDashboard() {
               <div className="flex space-x-4 pt-4 border-t border-frost-gray">
                 {activeTab === 'members' && (
                   <>
-                    <button
+                    <Button
                       onClick={() => selectedItem && 'id' in selectedItem && handleVerifyMember(selectedItem.id)}
                       disabled={selectedItem && 'id' in selectedItem && processing === selectedItem.id && processingType === 'member'}
-                      className="flex-1 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:opacity-50"
+                      className="flex-1 bg-green-600 text-white hover:bg-green-700"
                     >
                       {selectedItem && 'id' in selectedItem && processing === selectedItem.id && processingType === 'member' ? 'Processing...' : 'Verify'}
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       onClick={() => selectedItem && 'id' in selectedItem && handleMarkForReview(selectedItem.id)}
                       disabled={selectedItem && 'id' in selectedItem && processing === selectedItem.id && processingType === 'member'}
-                      className="flex-1 bg-yellow-600 text-white px-4 py-2 rounded hover:bg-yellow-700 disabled:opacity-50"
+                      className="flex-1 bg-yellow-600 text-white hover:bg-yellow-700"
                     >
                       {selectedItem && 'id' in selectedItem && processing === selectedItem.id && processingType === 'member' ? 'Processing...' : 'Review'}
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       onClick={() => selectedItem && 'id' in selectedItem && handleRejectMember(selectedItem.id)}
                       disabled={selectedItem && 'id' in selectedItem && processing === selectedItem.id && processingType === 'member'}
-                      className="flex-1 bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 disabled:opacity-50"
+                      className="flex-1 bg-red-600 text-white hover:bg-red-700"
                     >
                       {selectedItem && 'id' in selectedItem && processing === selectedItem.id && processingType === 'member' ? 'Processing...' : 'Reject'}
-                    </button>
+                    </Button>
                   </>
                 )}
                 {activeTab === 'sellers' && (
                   <>
-                    <button
+                    <Button
                       onClick={() => selectedItem && 'id' in selectedItem && handleApprove(selectedItem.id)}
                       disabled={selectedItem && 'id' in selectedItem && processing === selectedItem.id && processingType === 'seller'}
-                      className="flex-1 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:opacity-50"
+                      className="flex-1 bg-green-600 text-white hover:bg-green-700"
                     >
                       {selectedItem && 'id' in selectedItem && processing === selectedItem.id && processingType === 'seller' ? 'Processing...' : 'Approve'}
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       onClick={() => selectedItem && 'id' in selectedItem && handleReject(selectedItem.id)}
                       disabled={selectedItem && 'id' in selectedItem && processing === selectedItem.id && processingType === 'seller'}
-                      className="flex-1 bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 disabled:opacity-50"
+                      className="flex-1 bg-red-600 text-white hover:bg-red-700"
                     >
                       {selectedItem && 'id' in selectedItem && processing === selectedItem.id && processingType === 'seller' ? 'Processing...' : 'Reject'}
-                    </button>
+                    </Button>
                   </>
                 )}
                 {activeTab === 'promoters' && (
                   <>
-                    <button
+                    <Button
                       onClick={() => selectedItem && 'id' in selectedItem && handleApprovePromoter(selectedItem.id)}
                       disabled={selectedItem && 'id' in selectedItem && processing === selectedItem.id && processingType === 'promoter'}
-                      className="flex-1 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:opacity-50"
+                      className="flex-1 bg-green-600 text-white hover:bg-green-700"
                     >
                       {selectedItem && 'id' in selectedItem && processing === selectedItem.id && processingType === 'promoter' ? 'Processing...' : 'Approve'}
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       onClick={() => selectedItem && 'id' in selectedItem && handleRejectPromoter(selectedItem.id)}
                       disabled={selectedItem && 'id' in selectedItem && processing === selectedItem.id && processingType === 'promoter'}
-                      className="flex-1 bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 disabled:opacity-50"
+                      className="flex-1 bg-red-600 text-white hover:bg-red-700"
                     >
                       {selectedItem && 'id' in selectedItem && processing === selectedItem.id && processingType === 'promoter' ? 'Processing...' : 'Reject'}
-                    </button>
+                    </Button>
                   </>
                 )}
               </div>
             </div>
-          </div>
-        </div>
-      )}
+          )}
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }

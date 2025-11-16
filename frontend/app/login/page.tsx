@@ -2,6 +2,10 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { toast } from '@/hooks/use-toast';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import Image from 'next/image';
 import VerificationCodeInput from '../components/VerificationCodeInput';
@@ -283,7 +287,10 @@ function LoginPageContent() {
       }
 
       setError('');
-      alert('Verification code sent! Please check your email.');
+      toast({
+        title: 'Verification code sent!',
+        description: 'Please check your email.',
+      });
     } catch (err: any) {
       setError(err.message || 'Failed to resend verification code');
     } finally {
@@ -388,8 +395,8 @@ function LoginPageContent() {
         </p>
         {needsVerification ? (
           <form onSubmit={handleVerification} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-2 text-midnight-navy">Verification Code *</label>
+            <div className="space-y-2">
+              <Label className="text-midnight-navy">Verification Code *</Label>
               <VerificationCodeInput
                 length={6}
                 value={verificationCode}
@@ -404,63 +411,65 @@ function LoginPageContent() {
               </p>
             </div>
             <div className="flex items-center justify-center gap-2">
-              <button
+              <Button
                 type="button"
+                variant="ghost"
                 onClick={handleResendVerification}
                 disabled={resendingVerification}
-                className="text-sm transition text-crimson hover:underline disabled:opacity-50"
+                className="text-sm text-crimson hover:text-crimson/80"
               >
                 {resendingVerification ? 'Sending...' : 'Resend code'}
-              </button>
+              </Button>
             </div>
             {error && <div className="text-red-600 text-sm">{error}</div>}
-            <button
+            <Button
               type="submit"
               disabled={loading || verificationCode.length !== 6}
-              className="w-full bg-crimson text-white py-2 rounded-lg font-semibold hover:bg-crimson/90 transition disabled:opacity-50 shadow-md hover:shadow-lg"
+              className="w-full bg-crimson text-white hover:bg-crimson/90"
             >
               {loading ? 'Verifying...' : 'Verify Email'}
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
+              variant="outline"
               onClick={() => {
                 setNeedsVerification(false);
                 setVerificationCode('');
                 setError('');
               }}
-              className="w-full bg-gray-200 text-midnight-navy py-2 rounded-lg font-semibold hover:bg-gray-300 transition"
+              className="w-full"
             >
               Back to Login
-            </button>
+            </Button>
           </form>
         ) : !needsPasswordChange ? (
           <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium mb-2 text-midnight-navy">
+          <div className="space-y-2">
+            <Label htmlFor="email" className="text-midnight-navy">
               Email
-            </label>
-            <input
+            </Label>
+            <Input
               type="email"
               id="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="w-full px-4 py-2 border border-frost-gray rounded-lg focus:ring-2 focus:ring-crimson focus:border-transparent text-midnight-navy"
+              className="text-midnight-navy"
               placeholder="Enter your email"
             />
           </div>
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium mb-2 text-midnight-navy">
+          <div className="space-y-2">
+            <Label htmlFor="password" className="text-midnight-navy">
               Password
-            </label>
+            </Label>
             <div className="relative">
-              <input
+              <Input
                 type={showPassword ? 'text' : 'password'}
                 id="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="w-full px-4 py-2 pr-10 border border-frost-gray rounded-lg focus:ring-2 focus:ring-crimson focus:border-transparent text-midnight-navy"
+                className="text-midnight-navy pr-10"
                 placeholder="Enter your password"
               />
               <button
@@ -483,13 +492,13 @@ function LoginPageContent() {
             </div>
           </div>
           {error && <div className="text-red-600 text-sm">{error}</div>}
-          <button
+          <Button
             type="submit"
             disabled={loading}
-            className="w-full bg-crimson text-white py-2 rounded-lg font-semibold hover:bg-crimson/90 transition disabled:opacity-50 shadow-md hover:shadow-lg"
+            className="w-full bg-crimson text-white hover:bg-crimson/90"
           >
             {loading ? 'Logging in...' : 'Login'}
-          </button>
+          </Button>
           <div className="text-center mt-4">
             <Link
               href="/forgot-password"
@@ -501,19 +510,19 @@ function LoginPageContent() {
         </form>
         ) : (
           <form onSubmit={handlePasswordChange} className="space-y-4">
-            <div>
-              <label htmlFor="newPassword" className="block text-sm font-medium mb-2 text-midnight-navy">
+            <div className="space-y-2">
+              <Label htmlFor="newPassword" className="text-midnight-navy">
                 New Password
-              </label>
+              </Label>
               <div className="relative">
-                <input
+                <Input
                   type={showNewPassword ? 'text' : 'password'}
                   id="newPassword"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   required
                   minLength={8}
-                  className="w-full px-4 py-2 pr-10 border border-frost-gray rounded-lg focus:ring-2 focus:ring-crimson focus:border-transparent text-midnight-navy"
+                  className="text-midnight-navy pr-10"
                   placeholder="Enter your new password"
                 />
                 <button
@@ -535,19 +544,19 @@ function LoginPageContent() {
                 </button>
               </div>
             </div>
-            <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium mb-2 text-midnight-navy">
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword" className="text-midnight-navy">
                 Confirm New Password
-              </label>
+              </Label>
               <div className="relative">
-                <input
+                <Input
                   type={showConfirmPassword ? 'text' : 'password'}
                   id="confirmPassword"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
                   minLength={8}
-                  className="w-full px-4 py-2 pr-10 border border-frost-gray rounded-lg focus:ring-2 focus:ring-crimson focus:border-transparent text-midnight-navy"
+                  className="text-midnight-navy pr-10"
                   placeholder="Confirm your new password"
                 />
                 <button
@@ -570,25 +579,26 @@ function LoginPageContent() {
               </div>
             </div>
             {error && <div className="text-red-600 text-sm">{error}</div>}
-            <button
+            <Button
               type="submit"
               disabled={loading}
-              className="w-full bg-crimson text-white py-2 rounded-lg font-semibold hover:bg-crimson/90 transition disabled:opacity-50 shadow-md hover:shadow-lg"
+              className="w-full bg-crimson text-white hover:bg-crimson/90"
             >
               {loading ? 'Changing Password...' : 'Change Password'}
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
+              variant="outline"
               onClick={() => {
                 setNeedsPasswordChange(false);
                 setNewPassword('');
                 setConfirmPassword('');
                 setError('');
               }}
-              className="w-full bg-gray-200 text-midnight-navy py-2 rounded-lg font-semibold hover:bg-gray-300 transition"
+              className="w-full"
             >
               Back to Login
-            </button>
+            </Button>
           </form>
         )}
 

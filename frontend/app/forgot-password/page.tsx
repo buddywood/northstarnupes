@@ -2,6 +2,10 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { toast } from '@/hooks/use-toast';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import Logo from '../components/Logo';
 import VerificationCodeInput from '../components/VerificationCodeInput';
@@ -120,17 +124,17 @@ export default function ForgotPasswordPage() {
 
         {step === 'email' && (
           <form onSubmit={handleRequestCode} className="space-y-4">
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium mb-2 text-midnight-navy">
+            <div className="space-y-2">
+              <Label htmlFor="email" className="text-midnight-navy">
                 Email Address
-              </label>
-              <input
+              </Label>
+              <Input
                 type="email"
                 id="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="w-full px-4 py-2 border border-frost-gray rounded-lg focus:ring-2 focus:ring-crimson focus:border-transparent text-midnight-navy"
+                className="text-midnight-navy"
                 placeholder="Enter your email"
               />
             </div>
@@ -160,7 +164,10 @@ export default function ForgotPasswordPage() {
 
                           setError('');
                           setEmailNotVerified(false);
-                          alert('Verification code sent! Please check your email and verify your account, then you can reset your password.');
+                          toast({
+                            title: 'Verification code sent!',
+                            description: 'Please check your email and verify your account, then you can reset your password.',
+                          });
                         } catch (err: any) {
                           setError(err.message || 'Failed to resend verification code');
                         } finally {
@@ -176,13 +183,13 @@ export default function ForgotPasswordPage() {
                 )}
               </div>
             )}
-            <button
+            <Button
               type="submit"
               disabled={loading || emailNotVerified}
-              className="w-full bg-crimson text-white py-2 rounded-lg font-semibold hover:bg-crimson/90 transition disabled:opacity-50 shadow-md hover:shadow-lg"
+              className="w-full bg-crimson text-white hover:bg-crimson/90"
             >
               {loading ? 'Sending Code...' : 'Send Verification Code'}
-            </button>
+            </Button>
             <div className="text-center">
               <Link
                 href="/login"
@@ -196,8 +203,8 @@ export default function ForgotPasswordPage() {
 
         {step === 'code' && (
           <form onSubmit={handleResetPassword} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-2 text-midnight-navy">Verification Code *</label>
+            <div className="space-y-2">
+              <Label className="text-midnight-navy">Verification Code *</Label>
               <VerificationCodeInput
                 length={6}
                 value={code}
@@ -209,19 +216,19 @@ export default function ForgotPasswordPage() {
               </p>
             </div>
 
-            <div>
-              <label htmlFor="newPassword" className="block text-sm font-medium mb-2 text-midnight-navy">
+            <div className="space-y-2">
+              <Label htmlFor="newPassword" className="text-midnight-navy">
                 New Password
-              </label>
+              </Label>
               <div className="relative">
-                <input
+                <Input
                   type={showNewPassword ? 'text' : 'password'}
                   id="newPassword"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   required
                   minLength={8}
-                  className="w-full px-4 py-2 pr-10 border border-frost-gray rounded-lg focus:ring-2 focus:ring-crimson focus:border-transparent text-midnight-navy"
+                  className="text-midnight-navy pr-10"
                   placeholder="Enter your new password"
                 />
                 <button
@@ -244,19 +251,19 @@ export default function ForgotPasswordPage() {
               </div>
             </div>
 
-            <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium mb-2 text-midnight-navy">
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword" className="text-midnight-navy">
                 Confirm New Password
-              </label>
+              </Label>
               <div className="relative">
-                <input
+                <Input
                   type={showConfirmPassword ? 'text' : 'password'}
                   id="confirmPassword"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
                   minLength={8}
-                  className="w-full px-4 py-2 pr-10 border border-frost-gray rounded-lg focus:ring-2 focus:ring-crimson focus:border-transparent text-midnight-navy"
+                  className="text-midnight-navy pr-10"
                   placeholder="Confirm your new password"
                 />
                 <button
@@ -280,13 +287,13 @@ export default function ForgotPasswordPage() {
             </div>
 
             {error && <div className="text-red-600 text-sm">{error}</div>}
-            <button
+            <Button
               type="submit"
               disabled={loading}
-              className="w-full bg-crimson text-white py-2 rounded-lg font-semibold hover:bg-crimson/90 transition disabled:opacity-50 shadow-md hover:shadow-lg"
+              className="w-full bg-crimson text-white hover:bg-crimson/90"
             >
               {loading ? 'Resetting Password...' : 'Reset Password'}
-            </button>
+            </Button>
             <div className="text-center">
               <button
                 type="button"

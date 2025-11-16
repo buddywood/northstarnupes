@@ -5,6 +5,9 @@ import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { fetchActiveCollegiateChapters, submitSellerApplication, fetchMemberProfile } from '@/lib/api';
 import type { Chapter } from '@/lib/api';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import Logo from '../components/Logo';
 import SearchableSelect from '../components/SearchableSelect';
@@ -325,14 +328,14 @@ export default function ApplyPage() {
             </div>
           )}
 
-          <div>
-            <label className="block text-sm font-medium mb-2 text-midnight-navy">Full Name *</label>
-            <input
+          <div className="space-y-2">
+            <Label className="text-midnight-navy">Full Name *</Label>
+            <Input
               type="text"
               required
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full px-4 py-2 border border-frost-gray rounded-lg focus:ring-2 focus:ring-crimson focus:border-transparent text-midnight-navy"
+              className="text-midnight-navy"
             />
           </div>
 
@@ -414,22 +417,22 @@ export default function ApplyPage() {
             </div>
           )}
 
-          <div>
-            <label className="block text-sm font-medium mb-2 text-midnight-navy">Email *</label>
-            <input
+          <div className="space-y-2">
+            <Label className="text-midnight-navy">Email *</Label>
+            <Input
               type="email"
               required
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              className="w-full px-4 py-2 border border-frost-gray rounded-lg focus:ring-2 focus:ring-crimson focus:border-transparent text-midnight-navy"
+              className="text-midnight-navy"
             />
             {sessionStatus === 'authenticated' && session?.user?.email === formData.email && (
               <p className="mt-1 text-xs text-midnight-navy/60">Using email from your account</p>
             )}
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-2 text-midnight-navy">Sponsoring Chapter *</label>
+          <div className="space-y-2">
+            <Label className="text-midnight-navy">Sponsoring Chapter *</Label>
             <SearchableSelect
               required
               value={formData.sponsoring_chapter_id}
@@ -452,43 +455,43 @@ export default function ApplyPage() {
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-2 text-midnight-navy">Business Name (Optional)</label>
-            <input
+          <div className="space-y-2">
+            <Label className="text-midnight-navy">Business Name (Optional)</Label>
+            <Input
               type="text"
               value={formData.business_name}
               onChange={(e) => setFormData({ ...formData, business_name: e.target.value })}
-              className="w-full px-4 py-2 border border-frost-gray rounded-lg focus:ring-2 focus:ring-crimson focus:border-transparent text-midnight-navy"
+              className="text-midnight-navy"
               placeholder="Enter your business name if applicable"
             />
           </div>
 
           {sessionStatus === 'authenticated' && (session?.user as any)?.memberId && (
-            <div>
-              <label className="block text-sm font-medium mb-2 text-midnight-navy">Business Email (Optional)</label>
-              <p className="text-xs text-midnight-navy/60 mb-2">
+            <div className="space-y-2">
+              <Label className="text-midnight-navy">Business Email (Optional)</Label>
+              <p className="text-xs text-midnight-navy/60">
                 If you have a separate business email address, enter it here. Otherwise, your member email will be used.
               </p>
-              <input
+              <Input
                 type="email"
                 value={formData.business_email}
                 onChange={(e) => setFormData({ ...formData, business_email: e.target.value })}
-                className="w-full px-4 py-2 border border-frost-gray rounded-lg focus:ring-2 focus:ring-crimson focus:border-transparent text-midnight-navy"
+                className="text-midnight-navy"
                 placeholder="business@example.com"
               />
             </div>
           )}
 
-          <div>
-            <label className="block text-sm font-medium mb-2 text-midnight-navy">Website (Optional)</label>
-            <input
+          <div className="space-y-2">
+            <Label className="text-midnight-navy">Website (Optional)</Label>
+            <Input
               type="url"
               value={formData.website}
               onChange={(e) => setFormData({ ...formData, website: e.target.value })}
-              className="w-full px-4 py-2 border border-frost-gray rounded-lg focus:ring-2 focus:ring-crimson focus:border-transparent text-midnight-navy"
+              className="text-midnight-navy"
               placeholder="https://yourwebsite.com"
             />
-            <p className="text-xs text-midnight-navy/60 mt-1">
+            <p className="text-xs text-midnight-navy/60">
               Your business or store website URL
             </p>
           </div>
@@ -524,17 +527,17 @@ export default function ApplyPage() {
           </div>
 
           {formData.merchandise_type === 'KAPPA' && (
-            <div>
-              <label className="block text-sm font-medium mb-2 text-midnight-navy">Vendor License Number *</label>
-              <input
+            <div className="space-y-2">
+              <Label className="text-midnight-navy">Vendor License Number *</Label>
+              <Input
                 type="text"
                 required={formData.merchandise_type === 'KAPPA'}
                 value={formData.vendor_license_number}
                 onChange={(e) => setFormData({ ...formData, vendor_license_number: e.target.value })}
-                className="w-full px-4 py-2 border border-frost-gray rounded-lg focus:ring-2 focus:ring-crimson focus:border-transparent text-midnight-navy"
+                className="text-midnight-navy"
                 placeholder="Enter your vendor license number"
               />
-              <p className="text-xs text-midnight-navy/60 mt-1">
+              <p className="text-xs text-midnight-navy/60">
                 Required for selling Kappa merchandise
               </p>
             </div>
@@ -597,10 +600,10 @@ export default function ApplyPage() {
             )}
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-2 text-midnight-navy">Social Links</label>
+          <div className="space-y-2">
+            <Label className="text-midnight-navy">Social Links</Label>
             <div className="space-y-2">
-              <input
+              <Input
                 type="url"
                 placeholder="Instagram URL"
                 value={formData.social_links.instagram}
@@ -610,9 +613,9 @@ export default function ApplyPage() {
                     social_links: { ...formData.social_links, instagram: e.target.value },
                   })
                 }
-                className="w-full px-4 py-2 border border-frost-gray rounded-lg focus:ring-2 focus:ring-crimson focus:border-transparent text-midnight-navy"
+                className="text-midnight-navy"
               />
-              <input
+              <Input
                 type="url"
                 placeholder="Twitter URL"
                 value={formData.social_links.twitter}
@@ -622,9 +625,9 @@ export default function ApplyPage() {
                     social_links: { ...formData.social_links, twitter: e.target.value },
                   })
                 }
-                className="w-full px-4 py-2 border border-frost-gray rounded-lg focus:ring-2 focus:ring-crimson focus:border-transparent text-midnight-navy"
+                className="text-midnight-navy"
               />
-              <input
+              <Input
                 type="url"
                 placeholder="LinkedIn URL"
                 value={formData.social_links.linkedin}
@@ -634,9 +637,9 @@ export default function ApplyPage() {
                     social_links: { ...formData.social_links, linkedin: e.target.value },
                   })
                 }
-                className="w-full px-4 py-2 border border-frost-gray rounded-lg focus:ring-2 focus:ring-crimson focus:border-transparent text-midnight-navy"
+                className="text-midnight-navy"
               />
-              <input
+              <Input
                 type="url"
                 placeholder="Website URL"
                 value={formData.social_links.website}
@@ -646,23 +649,23 @@ export default function ApplyPage() {
                     social_links: { ...formData.social_links, website: e.target.value },
                   })
                 }
-                className="w-full px-4 py-2 border border-frost-gray rounded-lg focus:ring-2 focus:ring-crimson focus:border-transparent text-midnight-navy"
+                className="text-midnight-navy"
               />
             </div>
-            <p className="text-sm text-midnight-navy/60 mt-2">
+            <p className="text-sm text-midnight-navy/60">
               At least one social link is required
             </p>
           </div>
 
           {error && <div className="text-red-600 text-sm">{error}</div>}
 
-          <button
+          <Button
             type="submit"
             disabled={submitting}
-            className="w-full bg-crimson text-white py-3 rounded-lg font-semibold hover:bg-crimson/90 transition disabled:opacity-50 shadow-md hover:shadow-lg"
+            className="w-full bg-crimson text-white hover:bg-crimson/90"
           >
             {submitting ? 'Submitting...' : 'Submit Application'}
-          </button>
+          </Button>
         </form>
       </div>
     </main>

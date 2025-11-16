@@ -1,6 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface VerificationStatusBadgeProps {
   status: 'PENDING' | 'VERIFIED' | 'FAILED' | 'MANUAL_REVIEW' | undefined;
@@ -11,7 +16,6 @@ export default function VerificationStatusBadge({
   status, 
   className = '' 
 }: VerificationStatusBadgeProps) {
-  const [showTooltip, setShowTooltip] = useState(false);
 
   if (!status) {
     return null;
@@ -82,29 +86,39 @@ export default function VerificationStatusBadge({
 
   const needsTooltip = status === 'PENDING' || status === 'FAILED' || status === 'MANUAL_REVIEW';
 
+  const badgeContent = (
+    <div className={`inline-flex items-center gap-1.5 ${config.bg} ${config.text} ${config.border} border px-2.5 py-1 rounded-full text-xs font-semibold ${needsTooltip ? 'cursor-help' : 'cursor-default'}`}>
+      {config.icon}
+      <span>{config.label}</span>
+    </div>
+  );
+
+  if (needsTooltip) {
+    return (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className={`inline-flex items-center ${className}`}>
+              {badgeContent}
+            </div>
+          </TooltipTrigger>
+          <TooltipContent className="w-64 bg-[#1E2A38] text-white border-none p-3">
+            <p className="mb-2 font-semibold">{config.label} Verification</p>
+            <p className="text-white/90 leading-relaxed">{config.tooltip}</p>
+            {status === 'FAILED' && (
+              <p className="mt-2 text-xs text-white/70">
+                Need help? Contact support through your chapter or email support@1kappa.com
+              </p>
+            )}
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  }
+
   return (
-    <div className={`relative inline-flex items-center ${className}`}>
-      <div
-        className={`inline-flex items-center gap-1.5 ${config.bg} ${config.text} ${config.border} border px-2.5 py-1 rounded-full text-xs font-semibold ${needsTooltip ? 'cursor-help' : 'cursor-default'}`}
-        onMouseEnter={() => needsTooltip && setShowTooltip(true)}
-        onMouseLeave={() => setShowTooltip(false)}
-      >
-        {config.icon}
-        <span>{config.label}</span>
-      </div>
-      
-      {needsTooltip && showTooltip && (
-        <div className="absolute left-0 top-full mt-2 z-50 w-64 bg-[#1E2A38] text-white text-sm rounded-lg p-3 shadow-lg pointer-events-none">
-          <p className="mb-2 font-semibold">{config.label} Verification</p>
-          <p className="text-white/90 leading-relaxed">{config.tooltip}</p>
-          {status === 'FAILED' && (
-            <p className="mt-2 text-xs text-white/70">
-              Need help? Contact support through your chapter or email support@1kappa.com
-            </p>
-          )}
-          <div className="absolute -top-1 left-4 w-2 h-2 bg-[#1E2A38] transform rotate-45"></div>
-        </div>
-      )}
+    <div className={`inline-flex items-center ${className}`}>
+      {badgeContent}
     </div>
   );
 }
