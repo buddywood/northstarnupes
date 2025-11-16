@@ -438,6 +438,39 @@ export interface MemberProfile {
   verification_status?: 'PENDING' | 'VERIFIED' | 'FAILED' | 'MANUAL_REVIEW';
   created_at: string;
   updated_at: string;
+  is_seller?: boolean;
+  is_promoter?: boolean;
+  is_steward?: boolean;
+}
+
+export async function fetchAllMembers(filters?: {
+  location?: string;
+  chapter_id?: number;
+  industry?: string;
+}): Promise<MemberProfile[]> {
+  const session = await fetch('/api/auth/session').then(res => res.json());
+  const idToken = (session as any)?.idToken;
+  
+  if (!idToken) {
+    throw new Error('Not authenticated');
+  }
+
+  const params = new URLSearchParams();
+  if (filters?.location) params.append('location', filters.location);
+  if (filters?.chapter_id) params.append('chapter_id', filters.chapter_id.toString());
+  if (filters?.industry) params.append('industry', filters.industry);
+
+  const res = await fetch(`${API_URL}/api/members?${params.toString()}`, {
+    headers: {
+      'Authorization': `Bearer ${idToken}`,
+    },
+  });
+  
+  if (!res.ok) {
+    throw new Error('Failed to fetch members');
+  }
+  
+  return res.json();
 }
 
 export async function fetchMemberProfile(): Promise<MemberProfile> {

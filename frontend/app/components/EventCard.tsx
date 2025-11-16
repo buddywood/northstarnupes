@@ -7,6 +7,7 @@ import type { Event } from '@/lib/api';
 import EventCountdown from './EventCountdown';
 import RSVPModal from './RSVPModal';
 import VerificationBadge from './VerificationBadge';
+import UserRoleBadges from './UserRoleBadges';
 
 interface EventCardProps {
   event: Event;
@@ -83,9 +84,21 @@ export default function EventCard({ event, chapterName }: EventCardProps) {
             <span className="line-clamp-1">{event.location}</span>
           </div>
           {event.promoter_name && (
-            <p className="text-xs text-midnight-navy/50 mb-3">
-              Promoted by {event.promoter_name}
-            </p>
+            <div className="flex items-center gap-2 mb-3 flex-wrap">
+              <p className="text-xs text-midnight-navy/50">
+                Promoted by {event.promoter_member_id ? 'Brother ' : ''}{event.promoter_name}
+              </p>
+              {/* Role badges for promoter */}
+              {(event.is_member !== undefined || event.is_promoter !== undefined || event.is_seller !== undefined || event.is_steward !== undefined) && (
+                <UserRoleBadges
+                  is_member={event.is_member}
+                  is_seller={event.is_seller}
+                  is_promoter={event.is_promoter}
+                  is_steward={event.is_steward}
+                  size="sm"
+                />
+              )}
+            </div>
           )}
           <div className="mb-3">
             <EventCountdown eventDate={event.event_date} />

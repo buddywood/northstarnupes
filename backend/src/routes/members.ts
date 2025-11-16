@@ -1139,6 +1139,87 @@ router.post('/register', upload.single('headshot'), async (req: Request, res: Re
   }
 });
 
+// Get all members (for connect page) - requires authentication
+router.get('/', authenticate, async (req: Request, res: Response) => {
+  try {
+    const { location, chapter_id, industry } = req.query;
+    
+    let query = `
+      SELECT 
+        m.id,
+        m.email,
+        m.name,
+        m.membership_number,
+        m.initiated_chapter_id,
+        c.name as chapter_name,
+        m.initiated_season,
+        m.initiated_year,
+        m.ship_name,
+        m.line_name,
+        m.location,
+        m.industry,
+        m.job_title,
+        m.bio,
+        m.headshot_url,
+        m.social_links,
+        m.verification_status,
+        m.created_at,
+        m.updated_at,
+        CASE WHEN s.id IS NOT NULL AND s.status = 'APPROVED' THEN true ELSE false END as is_seller,
+        CASE WHEN pr.id IS NOT NULL AND pr.status = 'APPROVED' THEN true ELSE false END as is_promoter,
+        CASE WHEN st.id IS NOT NULL AND st.status = 'APPROVED' THEN true ELSE false END as is_steward
+      FROM members m
+      LEFT JOIN chapters c ON m.initiated_chapter_id = c.id
+      LEFT JOIN sellers s ON m.id = s.member_id AND s.status = 'APPROVED'
+      LEFT JOIN promoters pr ON m.id = pr.member_id AND pr.status = 'APPROVED'
+      LEFT JOIN stewards st ON m.id = st.member_id AND st.status = 'APPROVED'
+      WHERE m.verification_status = 'VERIFIED'
+    `;
+    
+    const params: any[] = [];
+    let paramCount = 1;
+    
+    if (location) {
+      query += ` AND LOWER(m.location) LIKE $${paramCount}`;
+      params.push(`%${(location as string).toLowerCase()}%`);
+      paramCount++;
+    }
+    
+    if (chapter_id) {
+      query += ` AND m.initiated_chapter_id = $${paramCount}`;
+      params.push(parseInt(chapter_id as string));
+      paramCount++;
+    }
+    
+    if (industry) {
+      query += ` AND LOWER(m.industry) LIKE $${paramCount}`;
+      params.push(`%${(industry as string).toLowerCase()}%`);
+      paramCount++;
+    }
+    
+    query += ` ORDER BY m.name ASC`;
+    
+    const result = await pool.query(query, params);
+    
+    // Parse social_links if they're strings
+    const members = result.rows.map(member => {
+      if (typeof member.social_links === 'string') {
+        try {
+          member.social_links = JSON.parse(member.social_links);
+        } catch (e) {
+          member.social_links = {};
+        }
+      }
+      return member;
+    });
+    
+    res.json(members);
+  } catch (error) {
+    console.error('Error fetching members:', error);
+    res.status(500).json({ error: 'Failed to fetch members' });
+  }
+});
+
 // Get current member profile
 router.get('/profile', authenticate, async (req: Request, res: Response) => {
   try {

@@ -114,8 +114,8 @@ export default function Header() {
     { href: '/shop', label: 'Shop' },
     { href: '/shop?role=seller', label: 'Sellers' },
     { href: '/shop?role=steward', label: 'Stewards' },
-    { href: '/events', label: 'Promoters' },
-    { href: '/events', label: 'Events' },
+    { href: '/events?role=promoter', label: 'Promoters' },
+    { href: '/connect', label: 'Connect' },
   ];
 
   const handleSearch = (e: React.FormEvent) => {
