@@ -481,9 +481,9 @@ export default function AdminDashboard() {
                         <div>
                           <h3 className="font-semibold">{seller.name}</h3>
                           <p className="text-sm text-gray-600">{seller.email}</p>
-                          {seller.member_id && (
+                          {seller.fraternity_member_id && (
                             <p className="text-sm text-gray-600">
-                              Member ID: {seller.member_id}
+                              Member ID: {seller.fraternity_member_id}
                             </p>
                           )}
                         </div>
@@ -900,10 +900,10 @@ export default function AdminDashboard() {
                 </div>
               )}
 
-              {'member_id' in selectedItem && selectedItem.member_id && (
+              {'fraternity_member_id' in selectedItem && selectedItem.fraternity_member_id && (
                 <div>
                   <label className="text-sm font-semibold text-gray-600">Member ID</label>
-                  <p className="text-lg">{selectedItem.member_id}</p>
+                  <p className="text-lg">{selectedItem.fraternity_member_id}</p>
                 </div>
               )}
 
