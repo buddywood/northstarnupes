@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { signOut, useSession } from 'next-auth/react';
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
-import { fetchTotalDonations, fetchMemberProfile } from '@/lib/api';
+import { fetchTotalDonations, fetchMemberProfile, getUnreadNotificationCount } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { useTheme } from './ThemeProvider';
 
@@ -18,9 +18,30 @@ export default function Header() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
   const [profilePicture, setProfilePicture] = useState<string | null>(null);
+  const [notificationCount, setNotificationCount] = useState(0);
   
   // Show authenticated menu for any authenticated user (not just fully onboarded)
   const showAuthenticatedMenu = sessionStatus === 'authenticated' && nextAuthSession?.user;
+  
+  // Fetch notification count
+  useEffect(() => {
+    if (showAuthenticatedMenu && nextAuthSession?.user?.email) {
+      getUnreadNotificationCount(nextAuthSession.user.email)
+        .then(setNotificationCount)
+        .catch(() => setNotificationCount(0));
+      
+      // Poll for updates every 30 seconds
+      const interval = setInterval(() => {
+        getUnreadNotificationCount(nextAuthSession.user.email)
+          .then(setNotificationCount)
+          .catch(() => setNotificationCount(0));
+      }, 30000);
+      
+      return () => clearInterval(interval);
+    } else {
+      setNotificationCount(0);
+    }
+  }, [showAuthenticatedMenu, nextAuthSession?.user?.email]);
   
   // Get first name from user's name
   const getUserFirstName = () => {
@@ -225,16 +246,20 @@ export default function Header() {
 
             {/* Notifications Icon */}
             {showAuthenticatedMenu && (
-              <button
+              <Link
+                href="/notifications"
                 className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors relative"
                 aria-label="Notifications"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                 </svg>
-                {/* Notification dot - can be conditionally shown */}
-                {/* <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-crimson rounded-full"></span> */}
-              </button>
+                {notificationCount > 0 && (
+                  <span className="absolute top-1 right-1 min-w-[18px] h-[18px] px-1.5 bg-crimson text-white text-xs font-semibold rounded-full flex items-center justify-center">
+                    {notificationCount > 99 ? '99+' : notificationCount}
+                  </span>
+                )}
+              </Link>
             )}
 
             {/* User Menu */}
@@ -312,6 +337,18 @@ export default function Header() {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                           </svg>
                           Steward Dashboard
+                        </Link>
+                      )}
+                      {(is_seller || sellerId) && (
+                        <Link 
+                          href="/seller-dashboard" 
+                          onClick={() => setUserMenuOpen(false)}
+                          className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
+                        >
+                          <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                          </svg>
+                          Seller Dashboard
                         </Link>
                       )}
                       {userRole === 'ADMIN' && (
@@ -419,15 +456,24 @@ export default function Header() {
                     >
                       Profile
                     </Link>
-                    {(is_steward || stewardId) && (
-                      <Link
-                        href="/steward-dashboard"
-                        onClick={() => { setUserMenuOpen(false); setMobileMenuOpen(false); }}
-                        className="block px-4 py-2 text-sm text-midnight-navy hover:bg-gray-50 transition-colors"
-                      >
-                        Steward Dashboard
-                      </Link>
-                    )}
+                      {(is_steward || stewardId) && (
+                        <Link
+                          href="/steward-dashboard"
+                          onClick={() => { setUserMenuOpen(false); setMobileMenuOpen(false); }}
+                          className="block px-4 py-2 text-sm text-midnight-navy hover:bg-gray-50 transition-colors"
+                        >
+                          Steward Dashboard
+                        </Link>
+                      )}
+                      {(is_seller || sellerId) && (
+                        <Link
+                          href="/seller-dashboard"
+                          onClick={() => { setUserMenuOpen(false); setMobileMenuOpen(false); }}
+                          className="block px-4 py-2 text-sm text-midnight-navy hover:bg-gray-50 transition-colors"
+                        >
+                          Seller Dashboard
+                        </Link>
+                      )}
                     {userRole === 'ADMIN' && (
                       <Link
                         href="/admin"

@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import type { Router as ExpressRouter } from 'express';
 import multer from 'multer';
-import { createSeller, getActiveProducts, getSellerById } from '../db/queries';
+import { createSeller, getActiveProducts, getSellerById, getProductsBySeller } from '../db/queries';
 import pool from '../db/connection';
 import { uploadToS3 } from '../services/s3';
 import { z } from 'zod';
@@ -223,6 +223,12 @@ router.post('/apply', optionalAuthenticate, upload.fields([
               ['APPROVED', account.id, seller.id]
             );
 
+            // Notify interested users that products are now available
+            const { notifyInterestedUsersForSeller } = await import('../services/notifications');
+            notifyInterestedUsersForSeller(seller.id, seller.name).catch(error => {
+              console.error('Failed to notify interested users:', error);
+            });
+
             console.log(`Auto-approved verified member seller: ${seller.name} (${seller.email})`);
           } catch (error: any) {
             console.error('Error creating Stripe account for seller:', error);
@@ -334,6 +340,115 @@ router.get('/collections', async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Error fetching sellers:', error);
     res.status(500).json({ error: 'Failed to fetch sellers' });
+  }
+});
+
+// Get current seller's profile (authenticated seller)
+router.get('/me', authenticate, async (req: Request, res: Response) => {
+  try {
+    if (!req.user || !req.user.sellerId) {
+      return res.status(403).json({ error: 'Not a seller' });
+    }
+
+    const seller = await getSellerById(req.user.sellerId);
+    if (!seller) {
+      return res.status(404).json({ error: 'Seller not found' });
+    }
+    res.json(seller);
+  } catch (error) {
+    console.error('Error fetching seller profile:', error);
+    res.status(500).json({ error: 'Failed to fetch seller profile' });
+  }
+});
+
+// Get current seller's products (authenticated seller)
+router.get('/me/products', authenticate, async (req: Request, res: Response) => {
+  try {
+    if (!req.user || !req.user.sellerId) {
+      return res.status(403).json({ error: 'Not a seller' });
+    }
+
+    const products = await getProductsBySeller(req.user.sellerId);
+    res.json(products);
+  } catch (error) {
+    console.error('Error fetching seller products:', error);
+    res.status(500).json({ error: 'Failed to fetch products' });
+  }
+});
+
+// Get current seller's orders (authenticated seller)
+router.get('/me/orders', authenticate, async (req: Request, res: Response) => {
+  try {
+    if (!req.user || !req.user.sellerId) {
+      return res.status(403).json({ error: 'Not a seller' });
+    }
+
+    const result = await pool.query(
+      `SELECT o.*, p.name as product_name, p.price_cents, c.name as chapter_name
+       FROM orders o
+       JOIN products p ON o.product_id = p.id
+       LEFT JOIN chapters c ON o.chapter_id = c.id
+       WHERE p.seller_id = $1
+       ORDER BY o.created_at DESC
+       LIMIT 50`,
+      [req.user.sellerId]
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching seller orders:', error);
+    res.status(500).json({ error: 'Failed to fetch orders' });
+  }
+});
+
+// Get current seller's metrics (authenticated seller)
+router.get('/me/metrics', authenticate, async (req: Request, res: Response) => {
+  try {
+    if (!req.user || !req.user.sellerId) {
+      return res.status(403).json({ error: 'Not a seller' });
+    }
+
+    // Get total sales
+    const salesResult = await pool.query(
+      `SELECT COALESCE(SUM(o.amount_cents), 0) as total_sales_cents
+       FROM orders o
+       JOIN products p ON o.product_id = p.id
+       WHERE p.seller_id = $1 AND o.status = 'PAID'`,
+      [req.user.sellerId]
+    );
+    const totalSalesCents = parseInt(salesResult.rows[0]?.total_sales_cents || '0');
+
+    // Get order count
+    const ordersResult = await pool.query(
+      `SELECT COUNT(*) as order_count
+       FROM orders o
+       JOIN products p ON o.product_id = p.id
+       WHERE p.seller_id = $1 AND o.status = 'PAID'`,
+      [req.user.sellerId]
+    );
+    const orderCount = parseInt(ordersResult.rows[0]?.order_count || '0');
+
+    // Get active listings count
+    const listingsResult = await pool.query(
+      `SELECT COUNT(*) as active_listings
+       FROM products
+       WHERE seller_id = $1`,
+      [req.user.sellerId]
+    );
+    const activeListings = parseInt(listingsResult.rows[0]?.active_listings || '0');
+
+    // Get pending payouts (total sales minus platform fees)
+    const platformFeePercent = 0.08; // 8% platform fee
+    const totalPayoutsCents = Math.round(totalSalesCents * (1 - platformFeePercent));
+
+    res.json({
+      totalSalesCents,
+      orderCount,
+      activeListings,
+      totalPayoutsCents,
+    });
+  } catch (error) {
+    console.error('Error fetching seller metrics:', error);
+    res.status(500).json({ error: 'Failed to fetch metrics' });
   }
 });
 

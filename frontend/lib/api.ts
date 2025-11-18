@@ -295,6 +295,89 @@ export async function getFavoriteProducts(userEmail: string): Promise<Product[]>
   return res.json();
 }
 
+// Notifications API
+export interface Notification {
+  id: number;
+  user_email: string;
+  type: 'PURCHASE_BLOCKED' | 'ITEM_AVAILABLE' | 'ORDER_CONFIRMED' | 'ORDER_SHIPPED';
+  title: string;
+  message: string;
+  related_product_id: number | null;
+  related_order_id: number | null;
+  is_read: boolean;
+  created_at: string;
+  read_at: string | null;
+}
+
+export async function getNotifications(userEmail: string, limit?: number): Promise<Notification[]> {
+  const url = limit 
+    ? `${API_URL}/api/notifications/${userEmail}?limit=${limit}`
+    : `${API_URL}/api/notifications/${userEmail}`;
+  const res = await fetch(url);
+  
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    const errorMessage = errorData.error || 'Failed to fetch notifications';
+    throw new Error(errorMessage);
+  }
+  
+  return res.json();
+}
+
+export async function getUnreadNotificationCount(userEmail: string): Promise<number> {
+  const res = await fetch(`${API_URL}/api/notifications/${userEmail}/count`);
+  
+  if (!res.ok) {
+    return 0; // Return 0 on error to avoid breaking the UI
+  }
+  
+  const data = await res.json();
+  return data.count || 0;
+}
+
+export async function markNotificationAsRead(notificationId: number, userEmail: string): Promise<void> {
+  const res = await fetch(`${API_URL}/api/notifications/${notificationId}/read`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userEmail }),
+  });
+  
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    const errorMessage = errorData.error || 'Failed to mark notification as read';
+    throw new Error(errorMessage);
+  }
+}
+
+export async function markAllNotificationsAsRead(userEmail: string): Promise<number> {
+  const res = await fetch(`${API_URL}/api/notifications/${userEmail}/read-all`, {
+    method: 'PUT',
+  });
+  
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    const errorMessage = errorData.error || 'Failed to mark all notifications as read';
+    throw new Error(errorMessage);
+  }
+  
+  const data = await res.json();
+  return data.count || 0;
+}
+
+export async function deleteNotification(notificationId: number, userEmail: string): Promise<void> {
+  const res = await fetch(`${API_URL}/api/notifications/${notificationId}`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userEmail }),
+  });
+  
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    const errorMessage = errorData.error || 'Failed to delete notification';
+    throw new Error(errorMessage);
+  }
+}
+
 export async function submitSellerApplication(formData: FormData): Promise<Seller> {
   // Get auth token if available (optional)
   const headers: HeadersInit = {};
@@ -490,6 +573,37 @@ export async function fetchEvents(includeAll: boolean = true): Promise<Event[]> 
   const url = includeAll ? `${API_URL}/api/events?all=true` : `${API_URL}/api/events`;
   const res = await fetch(url);
   if (!res.ok) throw new Error('Failed to fetch events');
+  return res.json();
+}
+
+export interface PromoterMetrics {
+  totalEvents: number;
+  upcomingEvents: number;
+  pastEvents: number;
+  potentialRevenueCents: number;
+}
+
+export async function getPromoterEvents(): Promise<Event[]> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_URL}/api/events/promoter/me`, {
+    headers,
+  });
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.error || 'Failed to fetch promoter events');
+  }
+  return res.json();
+}
+
+export async function getPromoterMetrics(): Promise<PromoterMetrics> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_URL}/api/events/promoter/me/metrics`, {
+    headers,
+  });
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.error || 'Failed to fetch promoter metrics');
+  }
   return res.json();
 }
 
@@ -878,6 +992,124 @@ export async function deleteStewardListing(listingId: number): Promise<void> {
     const error = await res.json();
     throw new Error(error.error || 'Failed to delete steward listing');
   }
+}
+
+export interface StewardClaim {
+  id: number;
+  listing_id: number;
+  listing_name: string;
+  claimant_fraternity_member_id: number;
+  claimant_email: string | null;
+  stripe_session_id: string | null;
+  total_amount_cents: number;
+  shipping_cents: number;
+  platform_fee_cents: number;
+  chapter_donation_cents: number;
+  status: 'PENDING' | 'PAID' | 'FAILED';
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StewardMetrics {
+  totalListings: number;
+  activeListings: number;
+  totalClaims: number;
+  totalDonationsCents: number;
+}
+
+export async function getStewardMetrics(): Promise<StewardMetrics> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_URL}/api/stewards/me/metrics`, {
+    headers,
+  });
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.error || 'Failed to fetch steward metrics');
+  }
+  return res.json();
+}
+
+export async function getStewardClaims(): Promise<StewardClaim[]> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_URL}/api/stewards/me/claims`, {
+    headers,
+  });
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.error || 'Failed to fetch steward claims');
+  }
+  return res.json();
+}
+
+// Seller dashboard functions
+export async function getSellerProfile(): Promise<Seller> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_URL}/api/sellers/me`, {
+    headers,
+  });
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.error || 'Failed to fetch seller profile');
+  }
+  return res.json();
+}
+
+export async function getSellerProducts(): Promise<Product[]> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_URL}/api/sellers/me/products`, {
+    headers,
+  });
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.error || 'Failed to fetch seller products');
+  }
+  return res.json();
+}
+
+export interface SellerOrder {
+  id: number;
+  product_id: number;
+  product_name: string;
+  price_cents: number;
+  buyer_email: string;
+  amount_cents: number;
+  status: 'PENDING' | 'PAID' | 'FAILED';
+  stripe_session_id: string | null;
+  chapter_id: number | null;
+  chapter_name: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SellerMetrics {
+  totalSalesCents: number;
+  orderCount: number;
+  activeListings: number;
+  totalPayoutsCents: number;
+}
+
+export async function getSellerOrders(): Promise<SellerOrder[]> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_URL}/api/sellers/me/orders`, {
+    headers,
+  });
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.error || 'Failed to fetch seller orders');
+  }
+  return res.json();
+}
+
+export async function getSellerMetrics(): Promise<SellerMetrics> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_URL}/api/sellers/me/metrics`, {
+    headers,
+  });
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.error || 'Failed to fetch seller metrics');
+  }
+  return res.json();
 }
 
 // Admin steward functions

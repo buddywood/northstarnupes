@@ -112,6 +112,14 @@ router.put('/sellers/:id', async (req: Request, res: Response) => {
       ).catch(error => {
         console.error('Failed to send seller approved email:', error);
       });
+
+      // If Stripe account was just set up, notify interested users
+      if (stripeAccountId && updatedSeller) {
+        const { notifyInterestedUsersForSeller } = await import('../services/notifications');
+        notifyInterestedUsersForSeller(updatedSeller.id, updatedSeller.name).catch(error => {
+          console.error('Failed to notify interested users:', error);
+        });
+      }
     }
     
     // Include warning in response if present

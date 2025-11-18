@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import type { Router as ExpressRouter } from 'express';
 import multer from 'multer';
 import { z } from 'zod';
-import { getActiveEvents, getAllEvents, getEventById, createEvent } from '../db/queries';
+import { getActiveEvents, getAllEvents, getEventById, createEvent, getEventsByPromoter } from '../db/queries';
 import { uploadToS3 } from '../services/s3';
 import { authenticate } from '../middleware/auth';
 import pool from '../db/connection';
@@ -129,6 +129,70 @@ router.get('/:id', async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Error fetching event:', error);
     res.status(500).json({ error: 'Failed to fetch event' });
+  }
+});
+
+// Get promoter's events (authenticated promoter)
+router.get('/promoter/me', authenticate, async (req: Request, res: Response) => {
+  try {
+    if (!req.user || !req.user.promoterId) {
+      return res.status(403).json({ error: 'Promoter access required' });
+    }
+
+    const events = await getEventsByPromoter(req.user.promoterId);
+    res.json(events);
+  } catch (error) {
+    console.error('Error fetching promoter events:', error);
+    res.status(500).json({ error: 'Failed to fetch events' });
+  }
+});
+
+// Get promoter's metrics
+router.get('/promoter/me/metrics', authenticate, async (req: Request, res: Response) => {
+  try {
+    if (!req.user || !req.user.promoterId) {
+      return res.status(403).json({ error: 'Promoter access required' });
+    }
+
+    // Get total events count
+    const totalEventsResult = await pool.query(
+      'SELECT COUNT(*) as total_events FROM events WHERE promoter_id = $1',
+      [req.user.promoterId]
+    );
+    const totalEvents = parseInt(totalEventsResult.rows[0]?.total_events || '0');
+
+    // Get upcoming events count
+    const upcomingEventsResult = await pool.query(
+      'SELECT COUNT(*) as upcoming_events FROM events WHERE promoter_id = $1 AND event_date >= CURRENT_DATE',
+      [req.user.promoterId]
+    );
+    const upcomingEvents = parseInt(upcomingEventsResult.rows[0]?.upcoming_events || '0');
+
+    // Get past events count
+    const pastEventsResult = await pool.query(
+      'SELECT COUNT(*) as past_events FROM events WHERE promoter_id = $1 AND event_date < CURRENT_DATE',
+      [req.user.promoterId]
+    );
+    const pastEvents = parseInt(pastEventsResult.rows[0]?.past_events || '0');
+
+    // Get total potential revenue (sum of ticket prices * max attendees)
+    const revenueResult = await pool.query(
+      `SELECT COALESCE(SUM(ticket_price_cents * COALESCE(max_attendees, 0)), 0) as potential_revenue_cents
+       FROM events
+       WHERE promoter_id = $1 AND event_date >= CURRENT_DATE`,
+      [req.user.promoterId]
+    );
+    const potentialRevenueCents = parseInt(revenueResult.rows[0]?.potential_revenue_cents || '0');
+
+    res.json({
+      totalEvents,
+      upcomingEvents,
+      pastEvents,
+      potentialRevenueCents,
+    });
+  } catch (error) {
+    console.error('Error fetching promoter metrics:', error);
+    res.status(500).json({ error: 'Failed to fetch promoter metrics' });
   }
 });
 

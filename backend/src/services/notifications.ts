@@ -1,5 +1,5 @@
-import { createNotification, getInterestedUsersForProduct, getProductsBySeller } from '../db/queries-notifications';
-import { getProductsBySeller as getSellerProducts } from '../db/queries';
+import { createNotification, getInterestedUsersForProduct } from '../db/queries-notifications';
+import { getProductsBySeller } from '../db/queries';
 
 /**
  * Notify all interested users when a seller's product becomes available
@@ -8,7 +8,7 @@ import { getProductsBySeller as getSellerProducts } from '../db/queries';
 export async function notifyInterestedUsersForSeller(sellerId: number, sellerName: string): Promise<void> {
   try {
     // Get all products for this seller
-    const products = await getSellerProducts(sellerId);
+    const products = await getProductsBySeller(sellerId);
 
     // For each product, notify users who tried to purchase it
     for (const product of products) {

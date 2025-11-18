@@ -303,6 +303,83 @@ router.get('/listings', authenticate, requireSteward, async (req: Request, res: 
   }
 });
 
+// Get steward's metrics
+router.get('/me/metrics', authenticate, requireSteward, async (req: Request, res: Response) => {
+  try {
+    if (!req.user || !req.user.stewardId) {
+      return res.status(403).json({ error: 'Steward access required' });
+    }
+
+    // Get total listings count
+    const listingsResult = await pool.query(
+      'SELECT COUNT(*) as total_listings FROM steward_listings WHERE steward_id = $1',
+      [req.user.stewardId]
+    );
+    const totalListings = parseInt(listingsResult.rows[0]?.total_listings || '0');
+
+    // Get active listings count
+    const activeListingsResult = await pool.query(
+      "SELECT COUNT(*) as active_listings FROM steward_listings WHERE steward_id = $1 AND status = 'ACTIVE'",
+      [req.user.stewardId]
+    );
+    const activeListings = parseInt(activeListingsResult.rows[0]?.active_listings || '0');
+
+    // Get claims count
+    const claimsResult = await pool.query(
+      `SELECT COUNT(*) as total_claims
+       FROM steward_claims sc
+       JOIN steward_listings sl ON sc.listing_id = sl.id
+       WHERE sl.steward_id = $1 AND sc.status = 'PAID'`,
+      [req.user.stewardId]
+    );
+    const totalClaims = parseInt(claimsResult.rows[0]?.total_claims || '0');
+
+    // Get total donations generated
+    const donationsResult = await pool.query(
+      `SELECT COALESCE(SUM(sc.chapter_donation_cents), 0) as total_donations_cents
+       FROM steward_claims sc
+       JOIN steward_listings sl ON sc.listing_id = sl.id
+       WHERE sl.steward_id = $1 AND sc.status = 'PAID'`,
+      [req.user.stewardId]
+    );
+    const totalDonationsCents = parseInt(donationsResult.rows[0]?.total_donations_cents || '0');
+
+    res.json({
+      totalListings,
+      activeListings,
+      totalClaims,
+      totalDonationsCents,
+    });
+  } catch (error) {
+    console.error('Error fetching steward metrics:', error);
+    res.status(500).json({ error: 'Failed to fetch steward metrics' });
+  }
+});
+
+// Get steward's recent claims
+router.get('/me/claims', authenticate, requireSteward, async (req: Request, res: Response) => {
+  try {
+    if (!req.user || !req.user.stewardId) {
+      return res.status(403).json({ error: 'Steward access required' });
+    }
+
+    const result = await pool.query(
+      `SELECT sc.*, sl.name as listing_name, fm.email as claimant_email
+       FROM steward_claims sc
+       JOIN steward_listings sl ON sc.listing_id = sl.id
+       LEFT JOIN fraternity_members fm ON sc.claimant_fraternity_member_id = fm.id
+       WHERE sl.steward_id = $1
+       ORDER BY sc.created_at DESC
+       LIMIT 10`,
+      [req.user.stewardId]
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching steward claims:', error);
+    res.status(500).json({ error: 'Failed to fetch steward claims' });
+  }
+});
+
 // Get specific listing (requires verified member)
 router.get('/listings/:id', authenticate, requireVerifiedMember, async (req: Request, res: Response) => {
   try {

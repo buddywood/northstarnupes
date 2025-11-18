@@ -102,3 +102,4 @@ export async function getInterestedUsersForProduct(productId: number): Promise<s
   return result.rows.map(row => row.user_email);
 }
 
+

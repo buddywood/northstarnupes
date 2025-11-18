@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
-import { fetchMemberProfile, updateMemberProfile, fetchChapters, fetchIndustries, getStewardProfile, type MemberProfile, type Chapter, type Industry } from '@/lib/api';
+import { fetchMemberProfile, updateMemberProfile, fetchChapters, fetchIndustries, getStewardProfile, getSellerProfile, type MemberProfile, type Chapter, type Industry } from '@/lib/api';
 import Link from 'next/link';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
@@ -31,6 +31,8 @@ function ProfilePageContent() {
   const [headshotPreview, setHeadshotPreview] = useState<string | null>(null);
   const [isSteward, setIsSteward] = useState(false);
   const [stewardStatus, setStewardStatus] = useState<string | null>(null);
+  const [isSeller, setIsSeller] = useState(false);
+  const [sellerStatus, setSellerStatus] = useState<string | null>(null);
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [hasVerifiedSession, setHasVerifiedSession] = useState(false);
 
@@ -181,6 +183,17 @@ function ProfilePageContent() {
         // Not a steward or error fetching
         setIsSteward(false);
         setStewardStatus(null);
+      }
+
+      // Check if user is a seller
+      try {
+        const sellerProfile = await getSellerProfile();
+        setIsSeller(true);
+        setSellerStatus(sellerProfile.status);
+      } catch (err) {
+        // Not a seller or error fetching
+        setIsSeller(false);
+        setSellerStatus(null);
       }
 
       // Populate form data
@@ -460,6 +473,34 @@ function ProfilePageContent() {
                   className="bg-crimson text-white px-4 py-2 rounded-full font-semibold hover:bg-crimson/90 transition text-sm"
                 >
                   Steward Dashboard
+                </Link>
+              )}
+            </div>
+          </div>
+        ) : null}
+
+        {/* Seller Status/CTA */}
+        {isSeller ? (
+          <div className="mb-6 p-4 bg-crimson/10 border border-crimson/20 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-semibold text-midnight-navy mb-1">Seller Status</h3>
+                <p className="text-sm text-midnight-navy/70">
+                  {sellerStatus === 'APPROVED' ? (
+                    <>You are an approved Seller. <Link href="/seller-dashboard" className="text-crimson hover:underline">Manage your products</Link></>
+                  ) : sellerStatus === 'PENDING' ? (
+                    'Your seller application is pending approval.'
+                  ) : (
+                    'Your seller application was rejected.'
+                  )}
+                </p>
+              </div>
+              {sellerStatus === 'APPROVED' && (
+                <Link
+                  href="/seller-dashboard"
+                  className="bg-crimson text-white px-4 py-2 rounded-full font-semibold hover:bg-crimson/90 transition text-sm"
+                >
+                  Seller Dashboard
                 </Link>
               )}
             </div>
