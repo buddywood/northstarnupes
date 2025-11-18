@@ -440,15 +440,235 @@ router.get('/me/metrics', authenticate, async (req: Request, res: Response) => {
     const platformFeePercent = 0.08; // 8% platform fee
     const totalPayoutsCents = Math.round(totalSalesCents * (1 - platformFeePercent));
 
+    // Get total undergraduate chapter donations from seller's orders
+    // Donations are 3% of order amount, only for orders with collegiate (undergraduate) chapters
+    const donationsResult = await pool.query(
+      `SELECT COALESCE(SUM(o.amount_cents * 0.03), 0) as total_undergrad_donations_cents
+       FROM orders o
+       JOIN products p ON o.product_id = p.id
+       JOIN chapters c ON o.chapter_id = c.id
+       WHERE p.seller_id = $1 
+         AND o.status = 'PAID' 
+         AND o.chapter_id IS NOT NULL
+         AND c.type = 'Collegiate'`,
+      [req.user.sellerId]
+    );
+    const totalUndergradDonationsCents = parseInt(donationsResult.rows[0]?.total_undergrad_donations_cents || '0');
+
     res.json({
       totalSalesCents,
       orderCount,
       activeListings,
       totalPayoutsCents,
+      totalUndergradDonationsCents,
     });
   } catch (error) {
     console.error('Error fetching seller metrics:', error);
     res.status(500).json({ error: 'Failed to fetch metrics' });
+  }
+});
+
+// Initiate Stripe onboarding
+router.post('/me/stripe/onboard', authenticate, async (req: Request, res: Response) => {
+  try {
+    if (!req.user || !req.user.sellerId) {
+      return res.status(403).json({ error: 'Not a seller' });
+    }
+
+    const seller = await getSellerById(req.user.sellerId);
+    if (!seller) {
+      return res.status(404).json({ error: 'Seller not found' });
+    }
+
+    // If seller doesn't have a Stripe account, create one
+    let stripeAccountId = seller.stripe_account_id;
+    
+    if (!stripeAccountId) {
+      const { createConnectAccount } = await import('../services/stripe');
+      const account = await createConnectAccount(seller.email);
+      stripeAccountId = account.id;
+      
+      // Update seller with Stripe account ID
+      await pool.query(
+        'UPDATE sellers SET stripe_account_id = $1 WHERE id = $2',
+        [stripeAccountId, seller.id]
+      );
+    }
+
+    // Create account link for onboarding
+    const { createAccountLink } = await import('../services/stripe');
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const returnUrl = `${frontendUrl}/seller-dashboard/stripe-setup?success=true`;
+    const refreshUrl = `${frontendUrl}/seller-dashboard/stripe-setup?refresh=true`;
+    
+    const onboardingUrl = await createAccountLink(stripeAccountId, returnUrl, refreshUrl);
+
+    res.json({ url: onboardingUrl });
+  } catch (error: any) {
+    console.error('Error initiating Stripe onboarding:', error);
+    res.status(500).json({ error: 'Failed to initiate Stripe onboarding' });
+  }
+});
+
+// Check Stripe account status
+router.get('/me/stripe/status', authenticate, async (req: Request, res: Response) => {
+  try {
+    if (!req.user || !req.user.sellerId) {
+      return res.status(403).json({ error: 'Not a seller' });
+    }
+
+    const seller = await getSellerById(req.user.sellerId);
+    if (!seller) {
+      return res.status(404).json({ error: 'Seller not found' });
+    }
+
+    if (!seller.stripe_account_id) {
+      return res.json({
+        connected: false,
+        accountId: null,
+        detailsSubmitted: false,
+        chargesEnabled: false,
+        payoutsEnabled: false,
+      });
+    }
+
+    // Fetch account details from Stripe
+    const { stripe } = await import('../services/stripe');
+    const account = await stripe.accounts.retrieve(seller.stripe_account_id);
+
+    res.json({
+      connected: true,
+      accountId: seller.stripe_account_id,
+      detailsSubmitted: account.details_submitted || false,
+      chargesEnabled: account.charges_enabled || false,
+      payoutsEnabled: account.payouts_enabled || false,
+      requirements: account.requirements || null,
+    });
+  } catch (error: any) {
+    console.error('Error checking Stripe status:', error);
+    res.status(500).json({ error: 'Failed to check Stripe status' });
+  }
+});
+
+// Sync business details from Stripe
+router.post('/me/stripe/sync-business', authenticate, async (req: Request, res: Response) => {
+  try {
+    if (!req.user || !req.user.sellerId) {
+      return res.status(403).json({ error: 'Not a seller' });
+    }
+
+    const seller = await getSellerById(req.user.sellerId);
+    if (!seller) {
+      return res.status(404).json({ error: 'Seller not found' });
+    }
+
+    if (!seller.stripe_account_id) {
+      return res.status(400).json({ error: 'Stripe account not connected' });
+    }
+
+    // Get business details from Stripe
+    const { getStripeAccountBusinessDetails } = await import('../services/stripe');
+    const businessDetails = await getStripeAccountBusinessDetails(seller.stripe_account_id);
+
+    // Update seller record with business details from Stripe
+    // Only update fields that are null/empty in our database, or if Stripe has new data
+    const updates: string[] = [];
+    const values: any[] = [];
+    let paramIndex = 1;
+
+    if (businessDetails.businessName && (!seller.business_name || seller.business_name.trim() === '')) {
+      updates.push(`business_name = $${paramIndex}`);
+      values.push(businessDetails.businessName);
+      paramIndex++;
+    }
+
+    if (businessDetails.businessEmail && (!seller.business_email || seller.business_email.trim() === '')) {
+      updates.push(`business_email = $${paramIndex}`);
+      values.push(businessDetails.businessEmail);
+      paramIndex++;
+    }
+
+    if (businessDetails.website && (!seller.website || seller.website.trim() === '')) {
+      updates.push(`website = $${paramIndex}`);
+      values.push(businessDetails.website);
+      paramIndex++;
+    }
+
+    if (businessDetails.taxId && (!(seller as any).tax_id || (seller as any).tax_id.trim() === '')) {
+      updates.push(`tax_id = $${paramIndex}`);
+      values.push(businessDetails.taxId);
+      paramIndex++;
+    }
+
+    if (businessDetails.businessPhone && (!(seller as any).business_phone || (seller as any).business_phone.trim() === '')) {
+      updates.push(`business_phone = $${paramIndex}`);
+      values.push(businessDetails.businessPhone);
+      paramIndex++;
+    }
+
+    if (businessDetails.accountType && !(seller as any).stripe_account_type) {
+      updates.push(`stripe_account_type = $${paramIndex}`);
+      values.push(businessDetails.accountType);
+      paramIndex++;
+    }
+
+    // Address fields - only update if they're empty
+    if (businessDetails.businessAddress.line1 && (!(seller as any).business_address_line1 || (seller as any).business_address_line1.trim() === '')) {
+      updates.push(`business_address_line1 = $${paramIndex}`);
+      values.push(businessDetails.businessAddress.line1);
+      paramIndex++;
+    }
+
+    if (businessDetails.businessAddress.line2 && (!(seller as any).business_address_line2 || (seller as any).business_address_line2.trim() === '')) {
+      updates.push(`business_address_line2 = $${paramIndex}`);
+      values.push(businessDetails.businessAddress.line2);
+      paramIndex++;
+    }
+
+    if (businessDetails.businessAddress.city && (!(seller as any).business_city || (seller as any).business_city.trim() === '')) {
+      updates.push(`business_city = $${paramIndex}`);
+      values.push(businessDetails.businessAddress.city);
+      paramIndex++;
+    }
+
+    if (businessDetails.businessAddress.state && (!(seller as any).business_state || (seller as any).business_state.trim() === '')) {
+      updates.push(`business_state = $${paramIndex}`);
+      values.push(businessDetails.businessAddress.state);
+      paramIndex++;
+    }
+
+    if (businessDetails.businessAddress.postal_code && (!(seller as any).business_postal_code || (seller as any).business_postal_code.trim() === '')) {
+      updates.push(`business_postal_code = $${paramIndex}`);
+      values.push(businessDetails.businessAddress.postal_code);
+      paramIndex++;
+    }
+
+    if (businessDetails.businessAddress.country && (!(seller as any).business_country || (seller as any).business_country.trim() === '')) {
+      updates.push(`business_country = $${paramIndex}`);
+      values.push(businessDetails.businessAddress.country);
+      paramIndex++;
+    }
+
+    if (updates.length > 0) {
+      values.push(seller.id);
+      await pool.query(
+        `UPDATE sellers SET ${updates.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = $${paramIndex} RETURNING *`,
+        values
+      );
+    }
+
+    // Fetch updated seller
+    const updatedSeller = await getSellerById(seller.id);
+
+    res.json({
+      success: true,
+      seller: updatedSeller,
+      syncedFields: updates.length > 0 ? updates.map(u => u.split(' = ')[0]) : [],
+      businessDetails,
+    });
+  } catch (error: any) {
+    console.error('Error syncing business details from Stripe:', error);
+    res.status(500).json({ error: 'Failed to sync business details from Stripe' });
   }
 });
 

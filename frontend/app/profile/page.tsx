@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
-import { fetchMemberProfile, updateMemberProfile, fetchChapters, fetchIndustries, getStewardProfile, getSellerProfile, type MemberProfile, type Chapter, type Industry } from '@/lib/api';
+import { fetchMemberProfile, updateMemberProfile, fetchChapters, fetchIndustries, fetchProfessions, getStewardProfile, getSellerProfile, type MemberProfile, type Chapter, type Industry, type Profession } from '@/lib/api';
 import Link from 'next/link';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
@@ -21,6 +21,7 @@ function ProfilePageContent() {
   const [profile, setProfile] = useState<MemberProfile | null>(null);
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [industries, setIndustries] = useState<Industry[]>([]);
+  const [professions, setProfessions] = useState<Profession[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -49,6 +50,7 @@ function ProfilePageContent() {
     phone_number: '',
     phone_is_private: false,
     industry: '',
+    profession_id: '',
     job_title: '',
     bio: '',
     social_links: {
@@ -164,15 +166,17 @@ function ProfilePageContent() {
     try {
       setLoading(true);
       setError('');
-      const [profileData, chaptersData, industriesData] = await Promise.all([
+      const [profileData, chaptersData, industriesData, professionsData] = await Promise.all([
         fetchMemberProfile(),
         fetchChapters().catch(() => []),
         fetchIndustries().catch(() => []),
+        fetchProfessions().catch(() => []),
       ]);
 
       setProfile(profileData);
       setChapters(chaptersData);
       setIndustries(industriesData);
+      setProfessions(professionsData);
 
       // Check if user is a steward
       try {
@@ -210,6 +214,7 @@ function ProfilePageContent() {
         phone_number: profileData.phone_number || '',
         phone_is_private: profileData.phone_is_private,
         industry: profileData.industry || '',
+        profession_id: profileData.profession_id?.toString() || '',
         job_title: profileData.job_title || '',
         bio: profileData.bio || '',
         social_links: {
@@ -321,6 +326,7 @@ function ProfilePageContent() {
         phone_number: formData.phone_number || null,
         phone_is_private: formData.phone_is_private,
         industry: formData.industry || null,
+        profession_id: formData.profession_id ? parseInt(formData.profession_id) : null,
         job_title: formData.job_title || null,
         bio: formData.bio || null,
         social_links: formData.social_links,
@@ -361,6 +367,7 @@ function ProfilePageContent() {
         phone_number: profile.phone_number || '',
         phone_is_private: profile.phone_is_private,
         industry: profile.industry || '',
+        profession_id: profile.profession_id?.toString() || '',
         job_title: profile.job_title || '',
         bio: profile.bio || '',
         social_links: {
@@ -800,6 +807,20 @@ function ProfilePageContent() {
                   />
                 ) : (
                   <p className="px-4 py-2 text-midnight-navy">{profile.industry || 'Not set'}</p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2 text-midnight-navy">Profession</label>
+                {isEditing ? (
+                  <SearchableSelect
+                    options={professions.map(prof => ({ id: prof.id, label: prof.name, value: prof.id.toString() }))}
+                    value={formData.profession_id}
+                    onChange={(value) => setFormData({ ...formData, profession_id: value })}
+                    placeholder="Select your profession"
+                  />
+                ) : (
+                  <p className="px-4 py-2 text-midnight-navy">{profile.profession_name || 'Not set'}</p>
                 )}
               </div>
 

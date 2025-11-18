@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import {
@@ -22,6 +22,35 @@ export default function SessionManager() {
   const [showDialog, setShowDialog] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [sessionStartTime, setSessionStartTime] = useState<number | null>(null);
+
+  const handleLogout = useCallback(async () => {
+    setShowDialog(false);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(SESSION_START_KEY);
+    }
+    await signOut({ 
+      callbackUrl: '/login',
+      redirect: true 
+    });
+  }, []);
+
+  const handleExtendSession = useCallback(async () => {
+    try {
+      // Refresh the session (this will trigger token refresh in NextAuth)
+      await update();
+      // Reset the session start time
+      const newStartTime = Date.now();
+      setSessionStartTime(newStartTime);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(SESSION_START_KEY, newStartTime.toString());
+      }
+      setShowDialog(false);
+    } catch (error) {
+      console.error('Error extending session:', error);
+      // If refresh fails, logout
+      handleLogout();
+    }
+  }, [update, handleLogout]);
 
   useEffect(() => {
     if (!session) {
@@ -82,36 +111,7 @@ export default function SessionManager() {
     checkSession(); // Initial check
 
     return () => clearInterval(interval);
-  }, [session, sessionStartTime, showDialog]);
-
-  const handleExtendSession = async () => {
-    try {
-      // Refresh the session (this will trigger token refresh in NextAuth)
-      await update();
-      // Reset the session start time
-      const newStartTime = Date.now();
-      setSessionStartTime(newStartTime);
-      if (typeof window !== 'undefined') {
-        localStorage.setItem(SESSION_START_KEY, newStartTime.toString());
-      }
-      setShowDialog(false);
-    } catch (error) {
-      console.error('Error extending session:', error);
-      // If refresh fails, logout
-      handleLogout();
-    }
-  };
-
-  const handleLogout = async () => {
-    setShowDialog(false);
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem(SESSION_START_KEY);
-    }
-    await signOut({ 
-      callbackUrl: '/login',
-      redirect: true 
-    });
-  };
+  }, [session, sessionStartTime, showDialog, handleLogout]);
 
   const formatTimeRemaining = (ms: number) => {
     const minutes = Math.floor(ms / 60000);
@@ -124,8 +124,14 @@ export default function SessionManager() {
   }
 
   return (
-    <Dialog open={showDialog} onOpenChange={(open) => !open && handleLogout()}>
-      <DialogContent className="max-w-md text-center">
+    <Dialog open={showDialog} onOpenChange={(open) => {
+      // Prevent closing the dialog without making a choice
+      // Only allow closing via the buttons
+      if (!open) {
+        handleLogout();
+      }
+    }}>
+      <DialogContent className="max-w-md text-center" onInteractOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()}>
         <DialogHeader>
           <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <svg 

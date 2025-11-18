@@ -21,9 +21,10 @@ type SortOption = 'name' | 'price-low' | 'price-high' | 'newest';
 function ShopPageContent() {
   const searchParams = useSearchParams();
   const { data: session } = useSession();
-  const roleFilter = searchParams.get('role'); // 'seller', 'steward', or null
+  const roleFilter = searchParams.get('role'); // 'steward', or null (removed 'seller')
   const stewardParam = searchParams.get('steward'); // steward ID for filtering
   const is_steward = (session?.user as any)?.is_steward ?? false;
+  const is_seller = (session?.user as any)?.is_seller ?? false;
   const [products, setProducts] = useState<Product[]>([]);
   const [stewardListings, setStewardListings] = useState<StewardListing[]>([]);
   const [chapters, setChapters] = useState<Chapter[]>([]);
@@ -196,11 +197,6 @@ function ShopPageContent() {
       filtered = filtered.filter(product => product.category_id === selectedCategory);
     }
 
-    // Filter by role
-    if (roleFilter === 'seller') {
-      filtered = filtered.filter(product => product.is_seller === true);
-    }
-
     // Filter by price range
     filtered = filtered.filter(product => {
       const price = product.price_cents / 100;
@@ -227,71 +223,58 @@ function ShopPageContent() {
     return filtered;
   }, [products, searchQuery, selectedChapter, selectedSeller, selectedCategory, sortBy, priceRange, roleFilter]);
 
-  // Hero header content based on role filter
-  const getHeroContent = () => {
-    if (roleFilter === 'seller') {
-      return {
-        title: 'Sellers',
-        subtitle: 'Shop products from verified Kappa Alpha Psi brothers and friends of Kappa',
-        becomeLink: '/seller-setup-intro',
-        becomeText: 'Become a Seller'
-      };
-    } else if (roleFilter === 'steward') {
-      return {
-        title: 'Stewards Market',
-        subtitle: 'Stewards give new life to cherished fraternity items while funding the next generation of Brothers. Each listing includes a Steward-designated chapter donation that directly supports scholarships, programming, and undergraduate chapter initiatives.',
-        becomeLink: '/steward-setup',
-        becomeText: 'Become a Steward'
-      };
-    }
-    return null;
-  };
-
-  const heroContent = getHeroContent();
+  // No hero content needed - steward marketplace has its own page now
+  const heroContent = null;
 
   return (
     <div className="min-h-screen bg-cream dark:bg-black text-midnight-navy dark:text-gray-100">
       <Header />
       
-      {/* Hero Header for filtered pages */}
-      {heroContent && (
-        <section className="bg-gradient-to-br from-crimson to-midnight-navy text-white py-12 px-4">
-          <div className="max-w-7xl mx-auto text-center">
-            <h1 className="text-4xl md:text-5xl font-display font-bold mb-4">{heroContent.title}</h1>
-            <p className="text-lg md:text-xl text-white/90 mb-8 max-w-2xl mx-auto">{heroContent.subtitle}</p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-              {/* Don't show "Become a Steward" button if user is already a steward */}
-              {!(roleFilter === 'steward' && is_steward) && (
-                <Link
-                  href={heroContent.becomeLink}
-                  className="inline-block bg-white text-crimson px-6 py-3 rounded-lg font-semibold hover:bg-cream transition-colors shadow-lg hover:shadow-xl"
-                >
-                  {heroContent.becomeText}
-                </Link>
-              )}
-              {/* Show "How It Works" button for steward section */}
-              {roleFilter === 'steward' && (
-                <button
-                  onClick={() => setIsHowItWorksModalOpen(true)}
-                  className="inline-block bg-transparent border-2 border-white text-white px-6 py-3 rounded-lg font-semibold hover:bg-white/10 transition-colors shadow-lg hover:shadow-xl"
-                >
-                  How It Works
-                </button>
-              )}
-            </div>
-          </div>
-        </section>
-      )}
+      {/* Hero Banner - Show for all shop views */}
+      <section className="relative flex flex-col items-center justify-center text-center py-6 sm:py-8 md:py-10 lg:py-12 px-4 sm:px-6 bg-gradient-to-br from-crimson to-midnight-navy text-white overflow-hidden min-h-[200px] sm:min-h-[250px] md:min-h-[300px]">
+        {/* Radial vignette + glow */}
+        <div 
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background:
+              'radial-gradient(ellipse at center, transparent 0%, transparent 40%, rgba(0,0,0,0.25) 100%)',
+          }}
+        />
+
+        {/* Soft background glow */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="w-[350px] h-[350px] sm:w-[450px] sm:h-[450px] md:w-[600px] md:h-[600px] rounded-full bg-white/10 blur-[140px]"></div>
+        </div>
+
+        {/* Content */}
+        <div className="relative z-10 text-center max-w-4xl mx-auto px-2 sm:px-4 w-full">
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-display font-bold mb-4 sm:mb-6">
+            The 1Kappa Exchange
+          </h1>
+          <p className="text-lg md:text-xl text-white/90 mb-8 max-w-2xl mx-auto">
+            Discover authentic merchandise from friends, brothers, and family. Every purchase supports our community.
+          </p>
+          {/* Show "Become a Seller" button if user is not already a seller */}
+          {!is_seller && (
+            <Link
+              href="/seller-setup-intro"
+              className="inline-block bg-white text-crimson px-6 py-3 rounded-full font-semibold hover:bg-cream transition-all duration-200 hover:scale-105 shadow-lg hover:shadow-xl"
+            >
+              Become a Seller
+            </Link>
+          )}
+        </div>
+      </section>
       
       <main className="max-w-7xl mx-auto px-4 py-12">
         {/* Page Header - only show if not showing role hero */}
-        {!heroContent && (
+        {false && (
           <div className="text-center mb-12">
             <h1 className="text-4xl md:text-5xl font-display font-bold text-midnight-navy dark:text-gray-100 mb-4">
-              Shop
+            The 1Kappa Exchange
             </h1>
             <p className="text-lg text-midnight-navy/70 dark:text-gray-300 max-w-2xl mx-auto">
-              Discover authentic fraternity merchandise from verified brothers. Every purchase supports our community.
+              Discover authentic merchandise from friends, brothers, and family. Every purchase supports our community.
             </p>
           </div>
         )}

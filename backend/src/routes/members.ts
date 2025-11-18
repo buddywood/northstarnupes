@@ -943,6 +943,7 @@ const memberRegistrationSchema = z.object({
   phone_number: z.string().optional().nullable(),
   phone_is_private: z.boolean().default(false),
   industry: z.string().optional().nullable(),
+  profession_id: z.number().int().positive().optional().nullable(),
   job_title: z.string().optional().nullable(),
   bio: z.string().optional().nullable(),
   social_links: z.record(z.string()).optional(),
@@ -970,6 +971,9 @@ router.post('/register', upload.single('headshot'), async (req: Request, res: Re
       address: toNullIfEmpty(req.body.address),
       phone_number: toNullIfEmpty(req.body.phone_number),
       industry: toNullIfEmpty(req.body.industry),
+      profession_id: req.body.profession_id && req.body.profession_id !== '' 
+        ? parseInt(req.body.profession_id) 
+        : null,
       job_title: toNullIfEmpty(req.body.job_title),
       bio: toNullIfEmpty(req.body.bio),
       address_is_private: req.body.address_is_private === 'true' || req.body.address_is_private === true,
@@ -1093,9 +1097,9 @@ router.post('/register', upload.single('headshot'), async (req: Request, res: Re
           name = $1, email = $2, membership_number = $3, initiated_chapter_id = $4,
           initiated_season = $5, initiated_year = $6, ship_name = $7, line_name = $8,
           location = $9, address = $10, address_is_private = $11, phone_number = $12, phone_is_private = $13,
-          industry = $14, job_title = $15, bio = $16, headshot_url = $17, social_links = $18,
+          industry = $14, profession_id = $15, job_title = $16, bio = $17, headshot_url = $18, social_links = $19,
           registration_status = 'COMPLETE', updated_at = CURRENT_TIMESTAMP
-        WHERE cognito_sub = $19
+        WHERE cognito_sub = $20
         RETURNING *`,
         [
           body.name,
@@ -1112,6 +1116,7 @@ router.post('/register', upload.single('headshot'), async (req: Request, res: Re
           body.phone_number, // Already converted to null if empty by toNullIfEmpty
           body.phone_is_private,
           body.industry, // Already converted to null if empty by toNullIfEmpty
+          body.profession_id, // Already converted to null if empty
           body.job_title, // Already converted to null if empty by toNullIfEmpty
           body.bio, // Already converted to null if empty by toNullIfEmpty
           headshotUrl,
@@ -1126,8 +1131,8 @@ router.post('/register', upload.single('headshot'), async (req: Request, res: Re
           name, email, membership_number, cognito_sub, initiated_chapter_id,
           initiated_season, initiated_year, ship_name, line_name,
           location, address, address_is_private, phone_number, phone_is_private,
-          industry, job_title, bio, headshot_url, social_links, registration_status
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
+          industry, profession_id, job_title, bio, headshot_url, social_links, registration_status
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
         RETURNING *`,
         [
           body.name,
@@ -1145,6 +1150,7 @@ router.post('/register', upload.single('headshot'), async (req: Request, res: Re
           body.phone_number, // Already converted to null if empty by toNullIfEmpty
           body.phone_is_private,
           body.industry, // Already converted to null if empty by toNullIfEmpty
+          body.profession_id, // Already converted to null if empty
           body.job_title, // Already converted to null if empty by toNullIfEmpty
           body.bio, // Already converted to null if empty by toNullIfEmpty
           headshotUrl,
@@ -1223,7 +1229,7 @@ router.post('/register', upload.single('headshot'), async (req: Request, res: Re
 // Get all members (for connect page) - requires authentication
 router.get('/', authenticate, async (req: Request, res: Response) => {
   try {
-    const { location, chapter_id, industry } = req.query;
+    const { location, chapter_id, industry, profession_id } = req.query;
     
     let query = `
       SELECT 
@@ -1239,6 +1245,8 @@ router.get('/', authenticate, async (req: Request, res: Response) => {
         m.line_name,
         m.location,
         m.industry,
+        m.profession_id,
+        p.name as profession_name,
         m.job_title,
         m.bio,
         m.headshot_url,
@@ -1251,6 +1259,7 @@ router.get('/', authenticate, async (req: Request, res: Response) => {
         CASE WHEN st.id IS NOT NULL AND st.status = 'APPROVED' THEN true ELSE false END as is_steward
       FROM fraternity_members m
       LEFT JOIN chapters c ON m.initiated_chapter_id = c.id
+      LEFT JOIN professions p ON m.profession_id = p.id
       LEFT JOIN sellers s ON m.id = s.fraternity_member_id AND s.status = 'APPROVED'
       LEFT JOIN promoters pr ON m.id = pr.fraternity_member_id AND pr.status = 'APPROVED'
       LEFT JOIN stewards st ON m.id = st.fraternity_member_id AND st.status = 'APPROVED'
@@ -1275,6 +1284,12 @@ router.get('/', authenticate, async (req: Request, res: Response) => {
     if (industry) {
       query += ` AND LOWER(m.industry) LIKE $${paramCount}`;
       params.push(`%${(industry as string).toLowerCase()}%`);
+      paramCount++;
+    }
+    
+    if (profession_id) {
+      query += ` AND m.profession_id = $${paramCount}`;
+      params.push(parseInt(profession_id as string));
       paramCount++;
     }
     
@@ -1309,9 +1324,10 @@ router.get('/profile', authenticate, async (req: Request, res: Response) => {
     }
 
     const result = await pool.query(
-      `SELECT m.*, c.name as chapter_name
+      `SELECT m.*, c.name as chapter_name, p.name as profession_name
        FROM fraternity_members m
        LEFT JOIN chapters c ON m.initiated_chapter_id = c.id
+       LEFT JOIN professions p ON m.profession_id = p.id
        WHERE m.id = $1`,
       [req.user.memberId]
     );
@@ -1366,6 +1382,7 @@ const memberUpdateSchema = z.object({
   phone_number: z.string().optional().nullable(),
   phone_is_private: z.boolean().optional(),
   industry: z.string().optional().nullable(),
+  profession_id: z.number().int().positive().optional().nullable(),
   job_title: z.string().optional().nullable(),
   bio: z.string().optional().nullable(),
   social_links: z.record(z.string()).optional(),
@@ -1397,6 +1414,9 @@ router.put('/profile', authenticate, upload.single('headshot'), async (req: Requ
       address: toNullIfEmpty(req.body.address),
       phone_number: toNullIfEmpty(req.body.phone_number),
       industry: toNullIfEmpty(req.body.industry),
+      profession_id: req.body.profession_id && req.body.profession_id !== '' 
+        ? parseInt(req.body.profession_id) 
+        : undefined,
       job_title: toNullIfEmpty(req.body.job_title),
       bio: toNullIfEmpty(req.body.bio),
       address_is_private: req.body.address_is_private === 'true' || req.body.address_is_private === true,
@@ -1504,6 +1524,11 @@ router.put('/profile', authenticate, upload.single('headshot'), async (req: Requ
     if (body.industry !== undefined) {
       updateFields.push(`industry = $${paramCount}`);
       values.push(body.industry);
+      paramCount++;
+    }
+    if (body.profession_id !== undefined) {
+      updateFields.push(`profession_id = $${paramCount}`);
+      values.push(body.profession_id);
       paramCount++;
     }
     if (body.job_title !== undefined) {

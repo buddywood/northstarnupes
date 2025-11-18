@@ -26,6 +26,7 @@ function LoginPageContent() {
   const [needsVerification, setNeedsVerification] = useState(false);
   const [verificationCode, setVerificationCode] = useState('');
   const [resendingVerification, setResendingVerification] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
 
   // Check for error in URL (from NextAuth redirect)
   useEffect(() => {
@@ -39,6 +40,18 @@ function LoginPageContent() {
       }
     }
   }, [searchParams]);
+
+  // Load remembered email on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const rememberedEmail = localStorage.getItem('remembered_email');
+      const rememberMePreference = localStorage.getItem('remember_me') === 'true';
+      if (rememberedEmail && rememberMePreference) {
+        setEmail(rememberedEmail);
+        setRememberMe(true);
+      }
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -153,6 +166,17 @@ function LoginPageContent() {
           setError('Invalid email or password');
           setLoading(false);
         } else {
+          // Store remember me preference and email
+          if (typeof window !== 'undefined') {
+            if (rememberMe) {
+              localStorage.setItem('remembered_email', email);
+              localStorage.setItem('remember_me', 'true');
+            } else {
+              localStorage.removeItem('remembered_email');
+              localStorage.removeItem('remember_me');
+            }
+          }
+
           // Check onboarding status and redirect accordingly
           const { getSession } = await import('next-auth/react');
           const session = await getSession();
@@ -244,6 +268,17 @@ function LoginPageContent() {
         setError('Please try logging in again');
         setLoading(false);
       } else {
+        // Store remember me preference and email
+        if (typeof window !== 'undefined') {
+          if (rememberMe) {
+            localStorage.setItem('remembered_email', email);
+            localStorage.setItem('remember_me', 'true');
+          } else {
+            localStorage.removeItem('remembered_email');
+            localStorage.removeItem('remember_me');
+          }
+        }
+
         // Check onboarding status and redirect accordingly
         const { getSession } = await import('next-auth/react');
         const session = await getSession();
@@ -342,6 +377,17 @@ function LoginPageContent() {
         setError('Failed to complete login after password change');
         setLoading(false);
       } else {
+        // Store remember me preference and email
+        if (typeof window !== 'undefined') {
+          if (rememberMe) {
+            localStorage.setItem('remembered_email', email);
+            localStorage.setItem('remember_me', 'true');
+          } else {
+            localStorage.removeItem('remembered_email');
+            localStorage.removeItem('remember_me');
+          }
+        }
+
         // Check onboarding status and redirect accordingly
         const { getSession } = await import('next-auth/react');
         const session = await getSession();
@@ -490,6 +536,18 @@ function LoginPageContent() {
                 )}
               </button>
             </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="rememberMe"
+              checked={rememberMe}
+              onChange={(e) => setRememberMe(e.target.checked)}
+              className="rounded border-frost-gray text-crimson focus:ring-crimson w-4 h-4"
+            />
+            <label htmlFor="rememberMe" className="text-sm text-midnight-navy/70 cursor-pointer">
+              Remember me
+            </label>
           </div>
           {error && <div className="text-red-600 text-sm">{error}</div>}
           <Button

@@ -4,6 +4,14 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
+import {
+  Calendar,
+  CalendarDays,
+  History,
+  DollarSign,
+  PlusCircle,
+  Settings,
+} from 'lucide-react';
 import { 
   getPromoterEvents, 
   getPromoterMetrics,
@@ -112,7 +120,7 @@ export default function PromoterDashboardPage() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Events</CardTitle>
-              <span className="text-2xl">🎉</span>
+              <Calendar className="h-5 w-5 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
@@ -125,7 +133,7 @@ export default function PromoterDashboardPage() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Upcoming Events</CardTitle>
-              <span className="text-2xl">📅</span>
+              <CalendarDays className="h-5 w-5 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-green-600 dark:text-green-400">
@@ -138,7 +146,7 @@ export default function PromoterDashboardPage() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Past Events</CardTitle>
-              <span className="text-2xl">📜</span>
+              <History className="h-5 w-5 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
@@ -151,7 +159,7 @@ export default function PromoterDashboardPage() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Potential Revenue</CardTitle>
-              <span className="text-2xl">💰</span>
+              <DollarSign className="h-5 w-5 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-crimson">
@@ -171,18 +179,21 @@ export default function PromoterDashboardPage() {
           <CardContent>
             <div className="flex flex-wrap gap-4">
               <Button asChild>
-                <Link href="/promoter-dashboard/events/create">
-                  ➕ Create New Event
+                <Link href="/promoter-dashboard/events/create" className="flex items-center gap-2">
+                  <PlusCircle className="h-4 w-4" />
+                  Create New Event
                 </Link>
               </Button>
               <Button asChild variant="outline">
-                <Link href="/events">
-                  🎉 Browse All Events
+                <Link href="/events" className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4" />
+                  Browse All Events
                 </Link>
               </Button>
               <Button asChild variant="outline">
-                <Link href="/profile">
-                  ⚙️ Edit Profile
+                <Link href="/profile" className="flex items-center gap-2">
+                  <Settings className="h-4 w-4" />
+                  Edit Profile
                 </Link>
               </Button>
             </div>
@@ -232,7 +243,7 @@ export default function PromoterDashboardPage() {
                               />
                             ) : (
                               <div className="w-10 h-10 bg-gray-200 dark:bg-gray-700 rounded flex items-center justify-center">
-                                <span className="text-xs">🎉</span>
+                                <Calendar className="h-5 w-5 text-muted-foreground" />
                               </div>
                             )}
                             <div>

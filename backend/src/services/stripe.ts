@@ -156,6 +156,102 @@ export async function createChapterConnectAccount(email: string, country: string
 }
 
 /**
+ * Get business details from a Stripe Connect account
+ */
+export async function getStripeAccountBusinessDetails(accountId: string): Promise<{
+  businessName: string | null;
+  businessEmail: string | null;
+  website: string | null;
+  taxId: string | null;
+  businessPhone: string | null;
+  accountType: 'company' | 'individual' | null;
+  businessAddress: {
+    line1: string | null;
+    line2: string | null;
+    city: string | null;
+    state: string | null;
+    postal_code: string | null;
+    country: string | null;
+  };
+}> {
+  const account = await stripe.accounts.retrieve(accountId);
+  
+  // Extract business information
+  // Business profile is available for Express accounts
+  const businessProfile = account.business_profile || {};
+  const company = account.company || {};
+  const individual = account.individual || {};
+  
+  // Determine account type
+  let accountType: 'company' | 'individual' | null = null;
+  if (company.name || company.tax_id) {
+    accountType = 'company';
+  } else if (individual.first_name || individual.last_name) {
+    accountType = 'individual';
+  }
+  
+  // Business name: prefer business_profile.name, then company.name, then individual.first_name + last_name
+  let businessName: string | null = null;
+  if (businessProfile.name) {
+    businessName = businessProfile.name;
+  } else if (company.name) {
+    businessName = company.name;
+  } else if (individual.first_name || individual.last_name) {
+    businessName = `${individual.first_name || ''} ${individual.last_name || ''}`.trim() || null;
+  }
+  
+  // Business email: prefer business_profile.support_email, then account email
+  const businessEmail = businessProfile.support_email || account.email || null;
+  
+  // Website: from business_profile.url
+  const website = businessProfile.url || null;
+  
+  // Business phone: from business_profile.support_phone
+  const businessPhone = businessProfile.support_phone || null;
+  
+  // Tax ID: from company.tax_id (EIN) or individual.ssn_last_4 (partial SSN)
+  let taxId: string | null = null;
+  if (company.tax_id) {
+    taxId = company.tax_id;
+  } else if (individual.ssn_last_4) {
+    // Only store last 4 digits for privacy
+    taxId = `***-**-${individual.ssn_last_4}`;
+  }
+  
+  // Business address: prefer company.address, then individual.address
+  let businessAddress = {
+    line1: null as string | null,
+    line2: null as string | null,
+    city: null as string | null,
+    state: null as string | null,
+    postal_code: null as string | null,
+    country: null as string | null,
+  };
+  
+  const address = company.address || individual.address || null;
+  if (address) {
+    businessAddress = {
+      line1: address.line1 || null,
+      line2: address.line2 || null,
+      city: address.city || null,
+      state: address.state || null,
+      postal_code: address.postal_code || null,
+      country: address.country || null,
+    };
+  }
+  
+  return {
+    businessName,
+    businessEmail,
+    website,
+    taxId,
+    businessPhone,
+    accountType,
+    businessAddress,
+  };
+}
+
+/**
  * Create checkout session for steward listing claim
  */
 export async function createStewardCheckoutSession(params: {

@@ -2,32 +2,48 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { getStewardMarketplace, fetchChapters, type StewardListing, type Chapter } from '@/lib/api';
+import { getStewardMarketplace, fetchProductCategories, type StewardListing, type ProductCategory } from '@/lib/api';
+import SearchableSelect from '../components/SearchableSelect';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import VerificationBadge from '../components/VerificationBadge';
+import StewardshipHowItWorksModal from '../components/StewardshipHowItWorksModal';
 
 export default function StewardMarketplacePage() {
   const router = useRouter();
+  const { data: session } = useSession();
+  const is_steward = (session?.user as any)?.is_steward ?? false;
+  const memberId = (session?.user as any)?.memberId;
+  const is_fraternity_member = (session?.user as any)?.is_fraternity_member ?? false;
+  const isMember = (memberId !== null && memberId !== undefined) || is_fraternity_member;
   const [listings, setListings] = useState<StewardListing[]>([]);
-  const [chapters, setChapters] = useState<Chapter[]>([]);
+  const [categories, setCategories] = useState<ProductCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedChapter, setSelectedChapter] = useState<number | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
+  const [isHowItWorksModalOpen, setIsHowItWorksModalOpen] = useState(false);
 
   useEffect(() => {
     async function loadData() {
       try {
-        const [listingsData, chaptersData] = await Promise.all([
+        const [listingsData, categoriesData] = await Promise.all([
           getStewardMarketplace(),
-          fetchChapters(),
+          fetchProductCategories(),
         ]);
         console.log('Steward Marketplace - Loaded listings:', listingsData.length, listingsData);
         setListings(listingsData);
-        setChapters(chaptersData);
+        // Sort categories by display_order, then by name
+        const sortedCategories = [...categoriesData].sort((a, b) => {
+          if (a.display_order !== b.display_order) {
+            return a.display_order - b.display_order;
+          }
+          return a.name.localeCompare(b.name);
+        });
+        setCategories(sortedCategories);
       } catch (err: any) {
         console.error('Error loading marketplace:', err);
         if (err.message === 'VERIFICATION_REQUIRED') {
@@ -48,7 +64,7 @@ export default function StewardMarketplacePage() {
 
   const filteredListings = useMemo(() => {
     let filtered = [...listings];
-    console.log('Steward Marketplace - Filtering listings. Total:', listings.length, 'Search:', searchQuery, 'Chapter:', selectedChapter);
+    console.log('Steward Marketplace - Filtering listings. Total:', listings.length, 'Search:', searchQuery, 'Category:', selectedCategory);
 
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
@@ -58,19 +74,14 @@ export default function StewardMarketplacePage() {
       );
     }
 
-    if (selectedChapter) {
-      filtered = filtered.filter(listing => listing.sponsoring_chapter_id === selectedChapter);
+    if (selectedCategory) {
+      filtered = filtered.filter(listing => listing.category_id === selectedCategory);
     }
 
     console.log('Steward Marketplace - Filtered results:', filtered.length, filtered);
     return filtered;
-  }, [listings, searchQuery, selectedChapter]);
+  }, [listings, searchQuery, selectedCategory]);
 
-  const getChapterName = (chapterId: number | null) => {
-    if (!chapterId) return null;
-    const chapter = chapters.find(c => c.id === chapterId);
-    return chapter?.name || null;
-  };
 
   if (loading) {
     return (
@@ -85,33 +96,66 @@ export default function StewardMarketplacePage() {
   }
 
   return (
-    <div className="min-h-screen bg-cream text-midnight-navy">
+    <div className="min-h-screen bg-cream dark:bg-black text-midnight-navy dark:text-gray-100">
       <Header />
       
-      <main className="max-w-7xl mx-auto px-4 py-12">
-        <div className="text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-display font-bold text-midnight-navy mb-4">
-            Steward Marketplace
-          </h1>
-          <p className="text-lg text-midnight-navy/70 max-w-2xl mx-auto">
-            Claim legacy fraternity paraphernalia from verified brothers. Items are free - you only pay shipping, platform fees, and a donation to the steward&apos;s chapter.
-          </p>
+      {/* Hero Banner */}
+      <section className="relative flex flex-col items-center justify-center text-center py-6 sm:py-8 md:py-10 lg:py-12 px-4 sm:px-6 bg-gradient-to-br from-crimson to-midnight-navy text-white overflow-hidden min-h-[200px] sm:min-h-[250px] md:min-h-[300px]">
+        {/* Radial vignette + glow */}
+        <div 
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background:
+              'radial-gradient(ellipse at center, transparent 0%, transparent 40%, rgba(0,0,0,0.25) 100%)',
+          }}
+        />
+
+        {/* Soft background glow */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="w-[350px] h-[350px] sm:w-[450px] sm:h-[450px] md:w-[600px] md:h-[600px] rounded-full bg-white/10 blur-[140px]"></div>
         </div>
 
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
-            {error}
-            {error.includes('verified member') && (
-              <Link href="/profile" className="block mt-2 text-red-600 underline">
-                Go to Profile to Complete Verification
+        {/* Content */}
+        <div className="relative z-10 text-center max-w-4xl mx-auto px-2 sm:px-4 w-full">
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-display font-bold mb-4 sm:mb-6">
+          Legacy Marketplace
+          </h1>
+          <p className="text-lg md:text-xl text-white/90 mb-8 max-w-2xl mx-auto">
+          Where the stories continue. Brothers can pass on cherished paraphernalia so it finds new life with another member.
+          Legacy listings come from Stewards—verified Brothers who share meaningful items and direct a chapter donation to support undergraduates.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+            {/* Show "Become a Member" if user is not a member */}
+            {!isMember && (
+              <Link
+                href="/member-setup"
+                className="inline-block bg-white text-crimson px-6 py-3 rounded-full font-semibold hover:bg-cream transition-all duration-200 hover:scale-105 shadow-lg hover:shadow-xl"
+              >
+                Become a Member
               </Link>
             )}
+            {/* Show "Become a Steward" button if user is a member but not a steward */}
+            {!isMember && !is_steward && (
+              <Link
+                href="/steward-setup"
+                className="inline-block bg-white text-crimson px-6 py-3 rounded-full font-semibold hover:bg-cream transition-all duration-200 hover:scale-105 shadow-lg hover:shadow-xl"
+              >
+                Become a Steward
+              </Link>
+            )}
+            {/* Show "How It Works" button */}
+            <button
+              onClick={() => setIsHowItWorksModalOpen(true)}
+              className="inline-block bg-transparent border-2 border-white text-white px-6 py-3 rounded-full font-semibold hover:bg-white/10 transition-all duration-200 hover:scale-105 shadow-lg hover:shadow-xl"
+            >
+              How It Works
+            </button>
           </div>
-        )}
-
-        {!error && (
-          <>
-            {/* Filters */}
+        </div>
+      </section>
+      
+      <main className="max-w-7xl mx-auto px-4 py-12">
+        {/* Filters */}
             <div className="mb-8 space-y-4">
               <div className="relative">
                 <svg 
@@ -131,28 +175,30 @@ export default function StewardMarketplacePage() {
                 />
               </div>
 
-              <select
-                value={selectedChapter || ''}
-                onChange={(e) => setSelectedChapter(e.target.value ? parseInt(e.target.value) : null)}
-                className="w-full px-4 py-2 border border-frost-gray rounded-lg focus:ring-2 focus:ring-crimson focus:border-transparent text-midnight-navy bg-white"
-              >
-                <option value="">All Chapters</option>
-                {chapters.map((chapter) => (
-                  <option key={chapter.id} value={chapter.id}>
-                    {chapter.name}
-                  </option>
-                ))}
-              </select>
+              <SearchableSelect
+                options={[
+                  { id: '', label: 'All Event Types', value: '' },
+                  ...categories.map((category) => ({
+                    id: category.id,
+                    label: category.name,
+                    value: category.id.toString(),
+                  }))
+                ]}
+                value={selectedCategory ? selectedCategory.toString() : ''}
+                onChange={(value) => setSelectedCategory(value ? parseInt(value) : null)}
+                placeholder="Filter by Event Type"
+                className="w-full"
+              />
             </div>
 
             {/* Listings Grid */}
             {filteredListings.length === 0 ? (
               <div className="text-center py-16 bg-white rounded-xl border border-frost-gray">
                 <h3 className="text-xl font-semibold text-midnight-navy mb-2">
-                  {searchQuery || selectedChapter ? 'No listings found' : 'No listings available'}
+                  {searchQuery || selectedCategory ? 'No listings found' : 'No listings available'}
                 </h3>
                 <p className="text-midnight-navy/60">
-                  {searchQuery || selectedChapter
+                  {searchQuery || selectedCategory
                     ? 'Try adjusting your filters.'
                     : 'Check back soon for new listings!'}
                 </p>
@@ -184,7 +230,7 @@ export default function StewardMarketplacePage() {
                         <div className="absolute top-2 left-2 z-10">
                           <VerificationBadge 
                             type="sponsored-chapter" 
-                            chapterName={getChapterName(listing.sponsoring_chapter_id)}
+                            chapterName={listing.chapter.name}
                           />
                         </div>
                       )}
@@ -207,11 +253,15 @@ export default function StewardMarketplacePage() {
                 ))}
               </div>
             )}
-          </>
-        )}
       </main>
 
       <Footer />
+      
+      {/* How It Works Modal */}
+      <StewardshipHowItWorksModal 
+        isOpen={isHowItWorksModalOpen}
+        onClose={() => setIsHowItWorksModalOpen(false)}
+      />
     </div>
   );
 }

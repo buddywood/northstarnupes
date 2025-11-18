@@ -95,9 +95,9 @@ function EventsPageContent() {
         <div className="max-w-7xl mx-auto text-center">
           {showPromoterHero ? (
             <>
-              <h1 className="text-4xl md:text-5xl font-display font-bold mb-4">Promoters</h1>
+              <h1 className="text-4xl md:text-5xl font-display font-bold mb-4"> Bring the Bond to Life</h1>
               <p className="text-lg md:text-xl text-white/90 mb-8 max-w-2xl mx-auto">
-                Discover events promoted by verified Kappa Alpha Psi brothers and friends of Kappa
+              Discover events hosted by verified Brothers and trusted friends of Kappa—socials, galas, day parties, conferences, and gatherings that strengthen our network and celebrate our culture.
               </p>
               <Link
                 href="/promoter-setup"

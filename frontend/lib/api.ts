@@ -81,12 +81,25 @@ export interface Seller {
   fraternity_member_id?: number | null;
   sponsoring_chapter_id: number;
   business_name: string | null;
+  business_email: string | null;
+  business_phone: string | null;
   vendor_license_number: string | null;
   merchandise_type: 'KAPPA' | 'NON_KAPPA' | null;
   headshot_url: string | null;
   store_logo_url: string;
   social_links: Record<string, string>;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  verification_status?: 'PENDING' | 'VERIFIED' | 'FAILED' | 'MANUAL_REVIEW';
+  stripe_account_id?: string | null;
+  stripe_account_type?: 'company' | 'individual' | null;
+  tax_id?: string | null;
+  website?: string | null;
+  business_address_line1?: string | null;
+  business_address_line2?: string | null;
+  business_city?: string | null;
+  business_state?: string | null;
+  business_postal_code?: string | null;
+  business_country?: string | null;
 }
 
 export interface Promoter {
@@ -145,6 +158,15 @@ export interface Industry {
   updated_at: string;
 }
 
+export interface Profession {
+  id: number;
+  name: string;
+  display_order: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export async function fetchChapters(): Promise<Chapter[]> {
   const res = await fetch(`${API_URL}/api/chapters`);
   if (!res.ok) throw new Error('Failed to fetch chapters');
@@ -157,6 +179,15 @@ export async function fetchIndustries(includeInactive: boolean = false): Promise
     : `${API_URL}/api/industries`;
   const res = await fetch(url);
   if (!res.ok) throw new Error('Failed to fetch industries');
+  return res.json();
+}
+
+export async function fetchProfessions(includeInactive: boolean = false): Promise<Profession[]> {
+  const url = includeInactive 
+    ? `${API_URL}/api/professions?includeInactive=true`
+    : `${API_URL}/api/professions`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('Failed to fetch professions');
   return res.json();
 }
 
@@ -199,6 +230,30 @@ export async function fetchProductCategories(): Promise<ProductCategory[]> {
 export async function fetchCategoryAttributeDefinitions(categoryId: number): Promise<CategoryAttributeDefinition[]> {
   const res = await fetch(`${API_URL}/api/products/categories/${categoryId}/attributes`);
   if (!res.ok) throw new Error('Failed to fetch category attribute definitions');
+  return res.json();
+}
+
+export async function createProduct(formData: FormData): Promise<Product> {
+  const session = await fetch('/api/auth/session').then(res => res.json());
+  const idToken = (session as any)?.idToken;
+  
+  if (!idToken) {
+    throw new Error('Not authenticated');
+  }
+
+  const res = await fetch(`${API_URL}/api/products`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${idToken}`,
+    },
+    body: formData,
+  });
+  
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.error || error.message || 'Failed to create product');
+  }
+  
   return res.json();
 }
 
@@ -630,6 +685,8 @@ export interface MemberProfile {
   phone_number: string | null;
   phone_is_private: boolean;
   industry: string | null;
+  profession_id: number | null;
+  profession_name: string | null;
   job_title: string | null;
   bio: string | null;
   headshot_url: string | null;
@@ -646,6 +703,7 @@ export async function fetchAllMembers(filters?: {
   location?: string;
   chapter_id?: number;
   industry?: string;
+  profession_id?: number;
 }): Promise<MemberProfile[]> {
   const session = await fetch('/api/auth/session').then(res => res.json());
   const idToken = (session as any)?.idToken;
@@ -658,6 +716,7 @@ export async function fetchAllMembers(filters?: {
   if (filters?.location) params.append('location', filters.location);
   if (filters?.chapter_id) params.append('chapter_id', filters.chapter_id.toString());
   if (filters?.industry) params.append('industry', filters.industry);
+  if (filters?.profession_id) params.append('profession_id', filters.profession_id.toString());
 
   const res = await fetch(`${API_URL}/api/members?${params.toString()}`, {
     headers: {
@@ -1086,6 +1145,7 @@ export interface SellerMetrics {
   orderCount: number;
   activeListings: number;
   totalPayoutsCents: number;
+  totalUndergradDonationsCents: number;
 }
 
 export async function getSellerOrders(): Promise<SellerOrder[]> {
@@ -1108,6 +1168,78 @@ export async function getSellerMetrics(): Promise<SellerMetrics> {
   if (!res.ok) {
     const error = await res.json();
     throw new Error(error.error || 'Failed to fetch seller metrics');
+  }
+  return res.json();
+}
+
+export interface StripeAccountStatus {
+  connected: boolean;
+  accountId: string | null;
+  detailsSubmitted: boolean;
+  chargesEnabled: boolean;
+  payoutsEnabled: boolean;
+  requirements?: {
+    currently_due?: string[];
+    eventually_due?: string[];
+    past_due?: string[];
+    pending_verification?: string[];
+  } | null;
+}
+
+export async function initiateStripeOnboarding(): Promise<{ url: string }> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_URL}/api/sellers/me/stripe/onboard`, {
+    method: 'POST',
+    headers,
+  });
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.error || 'Failed to initiate Stripe onboarding');
+  }
+  return res.json();
+}
+
+export async function getStripeAccountStatus(): Promise<StripeAccountStatus> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_URL}/api/sellers/me/stripe/status`, {
+    headers,
+  });
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.error || 'Failed to fetch Stripe status');
+  }
+  return res.json();
+}
+
+export async function syncStripeBusinessDetails(): Promise<{
+  success: boolean;
+  seller: Seller;
+  syncedFields: string[];
+  businessDetails: {
+    businessName: string | null;
+    businessEmail: string | null;
+    website: string | null;
+    taxId: string | null;
+    businessPhone: string | null;
+    accountType: 'company' | 'individual' | null;
+    businessAddress: {
+      line1: string | null;
+      line2: string | null;
+      city: string | null;
+      state: string | null;
+      postal_code: string | null;
+      country: string | null;
+    };
+  };
+}> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_URL}/api/sellers/me/stripe/sync-business`, {
+    method: 'POST',
+    headers,
+  });
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.error || 'Failed to sync business details from Stripe');
   }
   return res.json();
 }

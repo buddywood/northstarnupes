@@ -4,6 +4,7 @@ import multer from 'multer';
 import { createProduct, getActiveProducts, getProductById, getSellerById, getAllProductCategories, getCategoryAttributeDefinitions, setProductAttributeValue, addProductImage } from '../db/queries';
 import { uploadToS3 } from '../services/s3';
 import { z } from 'zod';
+import { authenticate } from '../middleware/auth';
 import pool from '../db/connection';
 
 const router: ExpressRouter = Router();
@@ -74,8 +75,13 @@ router.get('/:id', async (req: Request, res: Response) => {
   }
 });
 
-router.post('/', upload.array('images', 10), async (req: Request, res: Response) => {
+router.post('/', authenticate, upload.array('images', 10), async (req: Request, res: Response) => {
   try {
+    // Verify user is a seller
+    if (!req.user || !req.user.sellerId) {
+      return res.status(403).json({ error: 'Seller access required' });
+    }
+
     const body = createProductSchema.parse({
       ...req.body,
       seller_id: parseInt(req.body.seller_id),
@@ -84,24 +90,42 @@ router.post('/', upload.array('images', 10), async (req: Request, res: Response)
       is_kappa_branded: req.body.is_kappa_branded !== undefined ? req.body.is_kappa_branded === 'true' || req.body.is_kappa_branded === true : undefined,
     });
 
-    // Get seller to check verification status
+    // Verify seller_id matches authenticated user's seller_id
+    if (body.seller_id !== req.user.sellerId) {
+      return res.status(403).json({ error: 'You can only create products for your own seller account' });
+    }
+
+    // Get seller to check verification status and Stripe connection
     const seller = await getSellerById(body.seller_id);
     if (!seller) {
       return res.status(404).json({ error: 'Seller not found' });
     }
 
+    // Check if seller is approved
+    if (seller.status !== 'APPROVED') {
+      return res.status(403).json({ error: 'You must be an approved seller to create products' });
+    }
+
+    // Check if Stripe is connected
+    if (!seller.stripe_account_id) {
+      return res.status(400).json({ 
+        error: 'Stripe account not connected. Please complete Stripe setup before creating products.',
+        code: 'STRIPE_NOT_CONNECTED'
+      });
+    }
+
     // Business rule validation:
     // 1. Verified sellers (seller.verification_status = 'VERIFIED') → must sell Kappa Alpha Psi branded merchandise only
-    // 2. Verified members (seller.member_id IS NOT NULL AND member.verification_status = 'VERIFIED') → can sell anything
+    // 2. Verified members (seller.fraternity_member_id IS NOT NULL AND member.verification_status = 'VERIFIED') → can sell anything
     let isKappaBranded = body.is_kappa_branded ?? false;
 
     if (seller.verification_status === 'VERIFIED') {
       // Check if seller is also a verified member
       let isVerifiedMember = false;
-      if (seller.member_id) {
+      if (seller.fraternity_member_id) {
         const memberResult = await pool.query(
-          'SELECT verification_status FROM members WHERE id = $1',
-          [seller.member_id]
+          'SELECT verification_status FROM fraternity_members WHERE id = $1',
+          [seller.fraternity_member_id]
         );
         if (memberResult.rows[0]?.verification_status === 'VERIFIED') {
           isVerifiedMember = true;

@@ -1176,6 +1176,97 @@ export async function deleteIndustry(id: number): Promise<boolean> {
   return result.rowCount !== null && result.rowCount > 0;
 }
 
+// Profession queries
+export interface Profession {
+  id: number;
+  name: string;
+  display_order: number;
+  is_active: boolean;
+  created_at: Date;
+  updated_at: Date;
+}
+
+export async function getAllProfessions(includeInactive: boolean = false): Promise<Profession[]> {
+  const query = includeInactive
+    ? 'SELECT * FROM professions ORDER BY display_order, name'
+    : 'SELECT * FROM professions WHERE is_active = true ORDER BY display_order, name';
+  const result = await pool.query(query);
+  return result.rows;
+}
+
+export async function getProfessionById(id: number): Promise<Profession | null> {
+  const result = await pool.query('SELECT * FROM professions WHERE id = $1', [id]);
+  return result.rows[0] || null;
+}
+
+export async function createProfession(profession: {
+  name: string;
+  display_order?: number;
+  is_active?: boolean;
+}): Promise<Profession> {
+  // Get max display_order if not provided
+  let displayOrder = profession.display_order;
+  if (displayOrder === undefined) {
+    const maxResult = await pool.query('SELECT MAX(display_order) as max_order FROM professions');
+    displayOrder = (maxResult.rows[0]?.max_order || 0) + 1;
+  }
+
+  const result = await pool.query(
+    `INSERT INTO professions (name, display_order, is_active)
+     VALUES ($1, $2, $3)
+     RETURNING *`,
+    [profession.name, displayOrder, profession.is_active !== undefined ? profession.is_active : true]
+  );
+  return result.rows[0];
+}
+
+export async function updateProfession(
+  id: number,
+  updates: {
+    name?: string;
+    display_order?: number;
+    is_active?: boolean;
+  }
+): Promise<Profession | null> {
+  const updatesList: string[] = [];
+  const values: any[] = [];
+  let paramCount = 1;
+
+  if (updates.name !== undefined) {
+    updatesList.push(`name = $${paramCount}`);
+    values.push(updates.name);
+    paramCount++;
+  }
+  if (updates.display_order !== undefined) {
+    updatesList.push(`display_order = $${paramCount}`);
+    values.push(updates.display_order);
+    paramCount++;
+  }
+  if (updates.is_active !== undefined) {
+    updatesList.push(`is_active = $${paramCount}`);
+    values.push(updates.is_active);
+    paramCount++;
+  }
+
+  if (updatesList.length === 0) {
+    return getProfessionById(id);
+  }
+
+  updatesList.push(`updated_at = CURRENT_TIMESTAMP`);
+  values.push(id);
+
+  const result = await pool.query(
+    `UPDATE professions SET ${updatesList.join(', ')} WHERE id = $${paramCount} RETURNING *`,
+    values
+  );
+  return result.rows[0] || null;
+}
+
+export async function deleteProfession(id: number): Promise<boolean> {
+  const result = await pool.query('DELETE FROM professions WHERE id = $1', [id]);
+  return result.rowCount !== null && result.rowCount > 0;
+}
+
 // Member queries
 export async function getMemberById(id: number): Promise<any | null> {
   const result = await pool.query('SELECT * FROM fraternity_members WHERE id = $1', [id]);

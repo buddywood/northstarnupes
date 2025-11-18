@@ -4,6 +4,15 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
+import {
+  Package,
+  CheckCircle2,
+  Target,
+  DollarSign,
+  PlusCircle,
+  Store,
+  Settings,
+} from 'lucide-react';
 import { 
   getStewardListings, 
   getStewardMetrics,
@@ -123,7 +132,7 @@ export default function StewardDashboardPage() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Listings</CardTitle>
-              <span className="text-2xl">📦</span>
+              <Package className="h-5 w-5 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
@@ -136,7 +145,7 @@ export default function StewardDashboardPage() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Active Listings</CardTitle>
-              <span className="text-2xl">✅</span>
+              <CheckCircle2 className="h-5 w-5 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-green-600 dark:text-green-400">
@@ -149,7 +158,7 @@ export default function StewardDashboardPage() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Claims</CardTitle>
-              <span className="text-2xl">🎯</span>
+              <Target className="h-5 w-5 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
@@ -162,7 +171,7 @@ export default function StewardDashboardPage() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Donations Generated</CardTitle>
-              <span className="text-2xl">💰</span>
+              <DollarSign className="h-5 w-5 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-crimson">
@@ -182,18 +191,21 @@ export default function StewardDashboardPage() {
           <CardContent>
             <div className="flex flex-wrap gap-4">
               <Button asChild>
-                <Link href="/steward-dashboard/create">
-                  ➕ Create New Listing
+                <Link href="/steward-dashboard/create" className="flex items-center gap-2">
+                  <PlusCircle className="h-4 w-4" />
+                  Create New Listing
                 </Link>
               </Button>
               <Button asChild variant="outline">
-                <Link href="/steward-dashboard/marketplace">
-                  🛒 Browse Marketplace
+                <Link href="/steward-dashboard/marketplace" className="flex items-center gap-2">
+                  <Store className="h-4 w-4" />
+                  Browse Marketplace
                 </Link>
               </Button>
               <Button asChild variant="outline">
-                <Link href="/profile">
-                  ⚙️ Edit Profile
+                <Link href="/profile" className="flex items-center gap-2">
+                  <Settings className="h-4 w-4" />
+                  Edit Profile
                 </Link>
               </Button>
             </div>
@@ -241,7 +253,7 @@ export default function StewardDashboardPage() {
                             />
                           ) : (
                             <div className="w-10 h-10 bg-gray-200 dark:bg-gray-700 rounded flex items-center justify-center">
-                              <span className="text-xs">📦</span>
+                              <Package className="h-5 w-5 text-muted-foreground" />
                             </div>
                           )}
                           <div>

@@ -3,8 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
-import { fetchChapters } from '@/lib/api';
-import type { Chapter } from '@/lib/api';
+import { fetchChapters, fetchIndustries, fetchProfessions } from '@/lib/api';
+import type { Chapter, Industry, Profession } from '@/lib/api';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -14,8 +14,6 @@ import SearchableSelect from '../components/SearchableSelect';
 import PasswordStrengthIndicator from '../components/PasswordStrengthIndicator';
 import VerificationCodeInput from '../components/VerificationCodeInput';
 import { SkeletonLoader } from '../components/Skeleton';
-import { fetchIndustries } from '@/lib/api';
-import type { Industry } from '@/lib/api';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -49,6 +47,7 @@ interface FormData {
   
   // Step 5: Professional Information
   industry: string;
+  profession_id: string;
   job_title: string;
   bio: string;
   
@@ -66,6 +65,7 @@ export default function RegisterPage() {
   const { data: session, status: sessionStatus } = useSession();
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [industries, setIndustries] = useState<Industry[]>([]);
+  const [professions, setProfessions] = useState<Profession[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentStep, setCurrentStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
@@ -100,6 +100,7 @@ export default function RegisterPage() {
     phone_number: '',
     phone_is_private: false,
     industry: '',
+    profession_id: '',
     job_title: '',
     bio: '',
     social_links: {
@@ -208,10 +209,12 @@ export default function RegisterPage() {
   useEffect(() => {
     Promise.all([
       fetchChapters().catch(console.error),
-      fetchIndustries().catch(console.error)
-    ]).then(([chaptersData, industriesData]) => {
+      fetchIndustries().catch(console.error),
+      fetchProfessions().catch(console.error)
+    ]).then(([chaptersData, industriesData, professionsData]) => {
       if (chaptersData) setChapters(chaptersData);
       if (industriesData) setIndustries(industriesData);
+      if (professionsData) setProfessions(professionsData);
     }).finally(() => setLoading(false));
 
     // Load draft from localStorage on mount (only if not logged in)
@@ -848,6 +851,7 @@ export default function RegisterPage() {
       formDataToSend.append('phone_number', formData.phone_number || '');
       formDataToSend.append('phone_is_private', formData.phone_is_private.toString());
       formDataToSend.append('industry', formData.industry || '');
+      formDataToSend.append('profession_id', formData.profession_id || '');
       formDataToSend.append('job_title', formData.job_title || '');
       formDataToSend.append('bio', formData.bio || '');
       formDataToSend.append('social_links', JSON.stringify(formData.social_links));
@@ -1505,6 +1509,20 @@ export default function RegisterPage() {
                   value={formData.industry}
                   onChange={(value) => setFormData({ ...formData, industry: value })}
                   placeholder="Select your industry"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2 text-midnight-navy">Profession</label>
+                <SearchableSelect
+                  options={professions.map(profession => ({
+                    id: profession.id,
+                    label: profession.name,
+                    value: profession.id.toString(),
+                  }))}
+                  value={formData.profession_id}
+                  onChange={(value) => setFormData({ ...formData, profession_id: value })}
+                  placeholder="Select your profession"
                 />
               </div>
 

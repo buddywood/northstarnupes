@@ -3,14 +3,19 @@
 import Link from 'next/link';
 import { signOut, useSession } from 'next-auth/react';
 import { useEffect, useState } from 'react';
+import { usePathname, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
-import { fetchTotalDonations, fetchMemberProfile, getUnreadNotificationCount } from '@/lib/api';
+import { fetchTotalDonations, fetchMemberProfile, getUnreadNotificationCount, getSellerProfile, fetchChapters } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { useTheme } from './ThemeProvider';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 export default function Header() {
   const { session, isAuthenticated } = useAuth();
   const { data: nextAuthSession, status: sessionStatus } = useSession();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [totalDonations, setTotalDonations] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -19,6 +24,7 @@ export default function Header() {
   const [searchFocused, setSearchFocused] = useState(false);
   const [profilePicture, setProfilePicture] = useState<string | null>(null);
   const [notificationCount, setNotificationCount] = useState(0);
+  const [sponsoringChapterName, setSponsoringChapterName] = useState<string | null>(null);
   
   // Show authenticated menu for any authenticated user (not just fully onboarded)
   const showAuthenticatedMenu = sessionStatus === 'authenticated' && nextAuthSession?.user;
@@ -120,6 +126,32 @@ export default function Header() {
     loadProfilePicture();
   }, [showAuthenticatedMenu, session]);
 
+  // Fetch seller's sponsoring chapter when user is a seller
+  useEffect(() => {
+    const loadSponsoringChapter = async () => {
+      if (showAuthenticatedMenu && is_seller && sellerId) {
+        try {
+          const seller = await getSellerProfile();
+          if (seller.sponsoring_chapter_id) {
+            // Fetch all chapters to find the sponsoring chapter name
+            const chapters = await fetchChapters();
+            const chapter = chapters.find(c => c.id === seller.sponsoring_chapter_id);
+            if (chapter) {
+              setSponsoringChapterName(chapter.name);
+            }
+          }
+        } catch (err) {
+          // Silently fail - seller might not have a profile yet
+          console.debug('Could not load sponsoring chapter:', err);
+        }
+      } else {
+        setSponsoringChapterName(null);
+      }
+    };
+
+    loadSponsoringChapter();
+  }, [showAuthenticatedMenu, is_seller, sellerId]);
+
   // Close mobile menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -154,12 +186,33 @@ export default function Header() {
   };
 
   const navLinks = [
-    { href: '/shop', label: 'Shop' },
-    { href: '/shop?role=seller', label: 'Sellers' },
-    { href: '/shop?role=steward', label: 'Stewards' },
-    { href: '/events?role=promoter', label: 'Promoters' },
-    { href: '/connect', label: 'Connect' },
+    { href: '/shop', label: 'Shop', matchPath: '/shop' },
+    { href: '/steward-marketplace', label: 'Stewards', matchPath: '/steward-marketplace' },
+    { href: '/events?role=promoter', label: 'Promoters', matchPath: '/events', matchQuery: 'role=promoter' },
+    { href: '/connect', label: 'Connect', matchPath: '/connect' },
   ];
+
+  // Check if a nav link is active
+  const isLinkActive = (link: typeof navLinks[0]) => {
+    if (link.matchPath) {
+      const pathMatches = pathname === link.matchPath || pathname?.startsWith(link.matchPath + '/');
+      if (link.matchQuery) {
+        const currentRole = searchParams?.get('role');
+        const linkRole = link.matchQuery.split('=')[1];
+        return pathMatches && currentRole === linkRole;
+      }
+      // For links without query params, check if no conflicting query params exist
+      if (link.href === '/shop' && !link.matchQuery) {
+        const currentRole = searchParams?.get('role');
+        return pathMatches && !currentRole;
+      }
+      if (link.href === '/connect') {
+        return pathMatches;
+      }
+      return pathMatches;
+    }
+    return false;
+  };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -188,20 +241,34 @@ export default function Header() {
           </Link>
 
           {/* Desktop Navigation - Centered */}
-          <nav className="hidden lg:flex items-center gap-6 flex-1 justify-center px-8">
-            {navLinks.map((link) => (
-              <Link 
-                key={link.href}
-                href={link.href}
-                className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-crimson dark:hover:text-crimson transition-colors py-2"
-              >
-                {link.label}
-              </Link>
-            ))}
+          <nav className="hidden lg:flex items-center gap-6 flex-1 justify-center px-8 pr-12">
+            {navLinks.map((link) => {
+              const isActive = isLinkActive(link);
+              return (
+                <Link 
+                  key={link.href}
+                  href={link.href}
+                  className={cn(
+                    "relative px-3 py-2 text-sm font-medium transition-all duration-200 ease-out",
+                    isActive
+                      ? "text-crimson dark:text-crimson font-semibold after:content-[''] after:absolute after:left-1/2 after:-translate-x-1/2 after:-bottom-0.5 after:w-6 after:h-1.5 after:bg-crimson after:rounded-full after:transition-all after:duration-300 after:ease-out"
+                      : "text-gray-700 dark:text-gray-300 hover:text-crimson dark:hover:text-crimson"
+                  )}
+                >
+                  {link.label}
+                </Link>
+              );
+            })}
+            {/* Seller Sponsoring Chapter Badge */}
+            {showAuthenticatedMenu && is_seller && sponsoringChapterName && (
+              <Badge variant="outline" className="ml-4 border-crimson text-crimson bg-crimson/10 dark:bg-crimson/20">
+                Sponsoring: {sponsoringChapterName}
+              </Badge>
+            )}
           </nav>
 
           {/* Right side - Desktop */}
-          <div className="hidden lg:flex items-center gap-3 flex-shrink-0">
+          <div className="hidden lg:flex items-center gap-4 flex-shrink-0 ml-4">
             {/* Search Bar */}
             <form onSubmit={handleSearch} className="relative">
               <div className={`flex items-center border rounded-lg transition-all bg-white dark:bg-black ${
@@ -515,16 +582,37 @@ export default function Header() {
         {mobileMenuOpen && (
           <div className="mobile-menu lg:hidden border-t border-gray-200 dark:border-gray-900 py-4 bg-white dark:bg-black">
             <nav className="flex flex-col space-y-2">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="px-4 py-3 text-base font-medium text-midnight-navy dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-900 hover:text-crimson dark:hover:text-crimson transition-colors rounded-lg"
-                >
-                  {link.label}
-                </Link>
-              ))}
+              {navLinks.map((link) => {
+                const isActive = isLinkActive(link);
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`relative px-4 py-3 text-base font-medium transition-all rounded-lg ${
+                      isActive
+                        ? 'bg-crimson/10 dark:bg-crimson/20 text-crimson dark:text-crimson font-bold border-l-4 border-crimson'
+                        : 'text-midnight-navy dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-900 hover:text-crimson dark:hover:text-crimson'
+                    }`}
+                  >
+                    <span className="flex items-center gap-2">
+                      {isActive && (
+                        <span className="w-2 h-2 bg-crimson rounded-full animate-pulse" />
+                      )}
+                      {link.label}
+                    </span>
+                  </Link>
+                );
+              })}
+              
+              {/* Seller Sponsoring Chapter Badge - Mobile */}
+              {showAuthenticatedMenu && is_seller && sponsoringChapterName && (
+                <div className="px-4 py-2">
+                  <Badge variant="outline" className="border-crimson text-crimson bg-crimson/10 dark:bg-crimson/20">
+                    Sponsoring: {sponsoringChapterName}
+                  </Badge>
+                </div>
+              )}
               
               {/* "Become" buttons - shown on mobile in menu */}
               <div className="border-t border-gray-200 dark:border-gray-900 pt-2 mt-2 flex flex-col space-y-2">

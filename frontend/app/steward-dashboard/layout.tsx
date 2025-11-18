@@ -6,17 +6,28 @@ import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
+import {
+  LayoutDashboard,
+  Package,
+  PlusCircle,
+  CheckCircle2,
+  Store,
+  Settings,
+  HelpCircle,
+  ShoppingBag,
+  Megaphone,
+} from 'lucide-react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 
 const sidebarItems = [
-  { href: '/steward-dashboard', label: 'Dashboard Home', icon: '📊' },
-  { href: '/steward-dashboard/listings', label: 'My Listings', icon: '📦' },
-  { href: '/steward-dashboard/create', label: 'Create Listing', icon: '➕' },
-  { href: '/steward-dashboard/claims', label: 'Claims', icon: '✅' },
-  { href: '/steward-dashboard/marketplace', label: 'Marketplace', icon: '🛒' },
-  { href: '/profile', label: 'Profile Settings', icon: '⚙️' },
-  { href: '/steward-dashboard/help', label: 'Help Center', icon: '❓' },
+  { href: '/steward-dashboard', label: 'Dashboard Home', icon: LayoutDashboard },
+  { href: '/steward-dashboard/listings', label: 'My Listings', icon: Package },
+  { href: '/steward-dashboard/create', label: 'Create Listing', icon: PlusCircle },
+  { href: '/steward-dashboard/claims', label: 'Claims', icon: CheckCircle2 },
+  { href: '/steward-dashboard/marketplace', label: 'Marketplace', icon: Store },
+  { href: '/profile', label: 'Profile Settings', icon: Settings },
+  { href: '/steward-dashboard/help', label: 'Help Center', icon: HelpCircle },
 ];
 
 export default function StewardDashboardLayout({
@@ -34,28 +45,40 @@ export default function StewardDashboardLayout({
 
   const conditionalItems = [];
   if (isSeller) {
-    conditionalItems.push({ href: '/seller-dashboard', label: 'Seller Items', icon: '🛍️' });
+    conditionalItems.push({ href: '/seller-dashboard', label: 'Seller Items', icon: ShoppingBag });
   }
   if (isPromoter) {
-    conditionalItems.push({ href: '/promoter-dashboard', label: 'Promoter Tools', icon: '🎤' });
+    conditionalItems.push({ href: '/promoter-dashboard', label: 'Promoter Tools', icon: Megaphone });
   }
 
   const SidebarContent = () => (
-    <nav className="px-2 pb-4">
+    <nav className={`${sidebarOpen ? 'px-2' : 'px-2'} pb-4`}>
       {sidebarItems.map((item) => {
         const isActive = pathname === item.href || pathname?.startsWith(item.href + '/');
+        const IconComponent = item.icon;
         return (
           <Link
             key={item.href}
             href={item.href}
-            className={`flex items-center gap-3 px-4 py-3 rounded-lg mb-1 transition ${
+            className={`flex items-center ${sidebarOpen ? 'gap-3 px-4' : 'justify-center px-2'} py-3 rounded-lg mb-1 transition group ${
               isActive
-                ? 'bg-crimson text-white'
+                ? sidebarOpen
+                  ? 'bg-crimson text-white'
+                  : 'bg-crimson/10 dark:bg-crimson/20'
                 : 'text-midnight-navy dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
             }`}
+            title={!sidebarOpen ? item.label : undefined}
           >
-            <span className="text-xl">{item.icon}</span>
-            <span className="font-medium">{item.label}</span>
+            <div className={`flex items-center justify-center ${sidebarOpen ? '' : 'w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 shadow-sm'} transition ${
+              isActive && !sidebarOpen
+                ? 'bg-crimson/20 dark:bg-crimson/30 shadow-md'
+                : ''
+            }`}>
+              <IconComponent className={`${sidebarOpen ? 'w-5 h-5' : 'w-5 h-5'} ${isActive && !sidebarOpen ? 'text-crimson dark:text-crimson' : ''}`} />
+            </div>
+            {sidebarOpen && (
+              <span className="font-medium">{item.label}</span>
+            )}
           </Link>
         );
       })}
@@ -64,18 +87,30 @@ export default function StewardDashboardLayout({
           <div className="my-2 border-t border-frost-gray dark:border-gray-800"></div>
           {conditionalItems.map((item) => {
             const isActive = pathname === item.href || pathname?.startsWith(item.href + '/');
+            const IconComponent = item.icon;
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center gap-3 px-4 py-3 rounded-lg mb-1 transition ${
+                className={`flex items-center ${sidebarOpen ? 'gap-3 px-4' : 'justify-center px-2'} py-3 rounded-lg mb-1 transition group ${
                   isActive
-                    ? 'bg-crimson text-white'
+                    ? sidebarOpen
+                      ? 'bg-crimson text-white'
+                      : 'bg-crimson/10 dark:bg-crimson/20'
                     : 'text-midnight-navy dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
                 }`}
+                title={!sidebarOpen ? item.label : undefined}
               >
-                <span className="text-xl">{item.icon}</span>
-                <span className="font-medium">{item.label}</span>
+                <div className={`flex items-center justify-center ${sidebarOpen ? '' : 'w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 shadow-sm'} transition ${
+                  isActive && !sidebarOpen
+                    ? 'bg-crimson/20 dark:bg-crimson/30 shadow-md'
+                    : ''
+                }`}>
+                  <IconComponent className={`${sidebarOpen ? 'w-5 h-5' : 'w-5 h-5'} ${isActive && !sidebarOpen ? 'text-crimson dark:text-crimson' : ''}`} />
+                </div>
+                {sidebarOpen && (
+                  <span className="font-medium">{item.label}</span>
+                )}
               </Link>
             );
           })}
