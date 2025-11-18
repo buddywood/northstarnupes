@@ -1,0 +1,218 @@
+name: CI → Lint → Test → Migrate → Preview/Deploy (1Kappa)
+
+on:
+  push:
+    branches:
+      - main
+      - development
+
+jobs:
+  # ============================================================
+  # FRONTEND QUALITY CHECKS (Lint + TypeScript + Tests)
+  # ============================================================
+  frontend-quality:
+    name: Frontend (ESLint + TypeScript + Tests)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./frontend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run ESLint
+        run: npm run lint
+
+      - name: TypeScript Check
+        run: npm run typecheck
+
+      - name: Run Unit Tests
+        run: npm test
+
+
+  # ============================================================
+  # BACKEND QUALITY CHECKS (Lint + TypeScript + Tests)
+  # ============================================================
+  backend-quality:
+    name: Backend (ESLint + TypeScript + Tests)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./backend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run ESLint
+        run: npm run lint || true
+
+      - name: TypeScript Check
+        run: npm run type-check
+
+      - name: Run Unit Tests
+        run: npm test
+
+
+  # ============================================================
+  # RUN DATABASE MIGRATIONS + SEEDING (DEVELOPMENT PREVIEW)
+  # ============================================================
+  migrate-development-db:
+    name: Run DB Migrations (development)
+    runs-on: ubuntu-latest
+    needs: backend-quality
+    if: github.ref == 'refs/heads/development'
+
+    env:
+      DATABASE_HOST: ${{ secrets.STAGING_DATABASE_HOST }}
+      DATABASE_USERNAME: ${{ secrets.STAGING_DATABASE_USERNAME }}
+      DATABASE_PASSWORD: ${{ secrets.STAGING_DATABASE_PASSWORD }}
+      DATABASE_NAME: ${{ secrets.STAGING_DATABASE_NAME }}
+      SEED_TEST_DATA: "true"   # PREVIEW SEEDS ENABLED
+
+    defaults:
+      run:
+        working-directory: ./backend
+
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Run Database Migrations & Seeding
+        run: ./scripts/migrate.sh
+
+
+  # ============================================================
+  # RUN DATABASE MIGRATIONS (MAIN PRODUCTION)
+  # ============================================================
+  migrate-production-db:
+    name: Run DB Migrations (main)
+    runs-on: ubuntu-latest
+    needs: backend-quality
+    if: github.ref == 'refs/heads/main'
+
+    env:
+      DATABASE_HOST: ${{ secrets.DATABASE_HOST }}
+      DATABASE_USERNAME: ${{ secrets.DATABASE_USERNAME }}
+      DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+      DATABASE_NAME: ${{ secrets.DATABASE_NAME }}
+      SEED_TEST_DATA: "false"  # NO TEST SEEDING IN PROD
+
+    defaults:
+      run:
+        working-directory: ./backend
+
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Run Database Migrations
+        run: ./scripts/migrate.sh
+
+
+  # ============================================================
+  # FRONTEND PREVIEW DEPLOYMENT (DEVELOPMENT BRANCH)
+  # ============================================================
+  preview-frontend-deploy:
+    name: Vercel Preview Deployment (development)
+    runs-on: ubuntu-latest
+    needs: frontend-quality
+    if: github.ref == 'refs/heads/development'
+
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+
+      # Add Vercel deployment info check to GitHub PR
+      - name: Pull Vercel Environment Information
+        uses: vercel/action@v2
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      # Trigger actual preview build
+      - name: Trigger Vercel Preview Deployment
+        run: |
+          curl -X POST "${{ secrets.VERCEL_STAGING_DEPLOY_HOOK }}"
+
+
+  # ============================================================
+  # BACKEND PREVIEW DEPLOYMENT (DEVELOPMENT BRANCH)
+  # ============================================================
+  preview-backend-deploy:
+    name: Deploy Backend to Heroku Staging (development)
+    runs-on: ubuntu-latest
+    needs: [backend-quality, migrate-development-db]
+    if: github.ref == 'refs/heads/development'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to Heroku Staging
+        uses: akhileshns/heroku-deploy@v4.1.7
+        with:
+          heroku_api_key: ${{ secrets.HEROKU_STAGING_API_KEY }}
+          heroku_app_name: ${{ secrets.HEROKU_STAGING_APP_NAME }}
+          heroku_email: ${{ secrets.HEROKU_EMAIL }}
+          branch: development
+
+
+  # ============================================================
+  # PRODUCTION FRONTEND DEPLOYMENT (MAIN BRANCH)
+  # ============================================================
+  deploy-frontend-prod:
+    name: Deploy Frontend to Vercel Production (main)
+    runs-on: ubuntu-latest
+    needs: frontend-quality
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Deploy to Vercel (Production)
+        run: |
+          curl -X POST "${{ secrets.VERCEL_PROD_DEPLOY_HOOK }}"
+
+
+  # ============================================================
+  # PRODUCTION BACKEND DEPLOYMENT (MAIN BRANCH)
+  # ============================================================
+  deploy-backend-prod:
+    name: Deploy Backend to Heroku Production (main)
+    runs-on: ubuntu-latest
+    needs: [backend-quality, migrate-production-db]
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy Backend to Heroku Prod
+        uses: akhileshns/heroku-deploy@v4.1.7
+        with:
+          heroku_api_key: ${{ secrets.HEROKU_API_KEY }}
+          heroku_app_name: ${{ secrets.HEROKU_APP_NAME }}
+          heroku_email: ${{ secrets.HEROKU_EMAIL }}
+          branch: main
+
