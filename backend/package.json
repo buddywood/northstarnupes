@@ -11,6 +11,7 @@
     "type-check": "tsc --noEmit",
     "migrate": "tsx src/db/migrations.ts",
     "seed": "tsx src/db/seed.ts",
+    "seed:base": "tsx src/db/seed-base.ts",
     "seed:chapters": "tsx src/scripts/seed-chapters.ts",
     "seed:alumni": "tsx src/scripts/seed-alumni-chapters.ts",
     "seed:products": "tsx src/scripts/seed-products.ts",

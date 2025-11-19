@@ -6,8 +6,8 @@ import path from 'path';
  * based on command-line flags.
  * 
  * Usage:
- *   npm run seed -- --test        # Seed test data (products, sellers, promoters)
- *   npm run seed -- --prod        # Seed production chapters (collegiate + alumni)
+ *   npm run seed -- --test        # Seed base (chapters + alumni) + test data (products, sellers, promoters, test users, test events)
+ *   npm run seed -- --prod        # Seed base (chapters + alumni)
  *   npm run seed -- --test --clear # Clear and seed test data
  */
 
@@ -19,8 +19,8 @@ Usage:
   npm run seed -- [flags]
 
 Flags:
-  --test        Seed test data (products, sellers, promoters)
-  --prod        Seed production chapters (collegiate + alumni from Wikipedia)
+  --test        Seed base (chapters + alumni) + test data (products, sellers, promoters, test users, test events)
+  --prod        Seed base (chapters + alumni from Wikipedia)
   --clear       Clear existing data before seeding (only works with --test)
   --help        Show this help message
 
@@ -76,31 +76,25 @@ async function main() {
   }
 
   try {
-    // Always seed industries (they're needed for registration)
-    console.log('🏭 Seeding industries...\n');
-    await runScript(path.join(__dirname, '../scripts/seed-industries.ts'));
-    console.log('✅ Industries seeded successfully!\n');
-
-    // Seed production chapters
-    if (seedProd) {
-      console.log('📚 Seeding production chapters...\n');
-      
-      // Seed collegiate chapters
-      console.log('📖 Seeding collegiate chapters...');
-      await runScript(path.join(__dirname, '../scripts/seed-chapters.ts'));
-      
-      // Seed alumni chapters (this is the proper way to seed alumni data)
-      console.log('\n📖 Seeding alumni chapters...');
-      await runScript(path.join(__dirname, '../scripts/seed-alumni-chapters.ts'));
-      
-      console.log('\n✅ Production chapters seeded successfully!\n');
+    // Base seed: Industries, chapters (collegiate + alumni), and province updates
+    if (seedProd || seedTest) {
+      console.log('🌱 Running base seed (industries, chapters, provinces)...\n');
+      await runScript(path.join(__dirname, './seed-base.ts'));
+      console.log('✅ Base seed completed!\n');
     }
 
-    // Seed test data
+    // Seed test data: products, sellers, promoters, test users, test events
     if (seedTest) {
       console.log('🧪 Seeding test data...\n');
       const testArgs = shouldClear ? ['--clear'] : [];
+      
+      // Seed products, sellers, promoters, events, orders
       await runScript(path.join(__dirname, './seed-test.ts'), testArgs);
+      
+      // Seed test users (required for testing)
+      console.log('\n👤 Seeding test users...');
+      await runScript(path.join(__dirname, '../scripts/seed-test-users.ts'));
+      
       console.log('\n✅ Test data seeded successfully!\n');
     }
 
