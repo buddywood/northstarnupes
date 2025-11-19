@@ -150,11 +150,11 @@ jobs:
   # ============================================================
   # PREVIEW FRONTEND DEPLOYMENT (Vercel)
   # ============================================================
-  # Note: Vercel deployments are handled automatically via GitHub integration
-  # Vercel will deploy on push and report status back to GitHub
-  # This job is kept as a placeholder to maintain workflow structure
+  # Deploys to Vercel only after all quality checks pass
+  # Note: Vercel GitHub integration autodeploy should be DISABLED
+  # to allow GitHub Actions to control when deployments happen
   deploy-frontend-preview:
-    name: Vercel Deployment (preview)
+    name: Deploy Frontend to Vercel (preview)
     runs-on: ubuntu-latest
     needs: frontend-quality
     if: ${{ github.ref == 'refs/heads/development' }}
@@ -164,17 +164,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Verify Vercel Integration
-        run: |
-          echo "✅ Vercel GitHub integration is active"
-          echo "📦 Vercel will automatically deploy this commit"
-          echo "🔗 Check deployment status at: https://vercel.com/ebilly/frontend"
-          echo ""
-          echo "Note: If you see this message, ensure Vercel GitHub integration is configured:"
-          echo "1. Go to https://vercel.com/dashboard"
-          echo "2. Select your project (ebilly/frontend)"
-          echo "3. Go to Settings > Git"
-          echo "4. Ensure GitHub integration is connected and auto-deploy is enabled"
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Pull Vercel Environment Information
+        working-directory: ./frontend
+        run: vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Deploy to Vercel
+        working-directory: ./frontend
+        env:
+          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL || 'http://localhost:3001' }}
+          NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL || 'http://localhost:3000' }}
+          NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET || 'development-secret-key' }}
+        run: vercel deploy --token=${{ secrets.VERCEL_TOKEN }} --yes
 
 
   # ============================================================
@@ -208,7 +216,7 @@ jobs:
   # PRODUCTION FRONTEND DEPLOYMENT (Vercel)
   # ============================================================
   deploy-frontend-prod:
-    name: Vercel Deployment (production)
+    name: Deploy Frontend to Vercel (production)
     runs-on: ubuntu-latest
     needs: frontend-quality
     if: ${{ github.ref == 'refs/heads/main' }}
@@ -218,17 +226,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Verify Vercel Integration
-        run: |
-          echo "✅ Vercel GitHub integration is active"
-          echo "📦 Vercel will automatically deploy this commit to production"
-          echo "🔗 Check deployment status at: https://vercel.com/ebilly/frontend"
-          echo ""
-          echo "Note: If you see this message, ensure Vercel GitHub integration is configured:"
-          echo "1. Go to https://vercel.com/dashboard"
-          echo "2. Select your project (ebilly/frontend)"
-          echo "3. Go to Settings > Git"
-          echo "4. Ensure GitHub integration is connected and production branch (main) is configured"
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Pull Vercel Environment Information
+        working-directory: ./frontend
+        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Deploy to Vercel
+        working-directory: ./frontend
+        env:
+          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL || 'http://localhost:3001' }}
+          NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL || 'http://localhost:3000' }}
+          NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET || 'development-secret-key' }}
+        run: vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }} --yes
 
 
   # ============================================================

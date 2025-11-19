@@ -1,13 +1,22 @@
 # Vercel GitHub Integration Setup
 
-This guide will help you set up Vercel's GitHub integration so that deployments are automatically triggered on push and status is reported back to GitHub.
+This guide explains how Vercel is integrated with GitHub Actions to ensure quality gates before deployment.
+
+## Deployment Strategy
+
+**Important:** Vercel autodeploy should be **DISABLED** to allow GitHub Actions to control deployments.
+
+- ✅ Tests run first in GitHub Actions
+- ✅ Deployment only happens if all quality checks pass
+- ✅ Full control over when deployments occur
+- ✅ Quality gates prevent broken code from being deployed
 
 ## Benefits
 
-- ✅ Automatic deployments on push to GitHub
-- ✅ Deployment status checks in GitHub PRs and commits
-- ✅ No need for manual CLI deployments in GitHub Actions
-- ✅ Better visibility of deployment status in GitHub UI
+- ✅ Quality gates: Tests must pass before deployment
+- ✅ Controlled deployments via GitHub Actions
+- ✅ Consistent deployment process
+- ✅ Better visibility of deployment status in GitHub
 
 ## Setup Steps
 
@@ -24,11 +33,17 @@ This guide will help you set up Vercel's GitHub integration so that deployments 
    - Select the root directory: **frontend**
    - Click **Deploy**
 
-### 2. Configure Branch Settings
+### 2. Configure Branch Settings (IMPORTANT: Disable Autodeploy)
 
-1. In **Settings** → **Git**, ensure:
+1. In **Settings** → **Git**, configure:
    - **Production Branch**: `main` (for production deployments)
-   - **Preview Deployments**: Enabled (for all other branches)
+   - **Preview Deployments**: Can be enabled for manual deployments
+   - **⚠️ IMPORTANT: Disable "Automatic deployments"** - GitHub Actions will handle deployments after tests pass
+   
+   To disable autodeploy:
+   - Go to **Settings** → **Git**
+   - Under your connected repository, click the three dots (⋯)
+   - Select **Disable Automatic Deployments** or uncheck **Deploy every push**
 
 ### 3. Configure Environment Variables
 
@@ -59,17 +74,19 @@ After setup, when you push to GitHub:
 ## How It Works
 
 1. **On Push to `development` branch:**
-   - Vercel automatically creates a preview deployment
-   - Status is reported back to GitHub
+   - GitHub Actions runs quality checks (ESLint, TypeScript, Tests)
+   - If all checks pass, GitHub Actions deploys to Vercel (preview)
+   - Deployment only happens if tests pass ✅
 
 2. **On Push to `main` branch:**
-   - Vercel automatically creates a production deployment
-   - Status is reported back to GitHub
+   - GitHub Actions runs quality checks (ESLint, TypeScript, Tests)
+   - If all checks pass, GitHub Actions deploys to Vercel (production)
+   - Deployment only happens if tests pass ✅
 
-3. **GitHub Actions:**
-   - The workflow still runs quality checks (lint, test, typecheck)
-   - Vercel handles the actual deployment automatically
-   - Both statuses appear in GitHub
+3. **Quality Gates:**
+   - Tests must pass before deployment
+   - Failed tests prevent deployment
+   - Ensures only tested code reaches production
 
 ## Troubleshooting
 
@@ -91,10 +108,14 @@ After setup, when you push to GitHub:
 ## Current Workflow
 
 The GitHub Actions workflow (`ci-deploy.yml`) now:
-- ✅ Runs quality checks (ESLint, TypeScript, Tests)
+- ✅ Runs quality checks (ESLint, TypeScript, Tests) **FIRST**
 - ✅ Runs database migrations
 - ✅ Deploys backend to Heroku
-- ℹ️ Vercel deployments are handled automatically by Vercel's GitHub integration
+- ✅ Deploys frontend to Vercel **ONLY IF** all quality checks pass
 
-This provides the best of both worlds: automated quality checks in GitHub Actions and seamless deployments via Vercel's integration.
+This ensures that:
+- Tests act as a quality gate
+- Broken code never gets deployed
+- You have full control over the deployment process
+- All deployments go through the same quality checks
 
