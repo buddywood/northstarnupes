@@ -327,6 +327,13 @@ export async function sendSellerApprovedEmail(
               • Your products will be visible to all members once published
             </p>
           </div>
+          
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${frontendUrl}/login" 
+               style="background-color: #dc143c; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">
+              Log In to Your Account
+            </a>
+          </div>
           `}
           
           <p style="font-size: 16px;">

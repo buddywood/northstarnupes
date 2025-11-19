@@ -423,6 +423,9 @@ describe('Registration Flow Tests', () => {
       (emailService.sendSellerApprovedEmail as jest.Mock) = jest.fn().mockResolvedValue(undefined);
       (emailService.sendSellerApplicationSubmittedEmail as jest.Mock) = jest.fn().mockResolvedValue(undefined);
 
+      // Set STRIPE_SECRET_KEY to enable auto-approval with Stripe account creation
+      process.env.STRIPE_SECRET_KEY = 'sk_test_1234567890';
+
       const response = await request(app)
         .post('/api/sellers/apply')
         .field('name', sellerApplication.name)
