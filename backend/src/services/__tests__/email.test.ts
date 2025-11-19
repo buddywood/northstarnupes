@@ -1,3 +1,7 @@
+// Set environment variables BEFORE importing the service
+process.env.FROM_EMAIL = 'no-reply@holdsync.com';
+process.env.FRONTEND_URL = 'http://localhost:3000';
+
 import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses';
 
 // Mock AWS SDK before importing the service
@@ -28,7 +32,7 @@ describe('Email Service', () => {
     originalEnv = process.env;
     
     // Set required environment variables
-    process.env.FROM_EMAIL = 'noreply@1kappa.com';
+    process.env.FROM_EMAIL = 'no-reply@holdsync.com';
     process.env.FRONTEND_URL = 'http://localhost:3000';
   });
 
@@ -47,7 +51,7 @@ describe('Email Service', () => {
 
       expect(mockSend).toHaveBeenCalled();
       const command = mockSendEmailCommand.mock.calls[0][0];
-      expect(command.Source).toBe('noreply@1kappa.com');
+      expect(command.Source).toBe('no-reply@holdsync.com');
       expect(command.Destination.ToAddresses).toEqual([email]);
       expect(command.Message.Subject.Data).toBe('Welcome to 1Kappa!');
       expect(command.Message.Body.Html.Data).toContain(name);
@@ -89,7 +93,7 @@ describe('Email Service', () => {
 
       expect(mockSend).toHaveBeenCalled();
       const command = mockSendEmailCommand.mock.calls[0][0];
-      expect(command.Source).toBe('noreply@1kappa.com');
+      expect(command.Source).toBe('no-reply@holdsync.com');
       expect(command.Destination.ToAddresses).toEqual([email]);
       expect(command.Message.Subject.Data).toBe('Seller Application Received - 1Kappa');
       expect(command.Message.Body.Html.Data).toContain(name);
@@ -121,7 +125,7 @@ describe('Email Service', () => {
 
       expect(mockSend).toHaveBeenCalled();
       const command = mockSendEmailCommand.mock.calls[0][0];
-      expect(command.Source).toBe('noreply@1kappa.com');
+      expect(command.Source).toBe('no-reply@holdsync.com');
       expect(command.Destination.ToAddresses).toEqual([email]);
       expect(command.Message.Subject.Data).toBe('Congratulations! Your Seller Application Has Been Approved - 1Kappa');
       expect(command.Message.Body.Html.Data).toContain(name);

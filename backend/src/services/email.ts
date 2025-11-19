@@ -11,7 +11,7 @@ const sesClient = new SESClient({
   },
 });
 
-const FROM_EMAIL = process.env.FROM_EMAIL || process.env.SES_FROM_EMAIL || 'noreply@1kappa.com';
+const FROM_EMAIL = process.env.FROM_EMAIL || process.env.SES_FROM_EMAIL || 'no-reply@holdsync.com';
 
 /**
  * Get the logo URL for email templates

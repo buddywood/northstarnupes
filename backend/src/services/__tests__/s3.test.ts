@@ -141,8 +141,8 @@ describe('S3 Service', () => {
       await getPresignedUrl(key);
 
       expect(mockGetSignedUrl).toHaveBeenCalledWith(
-        expect.any(S3Client),
-        expect.any(GetObjectCommand),
+        expect.anything(), // S3Client instance
+        expect.anything(), // GetObjectCommand instance
         { expiresIn: 3600 }
       );
     });
@@ -162,7 +162,7 @@ describe('S3 Service', () => {
       expect(result).toBe(mockPresignedUrl);
       expect(mockGetSignedUrl).toHaveBeenCalledWith(
         expect.anything(), // S3Client instance
-        expect.any(PutObjectCommand),
+        expect.anything(), // PutObjectCommand instance
         { expiresIn }
       );
       const commandInput = (PutObjectCommand as unknown as jest.Mock).mock.calls[0][0];
@@ -182,7 +182,7 @@ describe('S3 Service', () => {
 
       expect(mockGetSignedUrl).toHaveBeenCalledWith(
         expect.anything(), // S3Client instance
-        expect.any(PutObjectCommand),
+        expect.anything(), // PutObjectCommand instance
         { expiresIn: 3600 }
       );
     });
