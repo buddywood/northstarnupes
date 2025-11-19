@@ -200,8 +200,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install Heroku CLI
+        run: |
+          curl https://cli-assets.heroku.com/install.sh | sh
+
       - name: Deploy to Heroku Staging
-        uses: akhileshns/heroku-deploy@v4.1.7
+        uses: akhileshns/heroku-deploy@v3.14.15
         with:
           heroku_api_key: ${{ secrets.HEROKU_STAGING_API_KEY }}
           heroku_app_name: ${{ secrets.HEROKU_STAGING_APP_NAME }}
@@ -262,8 +266,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install Heroku CLI
+        run: |
+          curl https://cli-assets.heroku.com/install.sh | sh
+
       - name: Deploy Backend to Heroku Prod
-        uses: akhileshns/heroku-deploy@v4.1.7
+        uses: akhileshns/heroku-deploy@v3.14.15
         with:
           heroku_api_key: ${{ secrets.HEROKU_API_KEY }}
           heroku_app_name: ${{ secrets.HEROKU_APP_NAME }}
