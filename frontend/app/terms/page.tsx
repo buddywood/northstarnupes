@@ -2,6 +2,8 @@ import Link from 'next/link';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 
+export const dynamic = 'force-dynamic';
+
 export default function TermsPage() {
   return (
     <div className="min-h-screen bg-cream">
