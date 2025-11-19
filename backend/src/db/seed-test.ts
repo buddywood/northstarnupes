@@ -609,6 +609,17 @@ async function seedProducts(): Promise<void> {
         const seller = existingSeller.rows[0];
         // Add email to seller object for matching
         (seller as any).email = sellerData.email;
+        
+        // Ensure existing seller is approved (products require APPROVED sellers to display)
+        if (seller.status !== 'APPROVED') {
+          await pool.query(
+            'UPDATE sellers SET status = $1 WHERE id = $2',
+            ['APPROVED', seller.id]
+          );
+          seller.status = 'APPROVED';
+          console.log(`  ✓ Approved existing seller: ${sellerData.name}`);
+        }
+        
         // If seller exists but doesn't have a fraternity_member_id and should be a member, create/update member
         if (!seller.fraternity_member_id && sellerData.is_member) {
           const initiatedChapter = availableChapters[Math.floor(Math.random() * availableChapters.length)];
@@ -714,6 +725,9 @@ async function seedProducts(): Promise<void> {
           ['APPROVED', newSeller.id]
         );
 
+        // Update seller object in memory to reflect approval
+        newSeller.status = 'APPROVED';
+        
         // Add email to seller object for matching
         (newSeller as any).email = sellerData.email;
 
@@ -814,6 +828,21 @@ async function seedProducts(): Promise<void> {
 
     console.log(`  ✓ Inserted ${inserted} products, updated ${updated} existing products (${skipped} skipped)`);
     console.log(`  ✓ Used ${sellers.length} sellers\n`);
+    
+    // Verify sellers are approved and products are queryable
+    const verificationResult = await pool.query(
+      `SELECT COUNT(*) as product_count 
+       FROM products p 
+       JOIN sellers s ON p.seller_id = s.id 
+       WHERE s.status = 'APPROVED'`
+    );
+    const approvedProductCount = parseInt(verificationResult.rows[0]?.product_count || '0');
+    console.log(`  ✓ Verification: ${approvedProductCount} products with APPROVED sellers are queryable\n`);
+    
+    if (approvedProductCount === 0 && inserted > 0) {
+      console.warn('  ⚠️  WARNING: Products were created but none are queryable with APPROVED sellers!');
+      console.warn('  ⚠️  This may indicate a seller approval issue.\n');
+    }
   } catch (error) {
     console.error('❌ Error seeding products:', error);
     throw error;
