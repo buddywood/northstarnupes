@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { CreditCard, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
@@ -11,7 +11,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { initiateStripeOnboarding, getStripeAccountStatus, syncStripeBusinessDetails, StripeAccountStatus } from '@/lib/api';
 
-export default function StripeSetupPage() {
+function StripeSetupPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { data: session, status } = useSession();
@@ -223,6 +223,18 @@ export default function StripeSetupPage() {
         </Card>
       </div>
     </div>
+  );
+}
+
+export default function StripeSetupPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-crimson" />
+      </div>
+    }>
+      <StripeSetupPageContent />
+    </Suspense>
   );
 }
 
