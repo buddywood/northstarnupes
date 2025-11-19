@@ -1,7 +1,7 @@
 import {
   CognitoIdentityProviderClient,
   UpdateUserPoolCommand,
-  GetUserPoolCommand,
+  DescribeUserPoolCommand,
 } from '@aws-sdk/client-cognito-identity-provider';
 import dotenv from 'dotenv';
 import path from 'path';
@@ -144,7 +144,7 @@ async function updateCognitoEmailTemplates() {
 
     // First, get the current user pool configuration to preserve other settings
     console.log('📥 Fetching current User Pool configuration...');
-    const getUserPoolCommand = new GetUserPoolCommand({
+    const getUserPoolCommand = new DescribeUserPoolCommand({
       UserPoolId: COGNITO_USER_POOL_ID,
     });
     

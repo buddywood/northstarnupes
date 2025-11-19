@@ -178,15 +178,15 @@ export async function getStripeAccountBusinessDetails(accountId: string): Promis
   
   // Extract business information
   // Business profile is available for Express accounts
-  const businessProfile = account.business_profile || {};
-  const company = account.company || {};
-  const individual = account.individual || {};
+  const businessProfile = account.business_profile || ({} as Stripe.Account.BusinessProfile);
+  const company = account.company || ({} as Stripe.Account.Company);
+  const individual = account.individual || ({} as Stripe.Account.Individual);
   
   // Determine account type
   let accountType: 'company' | 'individual' | null = null;
-  if (company.name || company.tax_id) {
+  if ((company as any).name || (company as any).tax_id) {
     accountType = 'company';
-  } else if (individual.first_name || individual.last_name) {
+  } else if ((individual as any).first_name || (individual as any).last_name) {
     accountType = 'individual';
   }
   
@@ -194,10 +194,10 @@ export async function getStripeAccountBusinessDetails(accountId: string): Promis
   let businessName: string | null = null;
   if (businessProfile.name) {
     businessName = businessProfile.name;
-  } else if (company.name) {
-    businessName = company.name;
-  } else if (individual.first_name || individual.last_name) {
-    businessName = `${individual.first_name || ''} ${individual.last_name || ''}`.trim() || null;
+  } else if ((company as any).name) {
+    businessName = (company as any).name;
+  } else if ((individual as any).first_name || (individual as any).last_name) {
+    businessName = `${(individual as any).first_name || ''} ${(individual as any).last_name || ''}`.trim() || null;
   }
   
   // Business email: prefer business_profile.support_email, then account email
@@ -211,11 +211,11 @@ export async function getStripeAccountBusinessDetails(accountId: string): Promis
   
   // Tax ID: from company.tax_id (EIN) or individual.ssn_last_4 (partial SSN)
   let taxId: string | null = null;
-  if (company.tax_id) {
-    taxId = company.tax_id;
-  } else if (individual.ssn_last_4) {
+  if ((company as any).tax_id) {
+    taxId = (company as any).tax_id;
+  } else if ((individual as any).ssn_last_4) {
     // Only store last 4 digits for privacy
-    taxId = `***-**-${individual.ssn_last_4}`;
+    taxId = `***-**-${(individual as any).ssn_last_4}`;
   }
   
   // Business address: prefer company.address, then individual.address
@@ -228,7 +228,7 @@ export async function getStripeAccountBusinessDetails(accountId: string): Promis
     country: null as string | null,
   };
   
-  const address = company.address || individual.address || null;
+  const address = ((company as any).address || (individual as any).address || null) as Stripe.Address | null;
   if (address) {
     businessAddress = {
       line1: address.line1 || null,
