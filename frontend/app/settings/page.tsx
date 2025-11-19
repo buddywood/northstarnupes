@@ -405,7 +405,7 @@ export default function SettingsPage() {
                 {!userInfo.is_fraternity_member && !userInfo.is_seller && !userInfo.is_promoter && !userInfo.is_steward && (
                   <Alert>
                     <AlertDescription>
-                      You don't have any active roles. Complete your member profile or apply for a role to get started.
+                      You don&apos;t have any active roles. Complete your member profile or apply for a role to get started.
                     </AlertDescription>
                   </Alert>
                 )}
@@ -474,7 +474,7 @@ export default function SettingsPage() {
                 {!sellerProfile?.sponsoring_chapter_id && !promoterProfile?.sponsoring_chapter_id && !stewardProfile?.sponsoring_chapter_id && (
                   <Alert>
                     <AlertDescription>
-                      You don't have any sponsoring chapters. Sponsoring chapters are set when you apply for seller, promoter, or steward roles.
+                      You don&apos;t have any sponsoring chapters. Sponsoring chapters are set when you apply for seller, promoter, or steward roles.
                     </AlertDescription>
                   </Alert>
                 )}
@@ -850,7 +850,7 @@ export default function SettingsPage() {
 
                 <div className="space-y-4">
                   <p className="text-sm text-midnight-navy/70 dark:text-gray-400">
-                    If you're sure you want to delete your account, click the button below and confirm by entering your email address.
+                    If you&apos;re sure you want to delete your account, click the button below and confirm by entering your email address.
                   </p>
                   <Button
                     variant="destructive"

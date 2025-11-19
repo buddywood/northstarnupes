@@ -59,6 +59,7 @@ router.put('/sellers/:id', async (req: Request, res: Response) => {
     
     let stripeAccountId: string | undefined;
     let invitationToken: string | undefined;
+    let stripeWarning: string | undefined;
     
     // If approving, create Stripe Connect account and generate invitation token
     if (body.status === 'APPROVED') {
@@ -82,7 +83,6 @@ router.put('/sellers/:id', async (req: Request, res: Response) => {
 
       // Check if Stripe is configured
       const stripeKey = process.env.STRIPE_SECRET_KEY;
-      let stripeWarning: string | undefined;
       
       if (stripeKey && stripeKey.trim() !== '' && !stripeKey.includes('here')) {
         try {
@@ -286,7 +286,7 @@ router.get('/stewards/pending', async (req: Request, res: Response) => {
     // Enrich with member and chapter info
     const enrichedStewards = await Promise.all(
       stewards.map(async (steward) => {
-        const memberResult = await pool.query('SELECT * FROM members WHERE id = $1', [steward.member_id]);
+        const memberResult = await pool.query('SELECT * FROM members WHERE id = $1', [steward.fraternity_member_id]);
         const chapterResult = await pool.query('SELECT * FROM chapters WHERE id = $1', [steward.sponsoring_chapter_id]);
         return {
           ...steward,
@@ -318,12 +318,12 @@ router.put('/stewards/:id', async (req: Request, res: Response) => {
     
     // If approving, link user to steward
     if (body.status === 'APPROVED') {
-      const memberResult = await pool.query('SELECT id FROM members WHERE id = $1', [steward.member_id]);
+      const memberResult = await pool.query('SELECT id FROM members WHERE id = $1', [steward.fraternity_member_id]);
       const member = memberResult.rows[0];
       
       if (member) {
         // Find user by member_id
-        const userResult = await pool.query('SELECT id FROM users WHERE member_id = $1', [steward.member_id]);
+        const userResult = await pool.query('SELECT id FROM users WHERE member_id = $1', [steward.fraternity_member_id]);
         const user = userResult.rows[0];
         
         if (user) {

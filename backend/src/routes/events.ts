@@ -78,15 +78,15 @@ router.post('/', authenticate, upload.single('image'), async (req: Request, res:
     const event = await createEvent({
       promoter_id: req.user.promoterId,
       title: body.title,
-      description: body.description || null,
+      description: body.description || undefined,
       event_date: new Date(body.event_date),
       location: body.location,
-      city: body.city || null,
-      state: body.state || null,
-      image_url: imageUrl || null,
-      sponsored_chapter_id: body.sponsored_chapter_id || null,
+      city: body.city || undefined,
+      state: body.state || undefined,
+      image_url: imageUrl,
+      sponsored_chapter_id: body.sponsored_chapter_id,
       ticket_price_cents: body.ticket_price_cents || 0,
-      max_attendees: body.max_attendees || null,
+      max_attendees: body.max_attendees,
     });
 
     res.status(201).json(event);

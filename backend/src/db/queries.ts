@@ -1621,7 +1621,7 @@ export async function removeFavorite(userEmail: string, productId: number): Prom
     'DELETE FROM favorites WHERE user_email = $1 AND product_id = $2',
     [userEmail, productId]
   );
-  return result.rowCount > 0;
+  return (result.rowCount ?? 0) > 0;
 }
 
 export async function getFavoritesByUser(userEmail: string): Promise<Favorite[]> {

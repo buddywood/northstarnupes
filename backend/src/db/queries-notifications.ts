@@ -62,7 +62,7 @@ export async function markNotificationAsRead(notificationId: number, userEmail: 
     'UPDATE notifications SET is_read = true, read_at = CURRENT_TIMESTAMP WHERE id = $1 AND user_email = $2',
     [notificationId, userEmail]
   );
-  return result.rowCount > 0;
+  return (result.rowCount ?? 0) > 0;
 }
 
 export async function markAllNotificationsAsRead(userEmail: string): Promise<number> {
@@ -70,7 +70,7 @@ export async function markAllNotificationsAsRead(userEmail: string): Promise<num
     'UPDATE notifications SET is_read = true, read_at = CURRENT_TIMESTAMP WHERE user_email = $1 AND is_read = false RETURNING id',
     [userEmail]
   );
-  return result.rowCount;
+  return result.rowCount ?? 0;
 }
 
 export async function getNotificationsForProduct(productId: number, type: string): Promise<Notification[]> {
@@ -86,7 +86,7 @@ export async function deleteNotification(notificationId: number, userEmail: stri
     'DELETE FROM notifications WHERE id = $1 AND user_email = $2',
     [notificationId, userEmail]
   );
-  return result.rowCount > 0;
+  return (result.rowCount ?? 0) > 0;
 }
 
 // Get all users who tried to purchase a product but couldn't (for notifying when item becomes available)

@@ -695,7 +695,7 @@ async function seedProducts(): Promise<void> {
           }
         }
 
-        // Create new seller (with or without member_id)
+        // Create new seller (with or without fraternity_member_id)
         const newSeller = await createSeller({
           email: sellerData.email,
           name: sellerData.name,
@@ -705,7 +705,7 @@ async function seedProducts(): Promise<void> {
           social_links: {
             instagram: `@${sellerData.name.toLowerCase().replace(' ', '')}`,
           },
-          member_id: memberId,
+          fraternity_member_id: memberId,
         });
 
         // Approve the seller
