@@ -22,17 +22,28 @@ BEGIN
 
   -- Add fraternity_member_id foreign key (sellers can optionally be fraternity members)
   -- Check for both old and new column names for backward compatibility
+  -- Ensure the column exists - add it if it doesn't exist in either form
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns
                  WHERE table_name='sellers' AND column_name='fraternity_member_id') 
      AND NOT EXISTS (SELECT 1 FROM information_schema.columns
                      WHERE table_name='sellers' AND column_name='member_id') THEN
-    -- Check if fraternity_members table exists (after migration 016)
+    -- Check if fraternity_members table exists (after migration 016 or fresh schema)
     IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='fraternity_members') THEN
       ALTER TABLE sellers ADD COLUMN fraternity_member_id INTEGER REFERENCES fraternity_members(id);
       CREATE INDEX IF NOT EXISTS idx_sellers_fraternity_member_id ON sellers(fraternity_member_id);
     ELSIF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='members') THEN
       ALTER TABLE sellers ADD COLUMN member_id INTEGER REFERENCES members(id);
       CREATE INDEX IF NOT EXISTS idx_sellers_member_id ON sellers(member_id);
+    END IF;
+  ELSIF EXISTS (SELECT 1 FROM information_schema.columns
+                WHERE table_name='sellers' AND column_name='member_id')
+     AND NOT EXISTS (SELECT 1 FROM information_schema.columns
+                     WHERE table_name='sellers' AND column_name='fraternity_member_id') THEN
+    -- If member_id exists but fraternity_member_id doesn't, and fraternity_members table exists,
+    -- migration 016 will handle the rename, but we ensure the column exists here
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='fraternity_members') THEN
+      -- Migration 016 should handle this, but ensure it exists
+      -- Don't add here - let migration 016 rename it
     END IF;
   END IF;
 
