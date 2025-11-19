@@ -91,3 +91,4 @@ If you get permission errors:
 3. **Verify IAM user exists**: `aws iam get-user --user-name 1kappa_user`
 
 
+
