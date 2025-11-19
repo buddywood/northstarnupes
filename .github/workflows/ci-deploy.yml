@@ -172,6 +172,13 @@ jobs:
       - name: Install Vercel CLI
         run: npm install --global vercel@latest
 
+      - name: Link to Vercel Project
+        working-directory: ./frontend
+        run: |
+          # Link to existing project (1kappa) instead of creating new one
+          echo "Linking to existing Vercel project: 1kappa"
+          vercel link --yes --project=1kappa --token=${{ secrets.VERCEL_TOKEN }}
+
       - name: Pull Vercel Environment Information
         working-directory: ./frontend
         run: vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
@@ -233,6 +240,13 @@ jobs:
 
       - name: Install Vercel CLI
         run: npm install --global vercel@latest
+
+      - name: Link to Vercel Project
+        working-directory: ./frontend
+        run: |
+          # Link to existing project (1kappa) instead of creating new one
+          echo "Linking to existing Vercel project: 1kappa"
+          vercel link --yes --project=1kappa --token=${{ secrets.VERCEL_TOKEN }}
 
       - name: Pull Vercel Environment Information
         working-directory: ./frontend
