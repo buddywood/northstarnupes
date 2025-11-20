@@ -66,6 +66,12 @@ const testUsers: TestUser[] = [
 ];
 
 async function createCognitoUser(email: string, name: string): Promise<string | null> {
+  // Check if Cognito is configured
+  if (!COGNITO_USER_POOL_ID) {
+    console.warn(`  ⚠️  COGNITO_USER_POOL_ID not set, skipping Cognito creation for ${email}`);
+    return null;
+  }
+
   try {
     // Check if user already exists
     try {
@@ -83,6 +89,14 @@ async function createCognitoUser(email: string, name: string): Promise<string | 
         return cognitoSub;
       }
     } catch (error: any) {
+      // Handle credential errors - skip Cognito if credentials aren't available
+      if (error.name === 'CredentialsProviderError' || 
+          error.message?.includes('Could not load credentials') ||
+          error.message?.includes('credentials')) {
+        console.warn(`  ⚠️  AWS credentials not available, skipping Cognito creation for ${email}`);
+        return null;
+      }
+      
       if (error.name !== 'UserNotFoundException') {
         // If it's a permissions error, return null to skip Cognito
         if (error.name === 'AccessDeniedException' || error.name === 'UnauthorizedException') {
@@ -95,63 +109,81 @@ async function createCognitoUser(email: string, name: string): Promise<string | 
     }
 
     // Create user in Cognito
-    const createUserCommand = new AdminCreateUserCommand({
-      UserPoolId: COGNITO_USER_POOL_ID,
-      Username: email,
-      UserAttributes: [
-        { Name: 'email', Value: email },
-        { Name: 'email_verified', Value: 'true' },
-        { Name: 'name', Value: name },
-      ],
-      MessageAction: 'SUPPRESS', // Don't send welcome email
-    });
-
-    await cognitoClient.send(createUserCommand);
-    console.log(`  ✓ Created Cognito user: ${email}`);
-
-    // Set permanent password
-    const setPasswordCommand = new AdminSetUserPasswordCommand({
-      UserPoolId: COGNITO_USER_POOL_ID,
-      Username: email,
-      Password: TEST_PASSWORD,
-      Permanent: true,
-    });
-
-    await cognitoClient.send(setPasswordCommand);
-    console.log(`  ✓ Set password for: ${email}`);
-
-    // Confirm the user
     try {
-      const confirmCommand = new AdminConfirmSignUpCommand({
+      const createUserCommand = new AdminCreateUserCommand({
+        UserPoolId: COGNITO_USER_POOL_ID,
+        Username: email,
+        UserAttributes: [
+          { Name: 'email', Value: email },
+          { Name: 'email_verified', Value: 'true' },
+          { Name: 'name', Value: name },
+        ],
+        MessageAction: 'SUPPRESS', // Don't send welcome email
+      });
+
+      await cognitoClient.send(createUserCommand);
+      console.log(`  ✓ Created Cognito user: ${email}`);
+
+      // Set permanent password
+      const setPasswordCommand = new AdminSetUserPasswordCommand({
+        UserPoolId: COGNITO_USER_POOL_ID,
+        Username: email,
+        Password: TEST_PASSWORD,
+        Permanent: true,
+      });
+
+      await cognitoClient.send(setPasswordCommand);
+      console.log(`  ✓ Set password for: ${email}`);
+
+      // Confirm the user
+      try {
+        const confirmCommand = new AdminConfirmSignUpCommand({
+          UserPoolId: COGNITO_USER_POOL_ID,
+          Username: email,
+        });
+        await cognitoClient.send(confirmCommand);
+        console.log(`  ✓ Confirmed Cognito user: ${email}`);
+      } catch (confirmError: any) {
+        // User might already be confirmed, that's okay
+        if (confirmError.name !== 'NotAuthorizedException') {
+          console.warn(`  ⚠️  Could not confirm user ${email}:`, confirmError.message);
+        }
+      }
+
+      // Get the Cognito user sub
+      const getUserCommand = new AdminGetUserCommand({
         UserPoolId: COGNITO_USER_POOL_ID,
         Username: email,
       });
-      await cognitoClient.send(confirmCommand);
-      console.log(`  ✓ Confirmed Cognito user: ${email}`);
-    } catch (confirmError: any) {
-      // User might already be confirmed, that's okay
-      if (confirmError.name !== 'NotAuthorizedException') {
-        console.warn(`  ⚠️  Could not confirm user ${email}:`, confirmError.message);
+      const cognitoUser = await cognitoClient.send(getUserCommand);
+      const cognitoSub = cognitoUser.UserAttributes?.find(
+        attr => attr.Name === 'sub'
+      )?.Value;
+
+      if (!cognitoSub) {
+        throw new Error('Failed to get Cognito user sub');
       }
+
+      return cognitoSub;
+    } catch (createError: any) {
+      // Handle credential errors - skip Cognito if credentials aren't available
+      if (createError.name === 'CredentialsProviderError' || 
+          createError.message?.includes('Could not load credentials') ||
+          createError.message?.includes('credentials')) {
+        console.warn(`  ⚠️  AWS credentials not available, skipping Cognito creation for ${email}`);
+        return null;
+      }
+      // Re-throw to be caught by outer catch
+      throw createError;
     }
-
-    // Get the Cognito user sub
-    const getUserCommand = new AdminGetUserCommand({
-      UserPoolId: COGNITO_USER_POOL_ID,
-      Username: email,
-    });
-    const cognitoUser = await cognitoClient.send(getUserCommand);
-    const cognitoSub = cognitoUser.UserAttributes?.find(
-      attr => attr.Name === 'sub'
-    )?.Value;
-
-    if (!cognitoSub) {
-      throw new Error('Failed to get Cognito user sub');
-    }
-
-    return cognitoSub;
   } catch (error: any) {
     // Handle permissions errors gracefully
+    if (error.name === 'CredentialsProviderError' || 
+        error.message?.includes('Could not load credentials') ||
+        error.message?.includes('credentials')) {
+      console.warn(`  ⚠️  AWS credentials not available, skipping Cognito creation for ${email}`);
+      return null;
+    }
     if (error.name === 'AccessDeniedException' || error.name === 'UnauthorizedException') {
       console.warn(`  ⚠️  No permission to create Cognito user ${email}:`, error.message);
       console.warn(`  ⚠️  Continuing with database-only setup (user will need to be created in Cognito manually)`);
@@ -174,6 +206,12 @@ async function createCognitoUser(email: string, name: string): Promise<string | 
         }
       } catch (getError: any) {
         // If we can't get the user either, return null
+        if (getError.name === 'CredentialsProviderError' || 
+            getError.message?.includes('Could not load credentials') ||
+            getError.message?.includes('credentials')) {
+          console.warn(`  ⚠️  AWS credentials not available, skipping Cognito creation for ${email}`);
+          return null;
+        }
         if (getError.name === 'AccessDeniedException' || getError.name === 'UnauthorizedException') {
           return null;
         }

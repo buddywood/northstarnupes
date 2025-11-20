@@ -1001,16 +1001,34 @@ router.post('/register', upload.single('headshot'), async (req: Request, res: Re
 
     // Check if member already exists (excluding DRAFT records and the current user's draft)
     // This prevents duplicate registrations while allowing users to complete their own drafts
+    // NOTE: Sellers can register as members, so we check if they already have a member profile linked
     let existingMemberQuery;
     let existingMemberParams;
+    let existingSeller: { id: number; fraternity_member_id: number | null } | null = null;
+    
+    // Check if user is already a seller (sellers can register as members)
+    const sellerCheck = await pool.query(
+      'SELECT id, fraternity_member_id FROM sellers WHERE email = $1',
+      [body.email]
+    );
+    
+    if (sellerCheck.rows.length > 0) {
+      existingSeller = sellerCheck.rows[0];
+      // If seller already has a member profile, block registration
+      if (existingSeller.fraternity_member_id) {
+        return res.status(400).json({ 
+          error: 'You already have a member profile linked to your seller account' 
+        });
+      }
+      // Otherwise, allow registration and we'll link it after creation
+    }
     
     if (body.cognito_sub) {
       // If cognito_sub exists, exclude this user's draft from the check
-      // Check sellers and promoters by email, and check members by email or membership_number
+      // Check promoters by email, and check members by email or membership_number
       // Also check if membership_number is used by any seller or promoter through member_id
-      existingMemberQuery = `SELECT id FROM sellers WHERE email = $1 
-       UNION 
-       SELECT id FROM promoters WHERE email = $1 
+      // NOTE: We skip sellers check here since we already handled it above
+      existingMemberQuery = `SELECT id FROM promoters WHERE email = $1 
        UNION 
        SELECT s.id FROM sellers s 
        INNER JOIN fraternity_members m ON s.fraternity_member_id = m.id 
@@ -1027,9 +1045,8 @@ router.post('/register', upload.single('headshot'), async (req: Request, res: Re
       existingMemberParams = [body.email, body.membership_number, body.cognito_sub];
     } else {
       // If no cognito_sub, check all non-DRAFT records
-      existingMemberQuery = `SELECT id FROM sellers WHERE email = $1 
-       UNION 
-       SELECT id FROM promoters WHERE email = $1 
+      // NOTE: We skip sellers check here since we already handled it above
+      existingMemberQuery = `SELECT id FROM promoters WHERE email = $1 
        UNION 
        SELECT s.id FROM sellers s 
        INNER JOIN fraternity_members m ON s.fraternity_member_id = m.id 
@@ -1162,24 +1179,53 @@ router.post('/register', upload.single('headshot'), async (req: Request, res: Re
 
     const member = result.rows[0];
 
+    // If user is a seller, link the seller account to the member profile
+    if (existingSeller && !existingSeller.fraternity_member_id) {
+      try {
+        await pool.query(
+          'UPDATE sellers SET fraternity_member_id = $1 WHERE id = $2',
+          [member.id, existingSeller.id]
+        );
+        console.log(`Linked seller ${existingSeller.id} to member ${member.id}`);
+      } catch (sellerLinkError: any) {
+        console.error('Error linking seller to member:', sellerLinkError);
+        // Don't fail registration - seller can be linked later
+      }
+    }
+
     // Create or update user record and link to member
     // This is critical - if this fails, we have an orphaned member record
+    // NOTE: If user is a seller, we don't change their role - they remain a SELLER
+    // The seller's fraternity_member_id is set above, but the user's fraternity_member_id
+    // must stay null due to SELLER role constraint. The seller table has the link.
     if (body.cognito_sub) {
       try {
         let user = await getUserByCognitoSub(body.cognito_sub);
         if (!user) {
           // Create new user record
+          // If user is a seller, create with SELLER role, otherwise CONSUMER
+          const userRole = existingSeller ? 'SELLER' : 'CONSUMER';
           user = await createUser({
             cognito_sub: body.cognito_sub,
             email: body.email,
-            role: 'CONSUMER',
+            role: userRole,
             onboarding_status: 'ONBOARDING_FINISHED',
-            fraternity_member_id: member.id,
+            fraternity_member_id: existingSeller ? null : member.id, // SELLER role constraint requires null
+            seller_id: existingSeller ? existingSeller.id : null,
           });
         } else {
           // Link existing user to member and update onboarding status
-          await linkUserToMember(user.id, member.id);
-          await updateUserOnboardingStatusByCognitoSub(body.cognito_sub, 'ONBOARDING_FINISHED');
+          // If user is a seller, we can't set fraternity_member_id on user due to constraint
+          // but the seller table already has it linked (done above)
+          if (user.role === 'SELLER') {
+            // For sellers, just update onboarding status - fraternity_member_id stays null on user
+            // but is set on the seller table (done above)
+            await updateUserOnboardingStatusByCognitoSub(body.cognito_sub, 'ONBOARDING_FINISHED');
+          } else {
+            // For non-sellers, link member normally
+            await linkUserToMember(user.id, member.id);
+            await updateUserOnboardingStatusByCognitoSub(body.cognito_sub, 'ONBOARDING_FINISHED');
+          }
         }
       } catch (userError: any) {
         console.error('Error creating/linking user record:', userError);
