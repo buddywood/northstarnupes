@@ -77,7 +77,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="bg-cream dark:bg-black text-midnight-navy dark:text-gray-100 transition-colors">
+      <body className="bg-background text-foreground transition-colors">
         <Providers>
           <SessionManager />
           {children}

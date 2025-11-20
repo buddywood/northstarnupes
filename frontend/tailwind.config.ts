@@ -12,12 +12,12 @@ const config: Config = {
   		colors: {
   			background: 'hsl(var(--background))',
   			foreground: 'hsl(var(--foreground))',
-  			crimson: '#8A0C13',
-  			cream: '#F7F4E9',
-  			'midnight-navy': '#121212',
-  			'frost-gray': '#D9DBE0',
+  			crimson: 'var(--crimson)',
+  			cream: 'var(--cream)',
+  			'midnight-navy': 'var(--midnight-navy)',
+  			'frost-gray': 'var(--frost-gray)',
   			'aurora-gold': '#C6A664',
-  			white: '#FFFFFF',
+  			white: 'var(--white)',
   			card: {
   				DEFAULT: 'hsl(var(--card))',
   				foreground: 'hsl(var(--card-foreground))'

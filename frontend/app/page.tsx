@@ -55,7 +55,7 @@ export default async function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-cream dark:bg-black text-midnight-navy dark:text-gray-100">
+    <div className="min-h-screen bg-cream text-midnight-navy">
       <Header />
 
       {/* Hero Banner */}
@@ -70,9 +70,9 @@ export default async function Home() {
               <Link
                 key={product.id}
                 href={`/product/${product.id}`}
-                className="bg-white dark:bg-black rounded-xl overflow-hidden shadow hover:shadow-md dark:shadow-black/50 dark:hover:shadow-lg transition relative"
+                className="bg-card rounded-xl overflow-hidden shadow hover:shadow-md dark:shadow-black/50 dark:hover:shadow-lg transition relative"
               >
-                <div className="aspect-[4/5] relative bg-cream dark:bg-gray-900">
+                <div className="aspect-[4/5] relative bg-muted">
                   <ProductStatusBadge product={product} />
                   {product.image_url ? (
                     <Image
@@ -82,7 +82,7 @@ export default async function Home() {
                       className="object-cover"
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-midnight-navy/30 dark:text-gray-400">
+                    <div className="w-full h-full flex items-center justify-center text-muted-foreground">
                       <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                       </svg>
@@ -90,7 +90,7 @@ export default async function Home() {
                   )}
                 </div>
                 <div className="p-3">
-                  <p className="font-semibold text-sm text-midnight-navy dark:text-gray-100 line-clamp-2">{product.name}</p>
+                  <p className="font-semibold text-sm text-card-foreground line-clamp-2">{product.name}</p>
                   {/* Verification badges under title */}
                   <div className="flex flex-col items-start gap-2 my-1">
                     {product.seller_fraternity_member_id ? (
@@ -108,7 +108,7 @@ export default async function Home() {
                   </div>
                   {product.seller_name && (
                     <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                      <p className="text-xs text-midnight-navy/60 dark:text-gray-400">
+                      <p className="text-xs text-muted-foreground">
                         by {product.seller_fraternity_member_id 
                           ? `Brother ${product.seller_name}` 
                           : (product.seller_business_name || product.seller_name)}
@@ -159,7 +159,7 @@ export default async function Home() {
               const is_steward = firstProduct?.is_steward;
               
               return (
-                <div key={i} className="bg-white dark:bg-black rounded-xl shadow dark:shadow-black/50 p-6 flex flex-col items-center text-center relative">
+                <div key={i} className="bg-card rounded-xl shadow dark:shadow-black/50 p-6 flex flex-col items-center text-center relative">
                   {/* Brother verification badge */}
                   <div className="absolute top-3 right-3">
                     <VerificationBadge type="brother" />
@@ -173,7 +173,7 @@ export default async function Home() {
                     />
                   </div>
                   <div className="flex flex-col items-center gap-2 mb-2">
-                    <p className="font-semibold text-midnight-navy dark:text-gray-100">{seller.name}</p>
+                    <p className="font-semibold text-card-foreground">{seller.name}</p>
                     {/* Role badges */}
                     {(is_fraternity_member !== undefined || is_seller !== undefined || is_promoter !== undefined || is_steward !== undefined) && (
                       <UserRoleBadges
@@ -214,7 +214,7 @@ export default async function Home() {
                 .slice(0, 2);
               
               return (
-                <div key={i} className="bg-white dark:bg-gray-800 rounded-xl shadow dark:shadow-gray-900/50 p-6 flex flex-col items-center text-center">
+                <div key={i} className="bg-card rounded-xl shadow dark:shadow-gray-900/50 p-6 flex flex-col items-center text-center">
                   <div className="relative w-24 h-24 rounded-full overflow-hidden mb-3">
                     <Image
                       src={`https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=8A0C13&color=fff&size=200&bold=true&font-size=0.5`}
@@ -223,8 +223,8 @@ export default async function Home() {
                       className="object-cover"
                     />
                   </div>
-                  <p className="font-semibold text-midnight-navy dark:text-gray-100">{name}</p>
-                  <p className="text-sm text-midnight-navy/60 dark:text-gray-400 mb-3">Psi Chapter</p>
+                  <p className="font-semibold text-card-foreground">{name}</p>
+                  <p className="text-sm text-muted-foreground mb-3">Psi Chapter</p>
                   <button className="text-sm text-crimson font-medium hover:underline">Shop Collection</button>
                 </div>
               );
@@ -252,14 +252,14 @@ export default async function Home() {
             })}
           </div>
         ) : (
-          <div className="text-center py-12 text-midnight-navy/60 dark:text-gray-400">
+          <div className="text-center py-12 text-muted-foreground">
             <p>No upcoming events at this time. Check back soon!</p>
           </div>
         )}
       </section>
 
       {/* Impact Section */}
-      <section id="impact" className="bg-midnight-navy dark:bg-black text-cream dark:text-gray-100 text-center py-16 px-6">
+      <section id="impact" className="bg-midnight-navy text-cream text-center py-16 px-6">
         <h2 className="text-3xl font-display font-bold mb-4">Excellence Through Contribution</h2>
         <p className="max-w-2xl mx-auto mb-6 text-lg">
           Every purchase and event ticket creates impact — revenue sharing with sponsoring chapters supports scholarship, leadership, and service. This is how we build distinction together.
