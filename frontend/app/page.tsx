@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { fetchProducts, fetchChapters, fetchEvents, type Product } from '@/lib/api';
+import { fetchProducts, fetchFeaturedProducts, fetchFeaturedBrothers, fetchChapters, fetchUpcomingEvents, type Product } from '@/lib/api';
 import Image from 'next/image';
 import Header from './components/Header';
 import HeroBanner from './components/HeroBanner';
@@ -14,38 +14,33 @@ import Footer from './components/Footer';
 export const dynamic = 'force-dynamic';
 
 export default async function Home() {
-  const [products, chapters, events] = await Promise.all([
+  const [allProducts, featuredProducts, featuredBrothers, chapters, events] = await Promise.all([
     fetchProducts().catch((err) => {
       console.error('Error fetching products:', err);
+      return [];
+    }),
+    fetchFeaturedProducts().catch((err) => {
+      console.error('Error fetching featured products:', err);
+      return [];
+    }),
+    fetchFeaturedBrothers().catch((err) => {
+      console.error('Error fetching featured brothers:', err);
       return [];
     }),
     fetchChapters().catch((err) => {
       console.error('Error fetching chapters:', err);
       return [];
     }),
-    fetchEvents(false).catch((err) => {
-      console.error('Error fetching events:', err);
+    fetchUpcomingEvents().catch((err) => {
+      console.error('Error fetching upcoming events:', err);
       return [];
     }),
   ]);
 
-  console.log(`Fetched ${products.length} products and ${chapters.length} chapters`);
+  // Use all products for seller grouping, featured products for featured section
+  const products = allProducts;
 
-  // Group products by seller to get featured brothers
-  const sellerMap = new Map<number, { id: number; name: string; products: Product[]; chapter?: string }>();
-  products.forEach((product) => {
-    if (product.seller_name && product.seller_id) {
-      if (!sellerMap.has(product.seller_id)) {
-        sellerMap.set(product.seller_id, {
-          id: product.seller_id,
-          name: product.seller_name,
-          products: [],
-        });
-      }
-      sellerMap.get(product.seller_id)!.products.push(product);
-    }
-  });
-  const featuredSellers = Array.from(sellerMap.values()).slice(0, 3);
+  console.log(`Fetched ${products.length} products, ${featuredBrothers.length} featured brothers, and ${chapters.length} chapters`);
 
   // Get chapter names for sellers
   const getChapterName = (chapterId: number | null) => {
@@ -62,11 +57,11 @@ export default async function Home() {
       <HeroBanner />
 
       {/* Product Highlights */}
-      {products.length > 0 && (
+      {featuredProducts.length > 0 && (
         <section id="shop" className="max-w-7xl mx-auto py-16 px-4">
           <h2 className="text-2xl font-display font-bold text-crimson mb-6 text-center">Featured Products</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-            {products.slice(0, 8).map((product) => (
+            {featuredProducts.map((product) => (
               <Link
                 key={product.id}
                 href={`/product/${product.id}`}
@@ -134,104 +129,73 @@ export default async function Home() {
       <ImpactBanner />
 
       {/* Featured Brothers */}
-      <section className="max-w-7xl mx-auto py-16 px-4">
-        <h2 className="text-2xl font-display font-bold text-crimson mb-6 text-center">Featured Brothers</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-          {featuredSellers.length > 0 ? (
-            featuredSellers.map((seller, i) => {
-              const firstProduct = seller.products[0];
-              const chapterName = firstProduct?.seller_sponsoring_chapter_id 
-                ? getChapterName(firstProduct.seller_sponsoring_chapter_id) 
-                : null;
-              
+      {featuredBrothers.length > 0 && (
+        <section className="max-w-7xl mx-auto py-16 px-4">
+          <h2 className="text-2xl font-display font-bold text-crimson mb-6 text-center">Featured Brothers</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+            {featuredBrothers.map((brother) => {
               // Generate initials for avatar
-              const initials = seller.name
+              const initials = brother.name
                 .split(' ')
                 .map(n => n[0])
                 .join('')
                 .toUpperCase()
                 .slice(0, 2);
               
-              // Get role information from the first product
-              const is_fraternity_member = firstProduct?.is_fraternity_member;
-              const is_seller = firstProduct?.is_seller;
-              const is_promoter = firstProduct?.is_promoter;
-              const is_steward = firstProduct?.is_steward;
-              
               return (
-                <div key={i} className="bg-card rounded-xl shadow dark:shadow-black/50 p-6 flex flex-col items-center text-center relative">
+                <div key={brother.id} className="bg-card rounded-xl shadow dark:shadow-black/50 p-6 flex flex-col items-center text-center relative">
                   {/* Brother verification badge */}
                   <div className="absolute top-3 right-3">
                     <VerificationBadge type="brother" />
                   </div>
                   <div className="relative w-24 h-24 rounded-full overflow-hidden mb-3">
-                    <Image
-                      src={`https://ui-avatars.com/api/?name=${encodeURIComponent(seller.name)}&background=8A0C13&color=fff&size=200&bold=true&font-size=0.5`}
-                      alt={seller.name}
-                      fill
-                      className="object-cover"
-                    />
-                  </div>
-                  <div className="flex flex-col items-center gap-2 mb-2">
-                    <p className="font-semibold text-card-foreground">{seller.name}</p>
-                    {/* Role badges */}
-                    {(is_fraternity_member !== undefined || is_seller !== undefined || is_promoter !== undefined || is_steward !== undefined) && (
-                      <UserRoleBadges
-                        is_member={is_fraternity_member}
-                        is_seller={is_seller}
-                        is_promoter={is_promoter}
-                        is_steward={is_steward}
-                        size="sm"
+                    {brother.headshot_url ? (
+                      <Image
+                        src={brother.headshot_url}
+                        alt={brother.name}
+                        fill
+                        className="object-cover"
+                      />
+                    ) : (
+                      <Image
+                        src={`https://ui-avatars.com/api/?name=${encodeURIComponent(brother.name)}&background=8A0C13&color=fff&size=200&bold=true&font-size=0.5`}
+                        alt={brother.name}
+                        fill
+                        className="object-cover"
                       />
                     )}
                   </div>
-                  {chapterName && (
+                  <div className="flex flex-col items-center gap-2 mb-2">
+                    <p className="font-semibold text-card-foreground">{brother.name}</p>
+                    {/* Role badges - all featured brothers are member sellers */}
+                    <UserRoleBadges
+                      is_member={true}
+                      is_seller={true}
+                      is_promoter={false}
+                      is_steward={false}
+                      size="sm"
+                    />
+                  </div>
+                  {brother.chapter_name && (
                     <div className="mt-2 mb-3">
                       <VerificationBadge 
                         type="sponsored-chapter" 
-                        chapterName={chapterName}
+                        chapterName={brother.chapter_name}
                       />
                     </div>
                   )}
                   <Link 
-                    href={`/collections/${seller.id}`}
+                    href={`/collections/${brother.id}`}
                     className="text-sm text-crimson font-medium hover:underline"
                   >
-                    Shop Collection
+                    Shop Collection ({brother.product_count} {brother.product_count === 1 ? 'item' : 'items'})
                   </Link>
                 </div>
               );
-            })
-          ) : (
-            // Placeholder when no sellers yet
-            ["Brother Johnson", "Brother Carter", "Brother Smith"].map((name, i) => {
-              // Generate initials for placeholder avatars
-              const initials = name
-                .split(' ')
-                .map(n => n[0])
-                .join('')
-                .toUpperCase()
-                .slice(0, 2);
-              
-              return (
-                <div key={i} className="bg-card rounded-xl shadow dark:shadow-gray-900/50 p-6 flex flex-col items-center text-center">
-                  <div className="relative w-24 h-24 rounded-full overflow-hidden mb-3">
-                    <Image
-                      src={`https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=8A0C13&color=fff&size=200&bold=true&font-size=0.5`}
-                      alt={name}
-                      fill
-                      className="object-cover"
-                    />
-                  </div>
-                  <p className="font-semibold text-card-foreground">{name}</p>
-                  <p className="text-sm text-muted-foreground mb-3">Psi Chapter</p>
-                  <button className="text-sm text-crimson font-medium hover:underline">Shop Collection</button>
-                </div>
-              );
-            })
-          )}
-        </div>
-      </section>
+            })}
+          </div>
+        </section>
+      )}
 
       {/* Events Section */}
       <section id="events" className="max-w-7xl mx-auto py-16 px-4">
@@ -239,9 +203,10 @@ export default async function Home() {
         {events.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {events.map((event) => {
-              const chapterName = event.sponsored_chapter_id 
+              // Use chapter_name from the event if available (from the API)
+              const chapterName = event.chapter_name || (event.sponsored_chapter_id 
                 ? getChapterName(event.sponsored_chapter_id) 
-                : null;
+                : null);
               return (
                 <EventCard 
                   key={event.id} 

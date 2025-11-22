@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, Image, Dimensions } from 'rea
 import { Product } from '../lib/api';
 import { COLORS } from '../lib/constants';
 import { useAuth } from '../lib/auth';
+import UserRoleBadges from './UserRoleBadges';
 
 interface ProductCardProps {
   product: Product;
@@ -62,11 +63,20 @@ export default function ProductCard({ product, onPress, isStewardItem = false }:
           {product.name}
         </Text>
 
-        {/* Seller Name */}
+        {/* Seller Name and Role Badges */}
         {sellerName && (
-          <Text style={styles.sellerName} numberOfLines={1}>
-            by {sellerName}
-          </Text>
+          <View style={styles.sellerRow}>
+            <Text style={styles.sellerName} numberOfLines={1}>
+              by {sellerName}
+            </Text>
+            <UserRoleBadges
+              is_member={product.is_fraternity_member}
+              is_seller={product.is_seller}
+              is_promoter={product.is_promoter}
+              is_steward={product.is_steward}
+              size="sm"
+            />
+          </View>
         )}
 
         {/* Price */}
@@ -121,12 +131,19 @@ const styles = StyleSheet.create({
     minHeight: 36,
     letterSpacing: 0.1,
   },
+  sellerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginBottom: 6,
+  },
   sellerName: {
     fontSize: 12,
     color: COLORS.midnightNavy,
     opacity: 0.7,
-    marginBottom: 6,
     lineHeight: 18,
+    flexShrink: 1,
   },
   price: {
     fontSize: 16,

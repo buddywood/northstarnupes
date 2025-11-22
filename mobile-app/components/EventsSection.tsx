@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity, Image, Linking } from 'react-native';
-import { fetchEvents, fetchChapters, Event, Chapter } from '../lib/api';
+import { fetchUpcomingEvents, fetchChapters, Event, Chapter } from '../lib/api';
 import { COLORS } from '../lib/constants';
 import { useAuth } from '../lib/auth';
 
@@ -28,7 +28,7 @@ export default function EventsSection({ onEventPress, onRSVPPress }: EventsSecti
     const loadData = async () => {
       try {
         const [eventsData, chaptersData] = await Promise.all([
-          fetchEvents(),
+          fetchUpcomingEvents(),
           fetchChapters(),
         ]);
         setEvents(eventsData);
@@ -60,10 +60,17 @@ export default function EventsSection({ onEventPress, onRSVPPress }: EventsSecti
     });
   };
 
-  const getChapterName = (chapterId: number | null) => {
-    if (!chapterId) return null;
-    const chapter = chapters.find((c) => c.id === chapterId);
-    return chapter?.name || null;
+  const getChapterName = (event: Event) => {
+    // Use chapter_name from the event if available (from the API)
+    if (event.chapter_name) {
+      return event.chapter_name;
+    }
+    // Fallback to looking up in chapters array
+    if (event.sponsored_chapter_id) {
+      const chapter = chapters.find((c) => c.id === event.sponsored_chapter_id);
+      return chapter?.name || null;
+    }
+    return null;
   };
 
   if (loading) {
@@ -96,7 +103,7 @@ export default function EventsSection({ onEventPress, onRSVPPress }: EventsSecti
       <FlatList
         data={events}
         renderItem={({ item }) => {
-          const chapterName = getChapterName(item.sponsored_chapter_id);
+          const chapterName = getChapterName(item);
           return (
             <TouchableOpacity
               style={styles.card}

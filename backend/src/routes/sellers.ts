@@ -387,6 +387,60 @@ router.get('/collections', async (req: Request, res: Response) => {
   }
 });
 
+// Get featured brothers (top 3 member sellers with most active products)
+router.get('/featured', async (req: Request, res: Response) => {
+  try {
+    const result = await pool.query(
+      `SELECT 
+        s.id,
+        s.name,
+        s.business_name,
+        s.headshot_url,
+        s.sponsoring_chapter_id,
+        s.social_links,
+        s.website,
+        COUNT(p.id) FILTER (WHERE p.id IS NOT NULL) as product_count,
+        c.name as chapter_name
+      FROM sellers s
+      LEFT JOIN products p ON s.id = p.seller_id
+      LEFT JOIN chapters c ON s.sponsoring_chapter_id = c.id
+      WHERE s.status = 'APPROVED'
+        AND s.fraternity_member_id IS NOT NULL
+      GROUP BY s.id, s.name, s.business_name, s.headshot_url, s.sponsoring_chapter_id, s.social_links, s.website, c.name
+      HAVING COUNT(p.id) > 0
+      ORDER BY product_count DESC, s.name ASC
+      LIMIT 3`
+    );
+    
+    // Parse social_links if it's a string
+    const featuredBrothers = result.rows.map((seller) => {
+      const socialLinks = typeof seller.social_links === 'string' 
+        ? JSON.parse(seller.social_links) 
+        : (seller.social_links || {});
+      
+      return {
+        id: seller.id,
+        name: seller.name,
+        business_name: seller.business_name,
+        headshot_url: seller.headshot_url,
+        sponsoring_chapter_id: seller.sponsoring_chapter_id,
+        chapter_name: seller.chapter_name,
+        social_links: socialLinks,
+        website: seller.website,
+        product_count: parseInt(seller.product_count) || 0,
+      };
+    });
+    
+    res.json(featuredBrothers);
+  } catch (error: any) {
+    console.error('Error fetching featured brothers:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch featured brothers',
+      details: error.message || 'Unknown error'
+    });
+  }
+});
+
 // Get a specific seller with their products (public endpoint)
 // This must come before /me routes to avoid route conflicts
 router.get('/:id/products', async (req: Request, res: Response) => {

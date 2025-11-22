@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
-import { fetchProducts, Product } from '../lib/api';
+import { fetchFeaturedProducts, Product } from '../lib/api';
 import { COLORS } from '../lib/constants';
 import ProductCard from './ProductCard';
 
@@ -15,10 +15,10 @@ export default function FeaturedProducts({ onProductPress }: FeaturedProductsPro
   useEffect(() => {
     const loadProducts = async () => {
       try {
-        const data = await fetchProducts();
-        setProducts(data.slice(0, 8)); // Show first 8 products
+        const data = await fetchFeaturedProducts();
+        setProducts(data); // Featured products endpoint returns last 10 products
       } catch (error) {
-        console.error('Error loading products:', error);
+        console.error('Error loading featured products:', error);
       } finally {
         setLoading(false);
       }

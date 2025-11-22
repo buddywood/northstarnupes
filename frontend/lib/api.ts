@@ -136,6 +136,7 @@ export interface Event {
   promoter_fraternity_member_id?: number | null;
   promoter_sponsoring_chapter_id?: number | null;
   promoter_initiated_chapter_id?: number | null;
+  chapter_name?: string | null;
   is_fraternity_member?: boolean;
   is_promoter?: boolean;
   is_steward?: boolean;
@@ -215,6 +216,24 @@ export async function fetchProducts(): Promise<Product[]> {
     return data;
   } catch (error) {
     console.error('Error in fetchProducts:', error);
+    throw error;
+  }
+}
+
+export async function fetchFeaturedProducts(): Promise<Product[]> {
+  try {
+    const res = await fetch(`${API_URL}/api/products/featured`, {
+      cache: 'no-store', // Ensure fresh data on each request
+    });
+    if (!res.ok) {
+      console.error(`Failed to fetch featured products: ${res.status} ${res.statusText}`);
+      throw new Error('Failed to fetch featured products');
+    }
+    const data = await res.json();
+    console.log(`fetchFeaturedProducts: Retrieved ${data.length} featured products`);
+    return data;
+  } catch (error) {
+    console.error('Error in fetchFeaturedProducts:', error);
     throw error;
   }
 }
@@ -635,6 +654,24 @@ export async function fetchEvents(includeAll: boolean = true): Promise<Event[]> 
   return res.json();
 }
 
+export async function fetchUpcomingEvents(): Promise<Event[]> {
+  try {
+    const res = await fetch(`${API_URL}/api/events/upcoming`, {
+      cache: 'no-store', // Ensure fresh data on each request
+    });
+    if (!res.ok) {
+      console.error(`Failed to fetch upcoming events: ${res.status} ${res.statusText}`);
+      throw new Error('Failed to fetch upcoming events');
+    }
+    const data = await res.json();
+    console.log(`fetchUpcomingEvents: Retrieved ${data.length} upcoming events`);
+    return data;
+  } catch (error) {
+    console.error('Error in fetchUpcomingEvents:', error);
+    throw error;
+  }
+}
+
 export interface PromoterMetrics {
   totalEvents: number;
   upcomingEvents: number;
@@ -881,6 +918,38 @@ export async function getMemberActivity(): Promise<MemberActivity> {
 export interface SellerWithProducts extends Seller {
   product_count: number;
   products: Product[];
+}
+
+export interface FeaturedBrother {
+  id: number;
+  name: string;
+  business_name: string | null;
+  headshot_url: string | null;
+  sponsoring_chapter_id: number;
+  chapter_name: string | null;
+  social_links: Record<string, string>;
+  website: string | null;
+  product_count: number;
+}
+
+export async function fetchFeaturedBrothers(): Promise<FeaturedBrother[]> {
+  try {
+    const res = await fetch(`${API_URL}/api/sellers/featured`, {
+      cache: 'no-store', // Ensure fresh data on each request
+    });
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      console.error(`Failed to fetch featured brothers: ${res.status} ${res.statusText}`, errorData);
+      throw new Error(errorData.error || errorData.details || 'Failed to fetch featured brothers');
+    }
+    const data = await res.json();
+    console.log(`fetchFeaturedBrothers: Retrieved ${data.length} featured brothers`);
+    return data;
+  } catch (error) {
+    console.error('Error in fetchFeaturedBrothers:', error);
+    // Return empty array instead of throwing to prevent UI crashes
+    return [];
+  }
 }
 
 export async function getSellerWithProducts(sellerId: number): Promise<SellerWithProducts | null> {

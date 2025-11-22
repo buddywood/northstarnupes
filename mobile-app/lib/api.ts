@@ -77,6 +77,7 @@ export interface Event {
   promoter_fraternity_member_id?: number | null;
   promoter_sponsoring_chapter_id?: number | null;
   promoter_initiated_chapter_id?: number | null;
+  chapter_name?: string | null;
   is_fraternity_member?: boolean;
   is_promoter?: boolean;
   is_steward?: boolean;
@@ -139,6 +140,17 @@ export async function fetchEvents(): Promise<Event[]> {
     return res.json();
   } catch (error) {
     console.error('Error fetching events:', error);
+    return [];
+  }
+}
+
+export async function fetchUpcomingEvents(): Promise<Event[]> {
+  try {
+    const res = await fetch(`${API_URL}/api/events/upcoming`);
+    if (!res.ok) throw new Error('Failed to fetch upcoming events');
+    return res.json();
+  } catch (error) {
+    console.error('Error fetching upcoming events:', error);
     return [];
   }
 }
@@ -307,6 +319,35 @@ export async function createCheckoutSession(
   } catch (error) {
     console.error('Error creating checkout session:', error);
     throw error;
+  }
+}
+
+export interface FeaturedBrother {
+  id: number;
+  name: string;
+  business_name: string | null;
+  headshot_url: string | null;
+  sponsoring_chapter_id: number;
+  chapter_name: string | null;
+  social_links: Record<string, string>;
+  website: string | null;
+  product_count: number;
+}
+
+export async function fetchFeaturedBrothers(): Promise<FeaturedBrother[]> {
+  try {
+    const res = await fetch(`${API_URL}/api/sellers/featured`);
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      console.error(`Failed to fetch featured brothers: ${res.status} ${res.statusText}`, errorData);
+      return [];
+    }
+    const data = await res.json();
+    console.log(`fetchFeaturedBrothers: Retrieved ${data.length} featured brothers`);
+    return data;
+  } catch (error) {
+    console.error('Error fetching featured brothers:', error);
+    return [];
   }
 }
 

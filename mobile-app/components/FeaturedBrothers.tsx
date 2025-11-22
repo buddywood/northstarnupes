@@ -1,64 +1,22 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity, Image } from 'react-native';
-import { fetchProducts, fetchChapters, Product, Chapter } from '../lib/api';
+import { fetchFeaturedBrothers, FeaturedBrother } from '../lib/api';
 import { COLORS } from '../lib/constants';
-
-interface FeaturedSeller {
-  id: number;
-  name: string;
-  products: Product[];
-  chapter?: string;
-}
+import UserRoleBadges from './UserRoleBadges';
 
 interface FeaturedBrothersProps {
   onSellerPress?: (sellerId: number) => void;
 }
 
 export default function FeaturedBrothers({ onSellerPress }: FeaturedBrothersProps) {
-  const [featuredSellers, setFeaturedSellers] = useState<FeaturedSeller[]>([]);
+  const [featuredBrothers, setFeaturedBrothers] = useState<FeaturedBrother[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [products, chapters] = await Promise.all([
-          fetchProducts(),
-          fetchChapters(),
-        ]);
-
-        // Group products by seller
-        const sellerMap = new Map<number, { id: number; name: string; products: Product[] }>();
-        products.forEach((product) => {
-          if (product.seller_name && product.seller_id) {
-            if (!sellerMap.has(product.seller_id)) {
-              sellerMap.set(product.seller_id, {
-                id: product.seller_id,
-                name: product.seller_name,
-                products: [],
-              });
-            }
-            sellerMap.get(product.seller_id)!.products.push(product);
-          }
-        });
-
-        // Get first 3 sellers
-        const sellers = Array.from(sellerMap.values()).slice(0, 3);
-
-        // Add chapter names
-        const sellersWithChapters = sellers.map((seller) => {
-          const firstProduct = seller.products[0];
-          const chapterId = firstProduct?.seller_sponsoring_chapter_id;
-          const chapter = chapterId
-            ? chapters.find((c) => c.id === chapterId)
-            : null;
-
-          return {
-            ...seller,
-            chapter: chapter?.name || null,
-          };
-        });
-
-        setFeaturedSellers(sellersWithChapters);
+        const brothers = await fetchFeaturedBrothers();
+        setFeaturedBrothers(brothers);
       } catch (error) {
         console.error('Error loading featured brothers:', error);
       } finally {
@@ -93,7 +51,7 @@ export default function FeaturedBrothers({ onSellerPress }: FeaturedBrothersProp
     );
   }
 
-  if (featuredSellers.length === 0) {
+  if (featuredBrothers.length === 0) {
     return (
       <View style={styles.container}>
         <Text style={styles.title}>Featured Brothers</Text>
@@ -108,7 +66,7 @@ export default function FeaturedBrothers({ onSellerPress }: FeaturedBrothersProp
     <View style={styles.container}>
       <Text style={styles.title}>Featured Brothers</Text>
       <FlatList
-        data={featuredSellers}
+        data={featuredBrothers}
         renderItem={({ item }) => (
           <TouchableOpacity
             style={styles.card}
@@ -117,14 +75,31 @@ export default function FeaturedBrothers({ onSellerPress }: FeaturedBrothersProp
           >
             <View style={styles.cardContent}>
               <View style={styles.avatarContainer}>
-                <Image
-                  source={{ uri: getAvatarUrl(item.name) }}
-                  style={styles.avatar}
-                />
+                {item.headshot_url ? (
+                  <Image
+                    source={{ uri: item.headshot_url }}
+                    style={styles.avatar}
+                  />
+                ) : (
+                  <Image
+                    source={{ uri: getAvatarUrl(item.name) }}
+                    style={styles.avatar}
+                  />
+                )}
               </View>
               <Text style={styles.brotherName}>{item.name}</Text>
-              {item.chapter && (
-                <Text style={styles.chapterName}>{item.chapter}</Text>
+              {/* Role badges - all featured brothers are member sellers */}
+              <View style={styles.badgesContainer}>
+                <UserRoleBadges
+                  is_member={true}
+                  is_seller={true}
+                  is_promoter={false}
+                  is_steward={false}
+                  size="sm"
+                />
+              </View>
+              {item.chapter_name && (
+                <Text style={styles.chapterName}>{item.chapter_name}</Text>
               )}
               <TouchableOpacity
                 style={styles.shopButton}
@@ -191,8 +166,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: COLORS.midnightNavy,
-    marginBottom: 4,
+    marginBottom: 8,
     textAlign: 'center',
+  },
+  badgesContainer: {
+    marginBottom: 8,
+    alignItems: 'center',
   },
   chapterName: {
     fontSize: 12,

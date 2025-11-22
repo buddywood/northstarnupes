@@ -112,6 +112,46 @@ router.get('/', async (req: Request, res: Response) => {
   }
 });
 
+// Get upcoming events (next 5 events)
+router.get('/upcoming', async (req: Request, res: Response) => {
+  try {
+    const result = await pool.query(
+      `SELECT 
+        e.id,
+        e.promoter_id,
+        e.title,
+        e.description,
+        e.event_date,
+        e.location,
+        e.city,
+        e.state,
+        e.image_url,
+        e.sponsored_chapter_id,
+        e.ticket_price_cents,
+        e.max_attendees,
+        e.created_at,
+        e.updated_at,
+        p.name as promoter_name,
+        p.email as promoter_email,
+        p.fraternity_member_id as promoter_fraternity_member_id,
+        p.sponsoring_chapter_id as promoter_sponsoring_chapter_id,
+        c.name as chapter_name,
+        CASE WHEN p.fraternity_member_id IS NOT NULL THEN true ELSE false END as is_fraternity_member
+      FROM events e
+      JOIN promoters p ON e.promoter_id = p.id
+      LEFT JOIN chapters c ON e.sponsored_chapter_id = c.id
+      WHERE p.status = 'APPROVED' AND e.event_date >= NOW()
+      ORDER BY e.event_date ASC
+      LIMIT 5`
+    );
+    
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching upcoming events:', error);
+    res.status(500).json({ error: 'Failed to fetch upcoming events' });
+  }
+});
+
 router.get('/:id', async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id);
