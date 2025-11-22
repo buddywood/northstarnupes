@@ -7,7 +7,6 @@ import {
   ActivityIndicator,
   TouchableOpacity,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS } from '../lib/constants';
 import { API_URL } from '../lib/constants';
 import ScreenHeader from './ScreenHeader';
@@ -40,10 +39,19 @@ export default function CollectionsScreen({
     const loadSellers = async () => {
       try {
         setLoading(true);
-        const res = await fetch(`${API_URL}/api/sellers`);
+        // Use the collections endpoint which works and includes product counts
+        const res = await fetch(`${API_URL}/api/sellers/collections`);
         if (!res.ok) throw new Error('Failed to fetch sellers');
         const data = await res.json();
-        setSellers(data.filter((s: any) => s.status === 'APPROVED'));
+        // Map the data to match our interface (collections endpoint includes products array)
+        const sellersList = data.map((seller: any) => ({
+          id: seller.id,
+          business_name: seller.business_name,
+          headshot_url: seller.headshot_url,
+          social_links: seller.social_links,
+          product_count: seller.products?.length || parseInt(seller.product_count) || 0,
+        }));
+        setSellers(sellersList);
       } catch (error) {
         console.error('Error loading sellers:', error);
       } finally {
@@ -56,7 +64,7 @@ export default function CollectionsScreen({
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <View style={styles.container}>
         <ScreenHeader
           title="Seller Collections"
           onBack={onBack}
@@ -68,12 +76,12 @@ export default function CollectionsScreen({
           <ActivityIndicator size="large" color={COLORS.crimson} />
           <Text style={styles.loadingText}>Loading collections...</Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <ScreenHeader
         title="Seller Collections"
         onBack={onBack}
@@ -115,7 +123,7 @@ export default function CollectionsScreen({
           </View>
         )}
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -129,7 +137,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 16,
-    paddingBottom: 24,
+    paddingBottom: 80, // Extra padding for bottom tab bar
   },
   loadingContainer: {
     flex: 1,

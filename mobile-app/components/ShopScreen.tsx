@@ -4,10 +4,8 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  FlatList,
   ActivityIndicator,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS } from '../lib/constants';
 import { fetchProducts, Product } from '../lib/api';
 import ProductCard from './ProductCard';
@@ -47,7 +45,7 @@ export default function ShopScreen({
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <View style={styles.container}>
         <ScreenHeader
           title="Shop"
           onBack={onBack}
@@ -59,12 +57,12 @@ export default function ShopScreen({
           <ActivityIndicator size="large" color={COLORS.crimson} />
           <Text style={styles.loadingText}>Loading products...</Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <ScreenHeader
         title="Shop"
         onBack={onBack}
@@ -83,23 +81,22 @@ export default function ShopScreen({
           </View>
         ) : (
           <View style={styles.productsContainer}>
-            <FlatList
-              data={products}
-              renderItem={({ item }) => (
+            <View style={styles.productsGrid}>
+              {products.map((item) => (
                 <ProductCard
+                  key={item.id.toString()}
                   product={item}
-                  onPress={() => onProductPress(item)}
+                  onPress={() => {
+                    console.log('ShopScreen: Product pressed', item.id);
+                    onProductPress(item);
+                  }}
                 />
-              )}
-              keyExtractor={(item) => item.id.toString()}
-              numColumns={2}
-              columnWrapperStyle={styles.row}
-              scrollEnabled={false}
-            />
+              ))}
+            </View>
           </View>
         )}
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -113,7 +110,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 16,
-    paddingBottom: 24,
+    paddingBottom: 80, // Extra padding for bottom tab bar
   },
   loadingContainer: {
     flex: 1,
@@ -140,7 +137,9 @@ const styles = StyleSheet.create({
   productsContainer: {
     width: '100%',
   },
-  row: {
+  productsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
   },
 });

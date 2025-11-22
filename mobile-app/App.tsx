@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, ScrollView } from 'react-native';
+import { StyleSheet, ScrollView, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import * as SplashScreen from 'expo-splash-screen';
 import { COLORS } from './lib/constants';
@@ -12,19 +12,27 @@ import ImpactBanner from './components/ImpactBanner';
 import FeaturedBrothers from './components/FeaturedBrothers';
 import EventsSection from './components/EventsSection';
 import ProductDetail from './components/ProductDetail';
+import StewardListingDetail from './components/StewardListingDetail';
 import ShopScreen from './components/ShopScreen';
 import CollectionsScreen from './components/CollectionsScreen';
 import StewardMarketplaceScreen from './components/StewardMarketplaceScreen';
+import SellersScreen from './components/SellersScreen';
+import ProfileScreen from './components/ProfileScreen';
+import MemberSetupScreen from './components/MemberSetupScreen';
+import SellerSetupScreen from './components/SellerSetupScreen';
+import BottomTabBar from './components/BottomTabBar';
 import { Product, Event, StewardListing } from './lib/api';
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
 
-type Screen = 'home' | 'shop' | 'collections' | 'steward-marketplace';
+type Screen = 'home' | 'shop' | 'collections' | 'steward-marketplace' | 'profile' | 'member-setup' | 'seller-setup';
 
 export default function App() {
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
+  const [selectedListingId, setSelectedListingId] = useState<number | null>(null);
   const [currentScreen, setCurrentScreen] = useState<Screen>('home');
+  const [profileInitialMode, setProfileInitialMode] = useState<'login' | 'register'>('login');
 
   useEffect(() => {
     // Hide the splash screen after the app is ready
@@ -59,6 +67,7 @@ export default function App() {
     setCurrentScreen('steward-marketplace');
   };
 
+
   const handleBackToHome = () => {
     setCurrentScreen('home');
   };
@@ -69,15 +78,25 @@ export default function App() {
   };
 
   const handleBecomeMemberPress = () => {
-    console.log('Become Member pressed');
+    setCurrentScreen('member-setup');
   };
 
   const handleBecomeSellerPress = () => {
-    console.log('Become Seller pressed');
+    setCurrentScreen('seller-setup');
+  };
+
+  const handleSellerSetupContinue = (chapterId: number) => {
+    // TODO: Navigate to full seller application form with chapterId
+    // For now, just show an alert
+    const webUrl = process.env.EXPO_PUBLIC_WEB_URL || 'http://localhost:3000';
+    alert(`Would navigate to application form with chapter ${chapterId}. For now, please complete the application on the web at ${webUrl}/apply?sponsoring_chapter_id=${chapterId}`);
+    setCurrentScreen('home');
   };
 
   const handleBecomePromoterPress = () => {
-    console.log('Become Promoter pressed');
+    // For guests, redirect to member-setup (they need to be a member first)
+    // For authenticated users, could navigate to promoter-setup in the future
+    setCurrentScreen('member-setup');
   };
 
   const handleBecomeStewardPress = () => {
@@ -85,6 +104,7 @@ export default function App() {
   };
 
   const handleProductPress = (product: Product) => {
+    console.log('App: handleProductPress called', product.id, product.name);
     // Show product detail modal
     setSelectedProductId(product.id);
   };
@@ -135,11 +155,38 @@ export default function App() {
           <StewardMarketplaceScreen
             onBack={handleBackToHome}
             onListingPress={(listing: StewardListing) => {
-              // TODO: Handle steward listing press - show detail modal
-              console.log('Steward listing pressed:', listing.id);
+              setSelectedListingId(listing.id);
             }}
             onSearchPress={handleSearchPress}
             onUserPress={handleUserPress}
+          />
+        );
+      case 'profile':
+        return (
+          <ProfileScreen
+            onBack={handleBackToHome}
+            initialMode={profileInitialMode}
+          />
+        );
+      case 'member-setup':
+        return (
+          <MemberSetupScreen
+            onBack={handleBackToHome}
+            onStartRegistration={() => {
+              setProfileInitialMode('register');
+              setCurrentScreen('profile');
+            }}
+            onLogin={() => {
+              setProfileInitialMode('login');
+              setCurrentScreen('profile');
+            }}
+          />
+        );
+      case 'seller-setup':
+        return (
+          <SellerSetupScreen
+            onBack={handleBackToHome}
+            onContinue={handleSellerSetupContinue}
           />
         );
       case 'home':
@@ -183,18 +230,35 @@ export default function App() {
   return (
     <AuthProvider>
       <SafeAreaProvider>
-        <SafeAreaView style={styles.container}>
+        <SafeAreaView style={styles.container} edges={['top']}>
           <StatusBar style="auto" />
-          {renderScreen()}
+          <View style={styles.contentWrapper}>
+            {renderScreen()}
+          </View>
 
-        {/* Product Detail Modal */}
-        {selectedProductId !== null && (
-          <ProductDetail
-            productId={selectedProductId}
-            onClose={() => setSelectedProductId(null)}
-            onSellerPress={handleSellerPress}
+          {/* Bottom Tab Bar */}
+          <BottomTabBar
+            currentScreen={currentScreen}
+            onScreenChange={setCurrentScreen}
           />
-        )}
+
+          {/* Product Detail Modal */}
+          {selectedProductId !== null && (
+            <ProductDetail
+              productId={selectedProductId}
+              onClose={() => setSelectedProductId(null)}
+              onSellerPress={handleSellerPress}
+            />
+          )}
+
+          {/* Steward Listing Detail Modal */}
+          {selectedListingId !== null && (
+            <StewardListingDetail
+              listingId={selectedListingId}
+              onClose={() => setSelectedListingId(null)}
+              onSellerPress={handleSellerPress}
+            />
+          )}
         </SafeAreaView>
       </SafeAreaProvider>
     </AuthProvider>
@@ -205,6 +269,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.cream,
+  },
+  contentWrapper: {
+    flex: 1,
   },
   scrollView: {
     flex: 1,

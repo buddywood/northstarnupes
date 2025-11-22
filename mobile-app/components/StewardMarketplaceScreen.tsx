@@ -4,10 +4,8 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  FlatList,
   ActivityIndicator,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS } from '../lib/constants';
 import { getStewardMarketplacePublic, StewardListing } from '../lib/api';
 import ProductCard from './ProductCard';
@@ -63,7 +61,7 @@ export default function StewardMarketplaceScreen({
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <View style={styles.container}>
         <ScreenHeader
           title="Steward Marketplace"
           onBack={onBack}
@@ -75,12 +73,12 @@ export default function StewardMarketplaceScreen({
           <ActivityIndicator size="large" color={COLORS.crimson} />
           <Text style={styles.loadingText}>Loading legacy items...</Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <ScreenHeader
         title="Steward Marketplace"
         onBack={onBack}
@@ -106,24 +104,23 @@ export default function StewardMarketplaceScreen({
           </View>
         ) : (
           <View style={styles.listingsContainer}>
-            <FlatList
-              data={listings}
-              renderItem={({ item }) => (
+            <View style={styles.listingsGrid}>
+              {listings.map((item) => (
                 <ProductCard
+                  key={item.id.toString()}
                   product={convertListingToProduct(item)}
-                  onPress={() => onListingPress?.(item)}
+                  onPress={() => {
+                    console.log('StewardMarketplaceScreen: Listing pressed', item.id);
+                    onListingPress?.(item);
+                  }}
                   isStewardItem={true}
                 />
-              )}
-              keyExtractor={(item) => item.id.toString()}
-              numColumns={2}
-              columnWrapperStyle={styles.row}
-              scrollEnabled={false}
-            />
+              ))}
+            </View>
           </View>
         )}
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -137,7 +134,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 16,
-    paddingBottom: 24,
+    paddingBottom: 80, // Extra padding for bottom tab bar
   },
   loadingContainer: {
     flex: 1,
@@ -176,7 +173,9 @@ const styles = StyleSheet.create({
   listingsContainer: {
     width: '100%',
   },
-  row: {
+  listingsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
   },
 });

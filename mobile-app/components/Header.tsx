@@ -1,20 +1,21 @@
-import React, { useEffect, useState } from 'react';
-import { 
-  View, 
-  Text, 
-  TouchableOpacity, 
-  StyleSheet, 
-  Image, 
-  Linking, 
-  Animated, 
-  TextInput, 
-  Modal, 
+import React, { useEffect, useState } from "react";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Image,
+  Linking,
+  Animated,
+  TextInput,
+  Modal,
   ScrollView,
-  ActivityIndicator 
-} from 'react-native';
-import { COLORS } from '../lib/constants';
-import { useAuth } from '../lib/auth';
-import { searchPublicItems, Product, Event } from '../lib/api';
+  ActivityIndicator,
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { COLORS } from "../lib/constants";
+import { useAuth } from "../lib/auth";
+import { searchPublicItems, Product, Event } from "../lib/api";
 
 interface HeaderProps {
   onMenuPress?: () => void;
@@ -28,12 +29,13 @@ interface HeaderProps {
   onCollectionsPress?: () => void;
   onStewardMarketplacePress?: () => void;
   onShopPress?: () => void;
+  onSellersPress?: () => void;
   onNotificationPress?: () => void;
   notificationCount?: number;
 }
 
-export default function Header({ 
-  onMenuPress, 
+export default function Header({
+  onMenuPress,
   onUserPress,
   onBecomeMemberPress,
   onBecomeSellerPress,
@@ -44,13 +46,14 @@ export default function Header({
   onCollectionsPress,
   onStewardMarketplacePress,
   onShopPress,
+  onSellersPress,
   onNotificationPress,
   notificationCount = 0,
 }: HeaderProps) {
   const { isGuest, user } = useAuth();
   const [menuVisible, setMenuVisible] = React.useState(false);
   const [menuAnimation] = React.useState(new Animated.Value(0));
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const [searchVisible, setSearchVisible] = useState(false);
   const [searchResults, setSearchResults] = useState<{
     products: Product[];
@@ -61,7 +64,9 @@ export default function Header({
   const handleUserPress = () => {
     if (isGuest) {
       // Redirect to login
-      Linking.openURL(`${process.env.EXPO_PUBLIC_WEB_URL || 'http://localhost:3000'}/login`);
+      Linking.openURL(
+        `${process.env.EXPO_PUBLIC_WEB_URL || "http://localhost:3000"}/login`
+      );
     } else {
       onUserPress?.();
     }
@@ -70,31 +75,35 @@ export default function Header({
   const getInitials = () => {
     if (user?.name) {
       return user.name
-        .split(' ')
-        .map(n => n[0])
-        .join('')
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
         .toUpperCase()
         .slice(0, 2);
     }
     if (user?.email) {
       return user.email[0].toUpperCase();
     }
-    return 'U';
+    return "U";
   };
 
   const userRole = user?.role;
   const memberId = user?.memberId;
-  const showBecomeMember = isGuest || (userRole === 'SELLER' && !memberId);
-  const showBecomeSeller = isGuest || userRole !== 'SELLER';
-  const showBecomePromoter = isGuest || userRole !== 'PROMOTER';
-  const showBecomeSteward = isGuest || userRole !== 'STEWARD';
+  const showBecomeMember = isGuest || (userRole === "SELLER" && !memberId);
+  const showBecomeSeller = isGuest || userRole !== "SELLER";
+  const showBecomePromoter = isGuest || userRole !== "PROMOTER";
+  const showBecomeSteward = isGuest || userRole !== "STEWARD";
 
   const handleBecomeMember = () => {
     setMenuVisible(false);
     if (onBecomeMemberPress) {
       onBecomeMemberPress();
     } else {
-      Linking.openURL(`${process.env.EXPO_PUBLIC_WEB_URL || 'http://localhost:3000'}/member-setup`);
+      Linking.openURL(
+        `${
+          process.env.EXPO_PUBLIC_WEB_URL || "http://localhost:3000"
+        }/member-setup`
+      );
     }
   };
 
@@ -103,7 +112,11 @@ export default function Header({
     if (onBecomeSellerPress) {
       onBecomeSellerPress();
     } else {
-      Linking.openURL(`${process.env.EXPO_PUBLIC_WEB_URL || 'http://localhost:3000'}/seller-setup-intro`);
+      Linking.openURL(
+        `${
+          process.env.EXPO_PUBLIC_WEB_URL || "http://localhost:3000"
+        }/seller-setup-intro`
+      );
     }
   };
 
@@ -114,7 +127,11 @@ export default function Header({
     } else if (onBecomePromoterPress) {
       onBecomePromoterPress();
     } else {
-      Linking.openURL(`${process.env.EXPO_PUBLIC_WEB_URL || 'http://localhost:3000'}/promoter-setup`);
+      Linking.openURL(
+        `${
+          process.env.EXPO_PUBLIC_WEB_URL || "http://localhost:3000"
+        }/promoter-setup`
+      );
     }
   };
 
@@ -125,7 +142,11 @@ export default function Header({
     } else if (onBecomeStewardPress) {
       onBecomeStewardPress();
     } else {
-      Linking.openURL(`${process.env.EXPO_PUBLIC_WEB_URL || 'http://localhost:3000'}/steward-setup`);
+      Linking.openURL(
+        `${
+          process.env.EXPO_PUBLIC_WEB_URL || "http://localhost:3000"
+        }/steward-setup`
+      );
     }
   };
 
@@ -156,7 +177,7 @@ export default function Header({
         const results = await searchPublicItems(searchQuery);
         setSearchResults(results);
       } catch (error) {
-        console.error('Search error:', error);
+        console.error("Search error:", error);
         setSearchResults({ products: [], events: [] });
       } finally {
         setSearchLoading(false);
@@ -172,7 +193,7 @@ export default function Header({
 
   const handleSearchClose = () => {
     setSearchVisible(false);
-    setSearchQuery('');
+    setSearchQuery("");
     setSearchResults({ products: [], events: [] });
   };
 
@@ -182,7 +203,7 @@ export default function Header({
         {/* Logo */}
         <View style={styles.logoContainer}>
           <Image
-            source={require('../assets/icon.png')}
+            source={require("../assets/icon.png")}
             style={styles.logoIcon}
             resizeMode="contain"
           />
@@ -220,7 +241,9 @@ export default function Header({
                 {notificationCount > 0 && (
                   <View style={styles.notificationBadge}>
                     <Text style={styles.notificationBadgeText}>
-                      {notificationCount > 99 ? '99+' : notificationCount.toString()}
+                      {notificationCount > 99
+                        ? "99+"
+                        : notificationCount.toString()}
                     </Text>
                   </View>
                 )}
@@ -235,9 +258,7 @@ export default function Header({
               activeOpacity={0.7}
             >
               <View style={styles.avatar}>
-                <Text style={styles.avatarText}>
-                  {getInitials()}
-                </Text>
+                <Text style={styles.avatarText}>{getInitials()}</Text>
               </View>
             </TouchableOpacity>
           )}
@@ -248,9 +269,82 @@ export default function Header({
             activeOpacity={0.7}
           >
             <View style={styles.menuIcon}>
-              <View style={styles.menuLine} />
-              <View style={styles.menuLine} />
-              <View style={styles.menuLine} />
+              {/* Line 1 */}
+              <Animated.View
+                style={[
+                  styles.menuLine,
+                  {
+                    backgroundColor: COLORS.crimson,
+                    top: menuAnimation.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0, 6],
+                    }),
+                    transform: [
+                      {
+                        rotate: menuAnimation.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: ["0deg", "45deg"],
+                        }),
+                      },
+                    ],
+                  },
+                ]}
+              />
+              {/* Line 2 */}
+              <Animated.View
+                style={[
+                  styles.menuLine,
+                  {
+                    backgroundColor: COLORS.crimson,
+                    top: menuAnimation.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [6, 6],
+                    }),
+                    opacity: menuAnimation.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [1, 0],
+                    }),
+                  },
+                ]}
+              />
+              {/* Line 3 */}
+              <Animated.View
+                style={[
+                  styles.menuLine,
+                  {
+                    backgroundColor: COLORS.crimson,
+                    top: menuAnimation.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [12, 6],
+                    }),
+                    opacity: menuAnimation.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [1, 0],
+                    }),
+                  },
+                ]}
+              />
+              {/* Line 4 */}
+              <Animated.View
+                style={[
+                  styles.menuLine,
+                  {
+                    backgroundColor: COLORS.crimson,
+                    top: menuAnimation.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [18, 6],
+                    }),
+                    transform: [
+                      {
+                        rotate: menuAnimation.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: ["0deg", "-45deg"],
+                        }),
+                      },
+                    ],
+                  },
+                ]}
+              />
             </View>
           </TouchableOpacity>
         </View>
@@ -271,7 +365,7 @@ export default function Header({
                 <TextInput
                   style={styles.searchModalInput}
                   placeholder="Search products, events..."
-                  placeholderTextColor={COLORS.midnightNavy + '80'}
+                  placeholderTextColor={COLORS.midnightNavy + "80"}
                   value={searchQuery}
                   onChangeText={setSearchQuery}
                   autoFocus={true}
@@ -317,7 +411,9 @@ export default function Header({
                         activeOpacity={0.7}
                       >
                         <View style={styles.searchResultContent}>
-                          <Text style={styles.searchResultTitle}>{product.name}</Text>
+                          <Text style={styles.searchResultTitle}>
+                            {product.name}
+                          </Text>
                           <Text style={styles.searchResultSubtitle}>
                             ${(product.price_cents / 100).toFixed(2)}
                             {product.seller_name && ` • ${product.seller_name}`}
@@ -346,7 +442,9 @@ export default function Header({
                         activeOpacity={0.7}
                       >
                         <View style={styles.searchResultContent}>
-                          <Text style={styles.searchResultTitle}>{event.title}</Text>
+                          <Text style={styles.searchResultTitle}>
+                            {event.title}
+                          </Text>
                           <Text style={styles.searchResultSubtitle}>
                             {new Date(event.event_date).toLocaleDateString()}
                             {event.location && ` • ${event.location}`}
@@ -359,15 +457,15 @@ export default function Header({
                 )}
 
                 {/* No Results */}
-                {searchResults.products.length === 0 && 
-                 searchResults.events.length === 0 && 
-                 searchQuery.trim() && (
-                  <View style={styles.searchNoResults}>
-                    <Text style={styles.searchNoResultsText}>
-                      {`No results found for "${searchQuery}"`}
-                    </Text>
-                  </View>
-                )}
+                {searchResults.products.length === 0 &&
+                  searchResults.events.length === 0 &&
+                  searchQuery.trim() && (
+                    <View style={styles.searchNoResults}>
+                      <Text style={styles.searchNoResultsText}>
+                        {`No results found for "${searchQuery}"`}
+                      </Text>
+                    </View>
+                  )}
               </ScrollView>
             ) : (
               <View style={styles.searchEmptyContainer}>
@@ -387,17 +485,22 @@ export default function Header({
           {
             maxHeight: menuAnimation.interpolate({
               inputRange: [0, 1],
-              outputRange: [0, 400],
+              outputRange: [0, 600],
             }),
             opacity: menuAnimation,
           },
         ]}
-        pointerEvents={menuVisible ? 'auto' : 'none'}
+        pointerEvents={menuVisible ? "auto" : "none"}
       >
+        <ScrollView
+          style={styles.menuScrollView}
+          showsVerticalScrollIndicator={true}
+          nestedScrollEnabled={true}
+        >
           {/* Shop & Browse Section */}
           <View style={styles.menuSection}>
             <Text style={styles.menuSectionTitle}>Shop & Browse</Text>
-            
+
             {onShopPress && (
               <TouchableOpacity
                 onPress={() => {
@@ -426,6 +529,20 @@ export default function Header({
               </TouchableOpacity>
             )}
 
+            {onSellersPress && (
+              <TouchableOpacity
+                onPress={() => {
+                  setMenuVisible(false);
+                  onSellersPress();
+                }}
+                style={styles.menuItem}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.menuItemText}>All Sellers</Text>
+                <Text style={styles.menuItemArrow}>→</Text>
+              </TouchableOpacity>
+            )}
+
             {onStewardMarketplacePress && (
               <TouchableOpacity
                 onPress={() => {
@@ -444,7 +561,7 @@ export default function Header({
           {/* Get Started Section */}
           <View style={styles.menuSection}>
             <Text style={styles.menuSectionTitle}>Get Started</Text>
-            
+
             {showBecomeMember && (
               <TouchableOpacity
                 onPress={handleBecomeMember}
@@ -489,7 +606,8 @@ export default function Header({
               </TouchableOpacity>
             )}
           </View>
-        </Animated.View>
+        </ScrollView>
+      </Animated.View>
     </>
   );
 }
@@ -501,20 +619,20 @@ const styles = StyleSheet.create({
     borderBottomColor: COLORS.frostGray,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     gap: 8,
   },
   logoContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   searchContainer: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     backgroundColor: COLORS.white,
     borderRadius: 24,
     paddingHorizontal: 16,
@@ -523,7 +641,7 @@ const styles = StyleSheet.create({
     minWidth: 120,
     borderWidth: 1,
     borderColor: COLORS.frostGray,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 2,
@@ -532,7 +650,7 @@ const styles = StyleSheet.create({
   searchPlaceholder: {
     flex: 1,
     fontSize: 14,
-    color: COLORS.midnightNavy + '80',
+    color: COLORS.midnightNavy + "80",
   },
   searchIconContainer: {
     marginLeft: 8,
@@ -540,50 +658,50 @@ const styles = StyleSheet.create({
   searchIcon: {
     width: 20,
     height: 20,
-    position: 'relative',
+    position: "relative",
   },
   searchIconCircle: {
     width: 12,
     height: 12,
     borderRadius: 6,
     borderWidth: 1.5,
-    borderColor: COLORS.midnightNavy + '60',
-    position: 'absolute',
+    borderColor: COLORS.midnightNavy + "60",
+    position: "absolute",
     top: 0,
     left: 0,
   },
   searchIconHandle: {
     width: 6,
     height: 1.5,
-    backgroundColor: COLORS.midnightNavy + '60',
-    position: 'absolute',
+    backgroundColor: COLORS.midnightNavy + "60",
+    position: "absolute",
     bottom: 2,
     right: 2,
-    transform: [{ rotate: '45deg' }],
+    transform: [{ rotate: "45deg" }],
   },
   rightSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
   },
   notificationButton: {
     width: 40,
     height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   notificationIconContainer: {
-    position: 'relative',
+    position: "relative",
     width: 24,
     height: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   notificationIcon: {
     fontSize: 20,
   },
   notificationBadge: {
-    position: 'absolute',
+    position: "absolute",
     top: -4,
     right: -4,
     backgroundColor: COLORS.crimson,
@@ -591,16 +709,16 @@ const styles = StyleSheet.create({
     minWidth: 18,
     height: 18,
     paddingHorizontal: 4,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     borderWidth: 2,
     borderColor: COLORS.white,
   },
   notificationBadgeText: {
     color: COLORS.white,
     fontSize: 10,
-    fontWeight: 'bold',
-    textAlign: 'center',
+    fontWeight: "bold",
+    textAlign: "center",
   },
   logoIcon: {
     width: 24,
@@ -609,7 +727,7 @@ const styles = StyleSheet.create({
   },
   logoText: {
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: COLORS.crimson,
   },
   userButton: {
@@ -620,13 +738,13 @@ const styles = StyleSheet.create({
     height: 32,
     borderRadius: 16,
     backgroundColor: COLORS.crimson,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   avatarText: {
     color: COLORS.white,
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   menuButton: {
     padding: 8,
@@ -634,41 +752,52 @@ const styles = StyleSheet.create({
   },
   menuIcon: {
     width: 24,
-    height: 18,
-    justifyContent: 'space-between',
+    height: 20,
+    justifyContent: "center",
+    alignItems: "center",
+    position: "relative",
+    overflow: "visible", // ← ADD THIS
   },
+
   menuLine: {
     height: 2,
     backgroundColor: COLORS.midnightNavy,
     borderRadius: 1,
+    width: 24,
+    position: "absolute",
+    left: 0,
+    top: 0,
   },
   accordionMenu: {
     backgroundColor: COLORS.white,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.frostGray,
-    overflow: 'hidden',
-    shadowColor: '#000',
+    overflow: "hidden",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+  },
+  menuScrollView: {
+    maxHeight: 600,
   },
   menuSection: {
     padding: 20,
   },
   menuSectionTitle: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
     color: COLORS.midnightNavy,
     opacity: 0.6,
     marginBottom: 12,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     letterSpacing: 0.5,
   },
   menuItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingVertical: 16,
     paddingHorizontal: 16,
     borderRadius: 12,
@@ -677,17 +806,17 @@ const styles = StyleSheet.create({
   },
   menuItemText: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     color: COLORS.midnightNavy,
   },
   menuItemArrow: {
     fontSize: 18,
     color: COLORS.crimson,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   searchModalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
   },
   searchModalContainer: {
     flex: 1,
@@ -695,15 +824,15 @@ const styles = StyleSheet.create({
     marginTop: 100,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.25,
     shadowRadius: 10,
     elevation: 10,
   },
   searchHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: 16,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.frostGray,
@@ -711,8 +840,8 @@ const styles = StyleSheet.create({
   },
   searchInputWrapper: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: COLORS.cream,
     borderRadius: 20,
     paddingHorizontal: 16,
@@ -730,39 +859,39 @@ const styles = StyleSheet.create({
   searchModalIcon: {
     width: 20,
     height: 20,
-    position: 'relative',
+    position: "relative",
   },
   searchModalIconCircle: {
     width: 12,
     height: 12,
     borderRadius: 6,
     borderWidth: 1.5,
-    borderColor: COLORS.midnightNavy + '60',
-    position: 'absolute',
+    borderColor: COLORS.midnightNavy + "60",
+    position: "absolute",
     top: 0,
     left: 0,
   },
   searchModalIconHandle: {
     width: 6,
     height: 1.5,
-    backgroundColor: COLORS.midnightNavy + '60',
-    position: 'absolute',
+    backgroundColor: COLORS.midnightNavy + "60",
+    position: "absolute",
     bottom: 2,
     right: 2,
-    transform: [{ rotate: '45deg' }],
+    transform: [{ rotate: "45deg" }],
   },
   searchCloseButton: {
     width: 36,
     height: 36,
     borderRadius: 18,
     backgroundColor: COLORS.frostGray,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   searchCloseButtonText: {
     fontSize: 20,
     color: COLORS.midnightNavy,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   searchResultsContainer: {
     flex: 1,
@@ -770,8 +899,8 @@ const styles = StyleSheet.create({
   },
   searchLoadingContainer: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     padding: 40,
   },
   searchLoadingText: {
@@ -784,14 +913,14 @@ const styles = StyleSheet.create({
   },
   searchSectionTitle: {
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: COLORS.midnightNavy,
     marginBottom: 12,
   },
   searchResultItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingVertical: 12,
     paddingHorizontal: 16,
     backgroundColor: COLORS.cream,
@@ -803,7 +932,7 @@ const styles = StyleSheet.create({
   },
   searchResultTitle: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     color: COLORS.midnightNavy,
     marginBottom: 4,
   },
@@ -815,30 +944,29 @@ const styles = StyleSheet.create({
   searchResultArrow: {
     fontSize: 18,
     color: COLORS.crimson,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginLeft: 12,
   },
   searchNoResults: {
     padding: 40,
-    alignItems: 'center',
+    alignItems: "center",
   },
   searchNoResultsText: {
     fontSize: 16,
     color: COLORS.midnightNavy,
     opacity: 0.6,
-    textAlign: 'center',
+    textAlign: "center",
   },
   searchEmptyContainer: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     padding: 40,
   },
   searchEmptyText: {
     fontSize: 16,
     color: COLORS.midnightNavy,
     opacity: 0.6,
-    textAlign: 'center',
+    textAlign: "center",
   },
 });
-

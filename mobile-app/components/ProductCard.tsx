@@ -21,10 +21,9 @@ export default function ProductCard({ product, onPress, isStewardItem = false }:
     : product.seller_business_name || product.seller_name;
 
   const handlePress = () => {
-    // Disable press for steward items when guest
-    if (isStewardItem && isGuest) {
-      return;
-    }
+    console.log('ProductCard pressed:', product.id, product.name, 'isStewardItem:', isStewardItem, 'isGuest:', isGuest);
+    // Allow guests to view steward items (they just can't claim)
+    console.log('Calling onPress');
     onPress?.();
   };
 
@@ -32,11 +31,11 @@ export default function ProductCard({ product, onPress, isStewardItem = false }:
     <TouchableOpacity
       onPress={handlePress}
       style={[styles.container, isStewardItem && isGuest && styles.disabledContainer]}
-      activeOpacity={isStewardItem && isGuest ? 1 : 0.7}
-      disabled={isStewardItem && isGuest}
+      activeOpacity={0.7}
+      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
     >
       {/* Product Image */}
-      <View style={styles.imageContainer}>
+      <View style={styles.imageContainer} pointerEvents="none">
         {product.image_url ? (
           <Image
             source={{ uri: product.image_url }}
@@ -52,13 +51,13 @@ export default function ProductCard({ product, onPress, isStewardItem = false }:
 
       {/* Members Only badge for steward items */}
       {isStewardItem && (
-        <View style={styles.membersOnlyBadge}>
+        <View style={styles.membersOnlyBadge} pointerEvents="none">
           <Text style={styles.membersOnlyText}>Members Only</Text>
         </View>
       )}
 
       {/* Product Info */}
-      <View style={styles.infoContainer}>
+      <View style={styles.infoContainer} pointerEvents="none">
         <Text style={styles.productName} numberOfLines={2}>
           {product.name}
         </Text>

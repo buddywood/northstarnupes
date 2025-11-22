@@ -5,15 +5,15 @@ import {
   TouchableOpacity,
   StyleSheet,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../lib/constants';
 import { useAuth } from '../lib/auth';
 
 interface ScreenHeaderProps {
   title: string;
   onBack?: () => void;
-  showBack?: boolean;
   rightAction?: {
-    icon?: string;
+    icon?: keyof typeof Ionicons.glyphMap;
     label?: string;
     onPress: () => void;
   };
@@ -26,7 +26,6 @@ interface ScreenHeaderProps {
 export default function ScreenHeader({
   title,
   onBack,
-  showBack = true,
   rightAction,
   showSearch = false,
   onSearchPress,
@@ -54,7 +53,7 @@ export default function ScreenHeader({
     <View style={styles.container}>
       {/* Left Section - Back Button */}
       <View style={styles.leftSection}>
-        {showBack && onBack && (
+        {onBack && (
           <TouchableOpacity
             onPress={onBack}
             style={styles.backButton}
@@ -80,7 +79,11 @@ export default function ScreenHeader({
             style={styles.actionButton}
             activeOpacity={0.7}
           >
-            <Text style={styles.actionIcon}>🔍</Text>
+            <Ionicons
+              name="search-outline"
+              size={20}
+              color={COLORS.midnightNavy}
+            />
           </TouchableOpacity>
         )}
         
@@ -91,7 +94,11 @@ export default function ScreenHeader({
             activeOpacity={0.7}
           >
             {rightAction.icon ? (
-              <Text style={styles.actionIcon}>{rightAction.icon}</Text>
+              <Ionicons
+                name={rightAction.icon}
+                size={20}
+                color={COLORS.midnightNavy}
+              />
             ) : (
               <Text style={styles.actionText}>{rightAction.label}</Text>
             )}
@@ -170,9 +177,6 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.frostGray,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  actionIcon: {
-    fontSize: 18,
   },
   actionText: {
     fontSize: 14,

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { fetchProducts, Product } from '../lib/api';
 import { COLORS } from '../lib/constants';
 import ProductCard from './ProductCard';
@@ -52,20 +52,15 @@ export default function FeaturedProducts({ onProductPress }: FeaturedProductsPro
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Featured Products</Text>
-      <FlatList
-        data={products}
-        renderItem={({ item }) => (
+      <View style={styles.productsGrid}>
+        {products.map((item) => (
           <ProductCard
+            key={item.id.toString()}
             product={item}
             onPress={() => onProductPress?.(item)}
           />
-        )}
-        keyExtractor={(item) => item.id.toString()}
-        numColumns={2}
-        columnWrapperStyle={styles.row}
-        contentContainerStyle={styles.listContent}
-        scrollEnabled={false}
-      />
+        ))}
+      </View>
     </View>
   );
 }
@@ -83,11 +78,10 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     textAlign: 'center',
   },
-  row: {
+  productsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
-  },
-  listContent: {
-    paddingBottom: 8,
   },
   loadingContainer: {
     paddingVertical: 40,

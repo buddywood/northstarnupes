@@ -296,6 +296,49 @@ router.post('/apply', optionalAuthenticate, upload.fields([
   }
 });
 
+// Get all approved sellers (public endpoint)
+// Note: This must come after POST /apply to avoid route conflicts
+router.get('/', async (req: Request, res: Response) => {
+  try {
+    const result = await pool.query(
+      `SELECT 
+        s.id,
+        s.name,
+        s.business_name,
+        s.headshot_url,
+        s.sponsoring_chapter_id,
+        s.social_links,
+        s.description,
+        s.website,
+        s.status,
+        COUNT(p.id) FILTER (WHERE p.status = 'ACTIVE') as product_count
+      FROM sellers s
+      LEFT JOIN products p ON s.id = p.seller_id
+      WHERE s.status = 'APPROVED'
+      GROUP BY s.id, s.name, s.business_name, s.headshot_url, s.sponsoring_chapter_id, s.social_links, s.description, s.website, s.status
+      ORDER BY s.name ASC`
+    );
+    
+    // Parse social_links if it's a string
+    const sellers = result.rows.map((seller) => {
+      const socialLinks = typeof seller.social_links === 'string' 
+        ? JSON.parse(seller.social_links) 
+        : (seller.social_links || {});
+      
+      return {
+        ...seller,
+        social_links: socialLinks,
+        product_count: parseInt(seller.product_count) || 0,
+      };
+    });
+    
+    res.json(sellers);
+  } catch (error) {
+    console.error('Error fetching sellers:', error);
+    res.status(500).json({ error: 'Failed to fetch sellers' });
+  }
+});
+
 // Get all approved sellers with their products for collections page
 // Note: This must come after POST /apply to avoid route conflicts
 router.get('/collections', async (req: Request, res: Response) => {

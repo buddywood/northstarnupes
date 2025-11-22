@@ -107,6 +107,13 @@ export default function ProductDetail({
           title={product.name}
           onBack={onClose}
           showUser={false}
+          rightAction={{
+            icon: 'mail-outline',
+            onPress: () => {
+              // TODO: Implement contact seller functionality
+              console.log('Contact seller:', product.seller_id);
+            },
+          }}
         />
 
         <ScrollView
