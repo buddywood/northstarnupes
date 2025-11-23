@@ -9,7 +9,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
     <SessionProvider>
       <ThemeProvider>
         <CartProvider>
-          {children}
+        {children}
         </CartProvider>
       </ThemeProvider>
     </SessionProvider>

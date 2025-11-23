@@ -302,6 +302,8 @@ const testPromoters = [
     email: "promoter1@example.com",
     name: "Michael Brown",
     membership_number: "PROM-001",
+    initiated_season: "Fall",
+    initiated_year: 2018,
     social_links: {
       instagram: "@michaelbrown",
       twitter: "@michaelbrown",
@@ -312,6 +314,8 @@ const testPromoters = [
     email: "promoter2@example.com",
     name: "Robert Davis",
     membership_number: "PROM-002",
+    initiated_season: "Spring",
+    initiated_year: 2019,
     social_links: {
       instagram: "@robertdavis",
       linkedin: "robert-davis",
@@ -322,6 +326,8 @@ const testPromoters = [
     email: "promoter3@example.com",
     name: "William Taylor",
     membership_number: "PROM-003",
+    initiated_season: "Fall",
+    initiated_year: 2020,
     status: "PENDING" as const,
   },
 ];
@@ -542,6 +548,7 @@ async function seedStewardSellers(): Promise<void> {
 
     // Get or create steward sellers
     const stewardSellersList = [];
+    let stewardIndex = 0; // Track which steward this is (0-indexed)
     for (const stewardData of stewardSellers) {
       try {
         // Check if member already exists
@@ -568,11 +575,16 @@ async function seedStewardSellers(): Promise<void> {
             availableChapters[
               Math.floor(Math.random() * availableChapters.length)
             ];
+          // Generate random initiation season and year
+          const seasons = ["Fall", "Spring"];
+          const season = seasons[Math.floor(Math.random() * seasons.length)];
+          const year = 2015 + Math.floor(Math.random() * 10); // Random year between 2015-2024
+          
           const memberResult = await pool.query(
             `INSERT INTO fraternity_members (
               email, name, membership_number, registration_status, 
-              initiated_chapter_id, verification_status
-            ) VALUES ($1, $2, $3, $4, $5, 'VERIFIED')
+              initiated_chapter_id, initiated_season, initiated_year, verification_status
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'VERIFIED')
             RETURNING id`,
             [
               stewardData.email,
@@ -580,6 +592,8 @@ async function seedStewardSellers(): Promise<void> {
               stewardData.membership_number,
               "COMPLETE",
               initiatedChapter.id,
+              season,
+              year,
             ]
           );
           memberId = memberResult.rows[0].id;
@@ -594,8 +608,17 @@ async function seedStewardSellers(): Promise<void> {
         let stewardId: number;
         if (existingSteward.rows.length > 0) {
           stewardId = existingSteward.rows[0].id;
-          // Approve steward if not already approved
-          await updateStewardStatus(stewardId, "APPROVED");
+          // Approve first two stewards with verification status and date
+          if (stewardIndex < 2) {
+            await updateStewardStatus(stewardId, "APPROVED");
+            // Set verification_status to VERIFIED and verification_date for approved stewards
+            await pool.query(
+              "UPDATE stewards SET verification_status = 'VERIFIED', verification_date = CURRENT_TIMESTAMP WHERE id = $1",
+              [stewardId]
+            );
+          } else {
+            await updateStewardStatus(stewardId, "APPROVED");
+          }
         } else {
           // Create new steward
           const sponsoringChapter =
@@ -607,9 +630,20 @@ async function seedStewardSellers(): Promise<void> {
             sponsoring_chapter_id: sponsoringChapter.id,
           });
           stewardId = steward.id;
-          // Approve the steward
-          await updateStewardStatus(stewardId, "APPROVED");
+          // Approve first two stewards with verification status and date
+          if (stewardIndex < 2) {
+            await updateStewardStatus(stewardId, "APPROVED");
+            // Set verification_status to VERIFIED and verification_date for approved stewards
+            await pool.query(
+              "UPDATE stewards SET verification_status = 'VERIFIED', verification_date = CURRENT_TIMESTAMP WHERE id = $1",
+              [stewardId]
+            );
+          } else {
+            await updateStewardStatus(stewardId, "APPROVED");
+          }
         }
+        
+        stewardIndex++; // Increment for next iteration
 
         // Check if seller already exists
         const existingSeller = await pool.query(
@@ -643,9 +677,10 @@ async function seedStewardSellers(): Promise<void> {
             },
           });
           sellerId = seller.id;
-          // Approve the seller
-          await pool.query("UPDATE sellers SET status = $1 WHERE id = $2", [
+          // Approve the seller and set verification_status to VERIFIED
+          await pool.query("UPDATE sellers SET status = $1, verification_status = $2 WHERE id = $3", [
             "APPROVED",
+            "VERIFIED",
             sellerId,
           ]);
         }
@@ -807,6 +842,13 @@ async function seedProducts(): Promise<void> {
           seller.status = "APPROVED";
           console.log(`  ✓ Approved existing seller: ${sellerData.name}`);
         }
+        // Also ensure verification_status is VERIFIED if not already set (sellers start as VERIFIED)
+        if (seller.verification_status !== "VERIFIED") {
+          await pool.query("UPDATE sellers SET verification_status = $1 WHERE id = $2", [
+            "VERIFIED",
+            seller.id,
+          ]);
+        }
 
         // If seller exists but doesn't have a fraternity_member_id and should be a member, create/update member
         if (!seller.fraternity_member_id && sellerData.is_member) {
@@ -887,11 +929,16 @@ async function seedProducts(): Promise<void> {
             );
           } else {
             // Create new member
+            // Generate random initiation season and year
+            const seasons = ["Fall", "Spring"];
+            const season = seasons[Math.floor(Math.random() * seasons.length)];
+            const year = 2015 + Math.floor(Math.random() * 10); // Random year between 2015-2024
+            
             const memberResult = await pool.query(
               `INSERT INTO fraternity_members (
                 email, name, membership_number, registration_status, 
-                initiated_chapter_id, verification_status
-              ) VALUES ($1, $2, $3, $4, $5, 'VERIFIED')
+                initiated_chapter_id, initiated_season, initiated_year, verification_status
+              ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'VERIFIED')
               RETURNING id`,
               [
                 sellerData.email,
@@ -899,6 +946,8 @@ async function seedProducts(): Promise<void> {
                 sellerData.membership_number,
                 "COMPLETE",
                 initiatedChapter.id,
+                season,
+                year,
               ]
             );
             memberId = memberResult.rows[0].id;
@@ -920,9 +969,10 @@ async function seedProducts(): Promise<void> {
           fraternity_member_id: memberId,
         });
 
-        // Approve the seller
-        await pool.query("UPDATE sellers SET status = $1 WHERE id = $2", [
+        // Approve the seller and set verification_status to VERIFIED
+        await pool.query("UPDATE sellers SET status = $1, verification_status = $2 WHERE id = $3", [
           "APPROVED",
+          "VERIFIED",
           newSeller.id,
         ]);
 
@@ -1143,10 +1193,45 @@ async function seedPromoters(): Promise<void> {
       const randomChapter =
         availableChapters[Math.floor(Math.random() * availableChapters.length)];
 
-      // Create promoter
+      // Create or get fraternity member for promoter (required)
+      const existingMember = await pool.query(
+        "SELECT id FROM fraternity_members WHERE email = $1",
+        [promoterData.email]
+      );
+
+      let memberId: number;
+      if (existingMember.rows.length > 0) {
+        memberId = existingMember.rows[0].id;
+      } else {
+        // Create new member for promoter
+        const initiatedChapter =
+          availableChapters[
+            Math.floor(Math.random() * availableChapters.length)
+          ];
+        const memberResult = await pool.query(
+          `INSERT INTO fraternity_members (
+            email, name, membership_number, registration_status, 
+            initiated_chapter_id, initiated_season, initiated_year, verification_status
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'VERIFIED')
+          RETURNING id`,
+          [
+            promoterData.email,
+            promoterData.name,
+            promoterData.membership_number,
+            "COMPLETE",
+            initiatedChapter.id,
+            promoterData.initiated_season || "Fall",
+            promoterData.initiated_year || 2018,
+          ]
+        );
+        memberId = memberResult.rows[0].id;
+      }
+
+      // Create promoter with fraternity_member_id
       const promoter = await createPromoter({
         email: promoterData.email,
         name: promoterData.name,
+        fraternity_member_id: memberId,
         sponsoring_chapter_id: randomChapter.id,
         headshot_url: undefined,
         social_links: Object.fromEntries(

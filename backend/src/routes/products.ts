@@ -178,6 +178,17 @@ router.post('/', authenticate, upload.array('images', 10), async (req: Request, 
       is_kappa_branded: isKappaBranded,
     });
 
+    // Business rule: If seller has verification_status = 'VERIFIED' and adds a kappa branded product,
+    // change verification_status to 'PENDING' for review
+    if (isKappaBranded && seller.verification_status === 'VERIFIED') {
+      const { updateSellerVerification } = await import('../db/queries');
+      await updateSellerVerification(
+        seller.id,
+        'PENDING',
+        'Verification status changed to PENDING after adding Kappa branded product. Requires review.'
+      );
+    }
+
     // Upload additional images to product_images table
     if (imageFiles && imageFiles.length > 0) {
       for (let i = 0; i < imageFiles.length; i++) {

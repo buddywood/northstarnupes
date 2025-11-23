@@ -121,7 +121,7 @@ function ProfilePageContent() {
             
             // If still no memberId after checking backend, redirect based on role
             if (!userData.fraternity_member_id) {
-              if (userRole === 'CONSUMER') {
+              if (userRole === 'GUEST') {
                 console.log('Profile page: Backend has no fraternity_member_id, redirecting to register');
                 setIsRedirecting(true);
                 router.push('/register');
@@ -143,7 +143,7 @@ function ProfilePageContent() {
         if (memberId || (sessionData as any)?.user?.memberId) {
           console.log('Profile page: MemberId verified, loading profile...');
           loadProfile();
-        } else if (userRole === 'CONSUMER') {
+        } else if (userRole === 'GUEST') {
           console.log('Profile page: No memberId found, redirecting to register');
           setIsRedirecting(true);
           router.push('/register');

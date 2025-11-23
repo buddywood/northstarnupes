@@ -304,10 +304,10 @@ export default function App() {
   return (
     <AuthProvider>
       <CartProvider>
-        <SafeAreaProvider>
-          <SafeAreaView style={styles.container} edges={["top"]}>
-            <StatusBar style="auto" />
-            <View style={styles.contentWrapper}>{renderScreen()}</View>
+      <SafeAreaProvider>
+        <SafeAreaView style={styles.container} edges={["top"]}>
+          <StatusBar style="auto" />
+          <View style={styles.contentWrapper}>{renderScreen()}</View>
 
           {/* Bottom Tab Bar */}
           <BottomTabBar

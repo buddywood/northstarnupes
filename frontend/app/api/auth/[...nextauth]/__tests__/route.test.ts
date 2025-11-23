@@ -113,7 +113,7 @@ describe('/api/auth/[...nextauth]', () => {
           id: 1,
           email: 'test@example.com',
           cognito_sub: 'sub',
-          role: 'CONSUMER',
+          role: 'GUEST',
           fraternity_member_id: null,
           seller_id: null,
           promoter_id: null,
@@ -163,7 +163,7 @@ describe('/api/auth/[...nextauth]', () => {
         id: '1',
         email: 'test@example.com',
         cognitoSub: 'sub',
-        role: 'CONSUMER',
+        role: 'GUEST',
         memberId: null,
         sellerId: null,
         promoterId: null,
@@ -223,7 +223,7 @@ describe('/api/auth/[...nextauth]', () => {
           id: 1,
           email: 'test@example.com',
           cognito_sub: 'sub',
-          role: 'CONSUMER',
+          role: 'GUEST',
         }),
       });
 
@@ -257,7 +257,7 @@ describe('/api/auth/[...nextauth]', () => {
             id: 1,
             email: 'test@example.com',
             cognito_sub: 'sub',
-            role: 'CONSUMER',
+            role: 'GUEST',
           }),
         });
 

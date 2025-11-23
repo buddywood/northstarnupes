@@ -19,7 +19,7 @@ export default function HeroBanner() {
     (!isAuthenticated ||
       (userRole === 'SELLER' && !memberId)) &&
     userRole !== 'PROMOTER' &&
-    !(userRole === 'CONSUMER' && memberId) &&
+    !(userRole === 'GUEST' && memberId) &&
     !(userRole === 'SELLER' && memberId);
 
   return (

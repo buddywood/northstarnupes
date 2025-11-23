@@ -29,11 +29,13 @@ async function deleteSeller(email: string) {
     }
     
     // Check if seller is linked to a user
-    const userResult = await pool.query('SELECT id, email, role, fraternity_member_id FROM users WHERE seller_id = $1', [seller.id]);
+    const userResult = await pool.query('SELECT id, email, role, seller_id, promoter_id, steward_id FROM users WHERE seller_id = $1', [seller.id]);
     if (userResult.rows.length > 0) {
       const user = userResult.rows[0];
+      const { getFraternityMemberId } = await import('../utils/getFraternityMemberId');
+      const fraternityMemberId = await getFraternityMemberId(user);
       console.log(`⚠️  Warning: This seller is linked to user account: ${user.email}`);
-      console.log(`   User role: ${user.role}, has fraternity_member_id: ${user.fraternity_member_id ? 'yes' : 'no'}`);
+      console.log(`   User role: ${user.role}, has fraternity_member_id: ${fraternityMemberId ? 'yes' : 'no'}`);
     }
     
     // Delete products first (foreign key constraint)
@@ -42,17 +44,19 @@ async function deleteSeller(email: string) {
       console.log(`✅ Deleted ${productCount} product(s)`);
     }
     
-    // Update user account - change role to CONSUMER if they have fraternity_member_id, otherwise we'll need to handle differently
+    // Update user account - change role to GUEST if they have fraternity_member_id, otherwise we'll need to handle differently
     if (userResult.rows.length > 0) {
       const user = userResult.rows[0];
+      const { getFraternityMemberId } = await import('../utils/getFraternityMemberId');
+      const fraternityMemberId = await getFraternityMemberId(user);
       if (user.role === 'SELLER') {
-        if (user.fraternity_member_id) {
-          // User has fraternity_member_id, change role to CONSUMER
+        if (fraternityMemberId) {
+          // User has fraternity_member_id, change role to GUEST
           await pool.query(
             'UPDATE users SET seller_id = NULL, role = $1 WHERE seller_id = $2',
-            ['CONSUMER', seller.id]
+            ['GUEST', seller.id]
           );
-          console.log(`✅ Changed user role to CONSUMER and cleared seller_id`);
+          console.log(`✅ Changed user role to GUEST and cleared seller_id`);
         } else {
           // User doesn't have fraternity_member_id, we need to delete the user or set onboarding_status
           // For safety, let's just clear seller_id and change role - but this might fail

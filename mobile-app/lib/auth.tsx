@@ -8,7 +8,7 @@ import { decode } from 'react-native-base64';
 export interface User {
   id?: number;
   email?: string;
-  role?: 'ADMIN' | 'SELLER' | 'PROMOTER' | 'CONSUMER' | 'STEWARD';
+  role?: 'ADMIN' | 'SELLER' | 'PROMOTER' | 'GUEST' | 'STEWARD';
   memberId?: number | null;
   sellerId?: number | null;
   promoterId?: number | null;

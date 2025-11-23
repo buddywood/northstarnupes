@@ -81,7 +81,6 @@ const optionalAuthenticate = async (req: Request, res: Response, next: any) => {
           cognitoSub: user.cognito_sub,
           email: user.email,
           role: user.role,
-          memberId: user.fraternity_member_id,
           sellerId: user.seller_id,
           promoterId: user.promoter_id,
           stewardId: user.steward_id,
@@ -124,9 +123,11 @@ router.post('/apply', optionalAuthenticate, upload.fields([
     // Get member_id from authenticated user if available
     // If not authenticated, try to look up member by email
     let memberId: number | null = null;
-    if (req.user?.memberId) {
-      memberId = req.user.memberId;
-    } else {
+    if (req.user) {
+      const { getFraternityMemberIdFromRequest } = await import('../utils/getFraternityMemberId');
+      memberId = await getFraternityMemberIdFromRequest(req);
+    }
+    if (!memberId) {
       // Try to find member by email if not logged in
       // This allows verified members to get auto-approved even if they're not logged in
       const memberResult = await pool.query(

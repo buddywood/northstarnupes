@@ -173,9 +173,9 @@ export interface User {
   id: number;
   cognito_sub: string;
   email: string;
-  role: 'ADMIN' | 'SELLER' | 'PROMOTER' | 'CONSUMER' | 'STEWARD';
+  role: 'ADMIN' | 'SELLER' | 'PROMOTER' | 'GUEST' | 'STEWARD';
   onboarding_status: 'PRE_COGNITO' | 'COGNITO_CONFIRMED' | 'ONBOARDING_STARTED' | 'ONBOARDING_FINISHED';
-  fraternity_member_id: number | null;
+  fraternity_member_id: number | null; // Populated during member registration
   seller_id: number | null;
   promoter_id: number | null;
   steward_id: number | null;

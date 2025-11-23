@@ -274,11 +274,16 @@ async function seedTestUsers(): Promise<void> {
           } else {
             // Create new member
             const initiatedChapter = availableChapters[Math.floor(Math.random() * availableChapters.length)];
+            // Generate random initiation season and year
+            const seasons = ['Fall', 'Spring'];
+            const season = seasons[Math.floor(Math.random() * seasons.length)];
+            const year = 2015 + Math.floor(Math.random() * 10); // Random year between 2015-2024
+            
             const memberResult = await pool.query(
               `INSERT INTO fraternity_members (
                 email, name, membership_number, registration_status, 
-                initiated_chapter_id, verification_status
-              ) VALUES ($1, $2, $3, $4, $5, 'VERIFIED')
+                initiated_chapter_id, initiated_season, initiated_year, verification_status
+              ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'VERIFIED')
               RETURNING id`,
               [
                 testUser.email,
@@ -286,10 +291,12 @@ async function seedTestUsers(): Promise<void> {
                 testUser.membership_number,
                 'COMPLETE',
                 initiatedChapter.id,
+                season,
+                year,
               ]
             );
             memberId = memberResult.rows[0].id;
-            console.log(`  ✓ Created member: ${testUser.name} (initiated at ${initiatedChapter.name})`);
+            console.log(`  ✓ Created member: ${testUser.name} (initiated at ${initiatedChapter.name}, ${season} ${year})`);
           }
         }
 
@@ -349,6 +356,7 @@ async function seedTestUsers(): Promise<void> {
             const promoter = await createPromoter({
               email: testUser.email,
               name: testUser.name,
+              fraternity_member_id: memberId, // Promoters must have fraternity_member_id
               sponsoring_chapter_id: sponsoringChapter.id,
               headshot_url: undefined,
               social_links: {},
@@ -401,14 +409,15 @@ async function seedTestUsers(): Promise<void> {
         // Determine role
         const userRole = testUser.type === 'seller' ? 'SELLER' : 
                         testUser.type === 'promoter' ? 'PROMOTER' :
-                        testUser.type === 'steward' ? 'STEWARD' : 'CONSUMER';
+                        testUser.type === 'steward' ? 'STEWARD' : 'GUEST';
 
         if (existingUser.rows.length > 0) {
           const userId = existingUser.rows[0].id;
           // Update user to link to role records
           // Note: For SELLER role, fraternity_member_id can be NULL (not all sellers are members)
-          // For PROMOTER, STEWARD, and MEMBER (CONSUMER), fraternity_member_id must NOT be NULL
-          const allowedMemberId = (userRole === 'SELLER') ? null : memberId;
+          // For PROMOTER and SELLER, fraternity_member_id must be NULL (stored on role-specific tables)
+          // For STEWARD and MEMBER (GUEST), fraternity_member_id can be set
+          const allowedMemberId = (userRole === 'SELLER' || userRole === 'PROMOTER') ? null : memberId;
           await pool.query(
             `UPDATE users 
              SET email = $1, 
@@ -451,8 +460,9 @@ async function seedTestUsers(): Promise<void> {
           } else {
             // Create new user record for other types
             // Note: For SELLER role, fraternity_member_id can be NULL (not all sellers are members)
-            // For PROMOTER, STEWARD, and MEMBER (CONSUMER), fraternity_member_id must NOT be NULL
-            if ((userRole === 'PROMOTER' || userRole === 'STEWARD' || userRole === 'CONSUMER') && !memberId) {
+            // For STEWARD and MEMBER (GUEST), fraternity_member_id must NOT be NULL
+            // For PROMOTER, fraternity_member_id is NULL on users table (stored on promoters table)
+            if ((userRole === 'STEWARD' || userRole === 'GUEST') && !memberId) {
               throw new Error(`${userRole} role requires fraternity_member_id but memberId is null for ${testUser.name}`);
             }
             
@@ -464,9 +474,9 @@ async function seedTestUsers(): Promise<void> {
             await createUser({
               cognito_sub: finalCognitoSub,
               email: testUser.email,
-              role: userRole as 'ADMIN' | 'SELLER' | 'PROMOTER' | 'CONSUMER',
+              role: userRole as 'ADMIN' | 'SELLER' | 'PROMOTER' | 'GUEST',
               onboarding_status: 'ONBOARDING_FINISHED',
-              fraternity_member_id: (userRole === 'SELLER') ? null : memberId,
+              fraternity_member_id: (userRole === 'SELLER' || userRole === 'PROMOTER') ? null : memberId, // SELLER and PROMOTER role constraints require null
               seller_id: sellerId,
               promoter_id: promoterId,
             });

@@ -29,11 +29,13 @@ async function deletePromoter(email: string) {
     }
     
     // Check if promoter is linked to a user
-    const userResult = await pool.query('SELECT id, email, role, fraternity_member_id FROM users WHERE promoter_id = $1', [promoter.id]);
+    const userResult = await pool.query('SELECT id, email, role, seller_id, promoter_id, steward_id FROM users WHERE promoter_id = $1', [promoter.id]);
     if (userResult.rows.length > 0) {
       const user = userResult.rows[0];
+      const { getFraternityMemberId } = await import('../utils/getFraternityMemberId');
+      const fraternityMemberId = await getFraternityMemberId(user);
       console.log(`⚠️  Warning: This promoter is linked to user account: ${user.email}`);
-      console.log(`   User role: ${user.role}, has fraternity_member_id: ${user.fraternity_member_id ? 'yes' : 'no'}`);
+      console.log(`   User role: ${user.role}, has fraternity_member_id: ${fraternityMemberId ? 'yes' : 'no'}`);
     }
     
     // Delete events first (foreign key constraint)
@@ -42,17 +44,19 @@ async function deletePromoter(email: string) {
       console.log(`✅ Deleted ${eventCount} event(s)`);
     }
     
-    // Update user account - change role to CONSUMER if they have fraternity_member_id, otherwise delete user
+    // Update user account - change role to GUEST if they have fraternity_member_id, otherwise delete user
     if (userResult.rows.length > 0) {
       const user = userResult.rows[0];
+      const { getFraternityMemberId } = await import('../utils/getFraternityMemberId');
+      const fraternityMemberId = await getFraternityMemberId(user);
       if (user.role === 'PROMOTER') {
-        if (user.fraternity_member_id) {
-          // User has fraternity_member_id, change role to CONSUMER
+        if (fraternityMemberId) {
+          // User has fraternity_member_id, change role to GUEST
           await pool.query(
             'UPDATE users SET promoter_id = NULL, role = $1 WHERE promoter_id = $2',
-            ['CONSUMER', promoter.id]
+            ['GUEST', promoter.id]
           );
-          console.log(`✅ Changed user role to CONSUMER and cleared promoter_id`);
+          console.log(`✅ Changed user role to GUEST and cleared promoter_id`);
         } else {
           // User doesn't have fraternity_member_id, delete the user since they were likely created just for promoter
           await pool.query('DELETE FROM users WHERE id = $1', [user.id]);

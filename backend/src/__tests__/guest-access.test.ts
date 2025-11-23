@@ -31,8 +31,7 @@ jest.mock("../middleware/auth", () => ({
       id: 1,
       cognitoSub: "test-sub",
       email: "test@example.com",
-      role: "CONSUMER",
-      memberId: 1,
+      role: "GUEST",
       sellerId: null,
       promoterId: null,
       stewardId: null,
@@ -51,8 +50,7 @@ jest.mock("../middleware/auth", () => ({
         id: 1,
         cognitoSub: "test-sub",
         email: "test@example.com",
-        role: "CONSUMER",
-        memberId: 1,
+        role: "GUEST",
         sellerId: null,
         promoterId: null,
         stewardId: null,
@@ -64,7 +62,8 @@ jest.mock("../middleware/auth", () => ({
   }),
   requireSteward: jest.fn((req, res, next) => next()),
   requireVerifiedMember: jest.fn((req, res, next) => {
-    if (!req.user || !req.user.memberId) {
+    // Note: requireVerifiedMember now gets fraternity_member_id from role tables
+    if (!req.user) {
       return res.status(403).json({ error: "Member profile required" });
     }
     next();

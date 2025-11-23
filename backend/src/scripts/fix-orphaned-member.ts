@@ -25,70 +25,78 @@ async function fixOrphanedMember(emailOrCognitoSub?: string) {
       
       const user = userResult.rows[0];
       
-      if (!user.fraternity_member_id) {
-        console.log('✅ User does not have a fraternity_member_id set');
+      // Get fraternity_member_id from role-specific tables
+      const { getFraternityMemberId } = await import('../utils/getFraternityMemberId');
+      const fraternityMemberId = await getFraternityMemberId(user);
+      
+      if (!fraternityMemberId) {
+        console.log('✅ User does not have a fraternity_member_id (not a member or member ID not found in role tables)');
         return;
       }
       
       // Check if fraternity_member exists
-      const memberResult = await pool.query('SELECT * FROM fraternity_members WHERE id = $1', [user.fraternity_member_id]);
+      const memberResult = await pool.query('SELECT * FROM fraternity_members WHERE id = $1', [fraternityMemberId]);
       
       if (memberResult.rows.length === 0) {
-        console.log(`⚠️  User has fraternity_member_id ${user.fraternity_member_id} but fraternity_member record doesn't exist`);
-        console.log(`🔧 Clearing orphaned fraternity_member_id...`);
-        
-        await pool.query(
-          `UPDATE users 
-           SET fraternity_member_id = NULL, 
-               onboarding_status = 'ONBOARDING_STARTED',
-               updated_at = CURRENT_TIMESTAMP 
-           WHERE id = $1 
-           RETURNING *`,
-          [user.id]
-        );
-        
-        console.log('✅ Cleared orphaned fraternity_member_id. User can now complete registration.');
+        console.log(`⚠️  User has fraternity_member_id ${fraternityMemberId} in role table but fraternity_member record doesn't exist`);
+        console.log(`⚠️  This is a data integrity issue - the role table references a non-existent member`);
+        console.log(`⚠️  Manual cleanup required - check sellers/promoters/stewards tables`);
       } else {
         console.log('✅ Member record exists. No action needed.');
       }
     } else {
-      // Find all orphaned fraternity_member references
-      console.log('🔍 Checking for users with orphaned fraternity_member_id references...');
+      // Find all orphaned fraternity_member references in role tables
+      console.log('🔍 Checking for orphaned fraternity_member_id references in role tables...');
       
-      const result = await pool.query(`
-        SELECT u.id, u.email, u.cognito_sub, u.fraternity_member_id, u.onboarding_status
-        FROM users u
-        WHERE u.fraternity_member_id IS NOT NULL
+      // Check sellers
+      const sellersResult = await pool.query(`
+        SELECT s.id, s.email, s.fraternity_member_id
+        FROM sellers s
+        WHERE s.fraternity_member_id IS NOT NULL
         AND NOT EXISTS (
-          SELECT 1 FROM fraternity_members m WHERE m.id = u.fraternity_member_id
+          SELECT 1 FROM fraternity_members m WHERE m.id = s.fraternity_member_id
         )
       `);
       
-      if (result.rows.length === 0) {
-        console.log('✅ No orphaned fraternity_member references found');
+      // Check promoters
+      const promotersResult = await pool.query(`
+        SELECT p.id, p.email, p.fraternity_member_id
+        FROM promoters p
+        WHERE p.fraternity_member_id IS NOT NULL
+        AND NOT EXISTS (
+          SELECT 1 FROM fraternity_members m WHERE m.id = p.fraternity_member_id
+        )
+      `);
+      
+      // Check stewards
+      const stewardsResult = await pool.query(`
+        SELECT st.id, st.fraternity_member_id
+        FROM stewards st
+        WHERE st.fraternity_member_id IS NOT NULL
+        AND NOT EXISTS (
+          SELECT 1 FROM fraternity_members m WHERE m.id = st.fraternity_member_id
+        )
+      `);
+      
+      const totalOrphaned = sellersResult.rows.length + promotersResult.rows.length + stewardsResult.rows.length;
+      
+      if (totalOrphaned === 0) {
+        console.log('✅ No orphaned fraternity_member references found in role tables');
         return;
       }
       
-      console.log(`⚠️  Found ${result.rows.length} user(s) with orphaned fraternity_member_id:`);
-      result.rows.forEach((user: any) => {
-        console.log(`   - ${user.email} (fraternity_member_id: ${user.fraternity_member_id})`);
+      console.log(`⚠️  Found ${totalOrphaned} orphaned fraternity_member_id reference(s):`);
+      sellersResult.rows.forEach((row: any) => {
+        console.log(`   - Seller ${row.email} (fraternity_member_id: ${row.fraternity_member_id})`);
+      });
+      promotersResult.rows.forEach((row: any) => {
+        console.log(`   - Promoter ${row.email} (fraternity_member_id: ${row.fraternity_member_id})`);
+      });
+      stewardsResult.rows.forEach((row: any) => {
+        console.log(`   - Steward id: ${row.id} (fraternity_member_id: ${row.fraternity_member_id})`);
       });
       
-      console.log(`\n🔧 Clearing orphaned fraternity_member_id references...`);
-      
-      await pool.query(`
-        UPDATE users 
-        SET fraternity_member_id = NULL, 
-            onboarding_status = 'ONBOARDING_STARTED',
-            updated_at = CURRENT_TIMESTAMP 
-        WHERE fraternity_member_id IS NOT NULL
-        AND NOT EXISTS (
-          SELECT 1 FROM fraternity_members m WHERE m.id = users.fraternity_member_id
-        )
-      `);
-      
-      console.log(`✅ Cleared ${result.rows.length} orphaned fraternity_member_id reference(s).`);
-      console.log(`   Users can now complete registration again.`);
+      console.log(`\n⚠️  Manual cleanup required - these are data integrity issues in role tables`);
     }
   } catch (error: any) {
     console.error('❌ Error fixing orphaned member:', error.message);

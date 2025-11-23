@@ -89,16 +89,16 @@ async function deleteSteward(emailOrMemberId: string) {
       console.log(`✅ Deleted ${listingCount} listing(s)`);
     }
     
-    // Update user account - stewards require fraternity_member_id, so change role to CONSUMER
+    // Update user account - stewards require fraternity_member_id, so change role to GUEST
     if (userResult.rows.length > 0) {
       const user = userResult.rows[0];
       if (user.role === 'STEWARD') {
-        // Stewards always have member_id, so change role to CONSUMER
+        // Stewards always have member_id, so change role to GUEST
         await pool.query(
           'UPDATE users SET steward_id = NULL, role = $1 WHERE steward_id = $2',
-          ['CONSUMER', steward.id]
+          ['GUEST', steward.id]
         );
-        console.log(`✅ Changed user role to CONSUMER and cleared steward_id`);
+        console.log(`✅ Changed user role to GUEST and cleared steward_id`);
       } else {
         // User has a different role, just clear steward_id
         await pool.query('UPDATE users SET steward_id = NULL WHERE steward_id = $1', [steward.id]);

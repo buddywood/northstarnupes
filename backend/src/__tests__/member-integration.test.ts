@@ -29,34 +29,34 @@ jest.mock('../db/queries', () => ({
 
 // Mock the auth middleware
 jest.mock('../middleware/auth', () => {
-  const mockAuthenticate = jest.fn((req: any, res: any, next: any) => {
-    req.user = {
-      id: 1,
-      cognitoSub: 'test-cognito-sub',
-      email: 'test@example.com',
-      role: 'CONSUMER',
-      memberId: 1,
-      sellerId: null,
-      promoterId: null,
-      stewardId: null,
-      features: {},
-    };
-    next();
-  });
+const mockAuthenticate = jest.fn((req: any, res: any, next: any) => {
+  req.user = {
+    id: 1,
+    cognitoSub: 'test-cognito-sub',
+    email: 'test@example.com',
+    role: 'GUEST',
+    sellerId: null,
+    promoterId: null,
+    stewardId: null,
+    features: {},
+  };
+  next();
+});
 
-  const mockRequireVerifiedMember = jest.fn((req: any, res: any, next: any) => {
-    if (!req.user || !req.user.memberId) {
-      return res.status(403).json({ error: 'Member profile required' });
-    }
-    next();
-  });
+const mockRequireVerifiedMember = jest.fn((req: any, res: any, next: any) => {
+  // Note: requireVerifiedMember now gets fraternity_member_id from role tables
+  if (!req.user) {
+    return res.status(403).json({ error: 'Member profile required' });
+  }
+  next();
+});
 
-  const mockRequireAdmin = jest.fn((req: any, res: any, next: any) => {
-    if (!req.user || req.user.role !== 'ADMIN') {
-      return res.status(403).json({ error: 'Admin access required' });
-    }
-    next();
-  });
+const mockRequireAdmin = jest.fn((req: any, res: any, next: any) => {
+  if (!req.user || req.user.role !== 'ADMIN') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  next();
+});
 
   const mockRequireSteward = jest.fn((req: any, res: any, next: any) => {
     if (!req.user || !req.user.stewardId) {
@@ -66,9 +66,9 @@ jest.mock('../middleware/auth', () => {
   });
 
   return {
-    authenticate: mockAuthenticate,
-    requireVerifiedMember: mockRequireVerifiedMember,
-    requireAdmin: mockRequireAdmin,
+  authenticate: mockAuthenticate,
+  requireVerifiedMember: mockRequireVerifiedMember,
+  requireAdmin: mockRequireAdmin,
     requireSteward: mockRequireSteward,
   };
 });

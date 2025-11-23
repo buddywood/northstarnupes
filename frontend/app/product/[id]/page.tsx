@@ -102,7 +102,7 @@ export default function ProductPage() {
 
     // Check if product is Kappa branded - if so, require authentication
     if (product.is_kappa_branded) {
-      if (sessionStatus !== 'authenticated' || !session?.user?.email) {
+    if (sessionStatus !== 'authenticated' || !session?.user?.email) {
         setError('Kappa Alpha Psi branded merchandise can only be purchased by verified members. Please sign in to continue.');
         return;
       }
@@ -463,20 +463,20 @@ export default function ProductPage() {
                 {product.is_kappa_branded ? (
                   // Kappa branded products require authentication
                   sessionStatus === 'authenticated' && session?.user?.email ? (
-                    <button
-                      type="submit"
-                      disabled={checkingOut}
-                      className="w-full bg-crimson text-white py-3 rounded-lg font-semibold hover:bg-crimson/90 transition disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg"
-                    >
-                      {checkingOut ? 'Processing...' : 'Buy Now'}
-                    </button>
-                  ) : (
-                    <Link
-                      href="/login"
-                      className="w-full bg-crimson text-white py-3 rounded-lg font-semibold hover:bg-crimson/90 transition shadow-md hover:shadow-lg text-center block"
-                    >
-                      Sign In to Purchase
-                    </Link>
+                  <button
+                    type="submit"
+                    disabled={checkingOut}
+                    className="w-full bg-crimson text-white py-3 rounded-lg font-semibold hover:bg-crimson/90 transition disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg"
+                  >
+                    {checkingOut ? 'Processing...' : 'Buy Now'}
+                  </button>
+                ) : (
+                  <Link
+                    href="/login"
+                    className="w-full bg-crimson text-white py-3 rounded-lg font-semibold hover:bg-crimson/90 transition shadow-md hover:shadow-lg text-center block"
+                  >
+                    Sign In to Purchase
+                  </Link>
                   )
                 ) : (
                   // Non-kappa branded products can be purchased by guests

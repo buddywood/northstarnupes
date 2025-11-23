@@ -74,7 +74,7 @@ const authOptions: NextAuthOptions = {
                 accessToken: cognitoResult.accessToken,
                 idToken: cognitoResult.idToken,
                 refreshToken: cognitoResult.refreshToken,
-                role: 'CONSUMER', // Default role
+                role: 'GUEST', // Default role
                 onboarding_status: 'PRE_COGNITO',
               };
             }
@@ -168,7 +168,7 @@ const authOptions: NextAuthOptions = {
         token.accessToken = (user as any).accessToken;
         token.idToken = (user as any).idToken;
         token.refreshToken = (user as any).refreshToken;
-        token.role = (user as any).role || 'CONSUMER';
+        token.role = (user as any).role || 'GUEST';
         token.memberId = (user as any).memberId;
         token.sellerId = (user as any).sellerId;
         token.promoterId = (user as any).promoterId;

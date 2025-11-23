@@ -24,6 +24,7 @@ jest.mock("../db/queries", () => ({
   createSeller: jest.fn(),
   createPromoter: jest.fn(),
   createSteward: jest.fn(),
+  getUserByCognitoSub: jest.fn(),
 }));
 
 // Mock the auth middleware
@@ -33,8 +34,7 @@ jest.mock("../middleware/auth", () => {
       id: 1,
       cognitoSub: "test-cognito-sub",
       email: "test@example.com",
-      role: "CONSUMER",
-      memberId: 1,
+      role: "GUEST",
       sellerId: null,
       promoterId: null,
       stewardId: null,
@@ -44,7 +44,8 @@ jest.mock("../middleware/auth", () => {
   });
 
   const mockRequireVerifiedMember = jest.fn((req: any, res: any, next: any) => {
-    if (!req.user || !req.user.memberId) {
+    // Note: requireVerifiedMember now gets fraternity_member_id from role tables
+    if (!req.user) {
       return res.status(403).json({ error: "Member profile required" });
     }
     next();
@@ -110,8 +111,7 @@ describe("Member Role Functionality", () => {
         id: 1,
         cognitoSub: "test-cognito-sub",
         email: "test@example.com",
-        role: "CONSUMER",
-        memberId: 1,
+        role: "GUEST",
         sellerId: null,
         promoterId: null,
         stewardId: null,
@@ -127,7 +127,7 @@ describe("Member Role Functionality", () => {
 
   describe("Member Profile Retrieval", () => {
     it("should retrieve member profile for authenticated member", async () => {
-      const { getMemberById } = require("../db/queries");
+      const { getMemberById, getUserByCognitoSub } = require("../db/queries");
 
       const mockMember = {
         id: 1,
@@ -145,10 +145,31 @@ describe("Member Role Functionality", () => {
         social_links: { linkedin: "https://linkedin.com/test" },
       };
 
-      getMemberById.mockResolvedValue(mockMember);
-      (jest.spyOn(pool, "query") as jest.Mock).mockResolvedValue({
-        rows: [mockMember],
+      // Mock getUserByCognitoSub to return a user (GUEST role)
+      getUserByCognitoSub.mockResolvedValue({
+        id: 1,
+        cognito_sub: "test-cognito-sub",
+        email: "test@example.com",
+        role: "GUEST",
+        seller_id: null,
+        promoter_id: null,
+        steward_id: null,
+        features: {},
       });
+
+      getMemberById.mockResolvedValue(mockMember);
+
+      // Mock pool.query for getFraternityMemberId (looks up fraternity_member by email/cognito_sub)
+      (jest.spyOn(pool, "query") as jest.Mock).mockImplementation(
+        (query: string) => {
+          if (query.includes("fraternity_members") && query.includes("email")) {
+            // Return member ID for getFraternityMemberId lookup
+            return Promise.resolve({ rows: [{ id: 1 }] });
+          }
+          // Return full member for profile query
+          return Promise.resolve({ rows: [mockMember] });
+        }
+      );
 
       const response = await request(app)
         .get("/api/members/profile")
@@ -167,8 +188,7 @@ describe("Member Role Functionality", () => {
             id: 1,
             cognitoSub: "test-cognito-sub",
             email: "test@example.com",
-            role: "CONSUMER",
-            memberId: null, // No member ID
+            role: "GUEST",
             sellerId: null,
             promoterId: null,
             stewardId: null,
@@ -177,6 +197,12 @@ describe("Member Role Functionality", () => {
           next();
         }
       );
+
+      // Mock getFraternityMemberIdFromRequest to return null (no member profile)
+      const utilsModule = await import("../utils/getFraternityMemberId");
+      jest
+        .spyOn(utilsModule, "getFraternityMemberIdFromRequest")
+        .mockResolvedValue(null);
 
       const response = await request(app)
         .get("/api/members/profile")
@@ -189,6 +215,12 @@ describe("Member Role Functionality", () => {
   describe("Member Profile Updates", () => {
     it("should update member profile", async () => {
       const { getMemberById } = require("../db/queries");
+
+      // Mock getFraternityMemberIdFromRequest to return member ID
+      const utilsModule = await import("../utils/getFraternityMemberId");
+      jest
+        .spyOn(utilsModule, "getFraternityMemberIdFromRequest")
+        .mockResolvedValue(1);
 
       const mockMember = {
         id: 1,
@@ -378,7 +410,6 @@ describe("Member Role Functionality", () => {
           req.user = {
             id: 1,
             role: "ADMIN",
-            memberId: null,
           };
           next();
         }
@@ -410,8 +441,7 @@ describe("Member Role Functionality", () => {
         (req: any, res: any, next: any) => {
           req.user = {
             id: 1,
-            role: "CONSUMER", // Not admin
-            memberId: 1,
+            role: "GUEST", // Not admin
           };
           next();
         }

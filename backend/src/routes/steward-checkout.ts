@@ -11,6 +11,7 @@ import {
 } from '../db/queries';
 import { createStewardCheckoutSession, calculateStewardPlatformFee } from '../services/stripe';
 import { authenticate, requireVerifiedMember } from '../middleware/auth';
+import { getFraternityMemberIdFromRequest } from '../utils/getFraternityMemberId';
 import { z } from 'zod';
 
 const router: ExpressRouter = Router();
@@ -18,7 +19,12 @@ const router: ExpressRouter = Router();
 // Create checkout session for claiming a steward listing
 router.post('/:listingId', authenticate, requireVerifiedMember, async (req: Request, res: Response) => {
   try {
-    if (!req.user || !req.user.memberId) {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const fraternityMemberId = await getFraternityMemberIdFromRequest(req);
+    if (!fraternityMemberId) {
       return res.status(403).json({ error: 'Member profile required' });
     }
 
@@ -79,7 +85,7 @@ router.post('/:listingId', authenticate, requireVerifiedMember, async (req: Requ
     // Create claim record
     await createStewardClaim({
       listing_id: listing.id,
-      claimant_fraternity_member_id: req.user.memberId,
+      claimant_fraternity_member_id: fraternityMemberId,
       stripe_session_id: session.id,
       total_amount_cents: totalAmountCents,
       shipping_cents: listing.shipping_cost_cents,

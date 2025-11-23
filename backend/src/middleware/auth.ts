@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { verifyCognitoToken, extractUserInfoFromToken } from '../services/cognito';
 import { getUserByCognitoSub, createUser, getMemberById } from '../db/queries';
+import { getFraternityMemberId } from '../utils/getFraternityMemberId';
 import pool from '../db/connection';
 
 // Extend Express Request to include user
@@ -11,8 +12,7 @@ declare global {
           id: number;
           cognitoSub: string;
           email: string;
-          role: 'ADMIN' | 'SELLER' | 'PROMOTER' | 'CONSUMER' | 'STEWARD';
-          memberId: number | null;
+          role: 'ADMIN' | 'SELLER' | 'PROMOTER' | 'GUEST' | 'STEWARD';
           sellerId: number | null;
           promoterId: number | null;
           stewardId: number | null;
@@ -60,38 +60,12 @@ export async function authenticate(
       return;
     }
 
-    // Validate fraternity_member_id if it exists - check if fraternity_member record actually exists
-    let memberId = user.fraternity_member_id;
-    if (memberId) {
-      const memberCheck = await pool.query('SELECT id FROM fraternity_members WHERE id = $1', [memberId]);
-      if (memberCheck.rows.length === 0) {
-        // Orphaned fraternity_member_id detected - clear it
-        console.warn(`Orphaned fraternity_member_id detected in authenticate middleware: user ${user.id} has fraternity_member_id ${memberId} but fraternity_member doesn't exist`);
-        try {
-          await pool.query(
-            `UPDATE users 
-             SET fraternity_member_id = NULL, 
-                 onboarding_status = 'ONBOARDING_STARTED',
-                 updated_at = CURRENT_TIMESTAMP 
-             WHERE id = $1`,
-            [user.id]
-          );
-          memberId = null;
-          user.fraternity_member_id = null;
-          user.onboarding_status = 'ONBOARDING_STARTED';
-        } catch (cleanupError) {
-          console.error('Error clearing orphaned fraternity_member_id in authenticate:', cleanupError);
-        }
-      }
-    }
-
-    // Attach user to request
+    // Attach user to request (fraternity_member_id is looked up from role-specific tables when needed)
     req.user = {
       id: user.id,
       cognitoSub: user.cognito_sub,
       email: user.email,
       role: user.role,
-      memberId: memberId,
       sellerId: user.seller_id,
       promoterId: user.promoter_id,
       stewardId: user.steward_id || null,
@@ -108,7 +82,7 @@ export async function authenticate(
 /**
  * Middleware to check if user has required role
  */
-export function requireRole(...allowedRoles: Array<'ADMIN' | 'SELLER' | 'PROMOTER' | 'CONSUMER' | 'STEWARD'>) {
+export function requireRole(...allowedRoles: Array<'ADMIN' | 'SELLER' | 'PROMOTER' | 'GUEST' | 'STEWARD'>) {
   return (req: Request, res: Response, next: NextFunction): void => {
     if (!req.user) {
       res.status(401).json({ error: 'Authentication required' });
@@ -201,37 +175,12 @@ export async function authenticateOptional(
       return;
     }
 
-    // Validate fraternity_member_id if it exists
-    let memberId = user.fraternity_member_id;
-    if (memberId) {
-      const memberCheck = await pool.query('SELECT id FROM fraternity_members WHERE id = $1', [memberId]);
-      if (memberCheck.rows.length === 0) {
-        console.warn(`Orphaned fraternity_member_id detected in authenticateOptional: user ${user.id} has fraternity_member_id ${memberId} but fraternity_member doesn't exist`);
-        try {
-          await pool.query(
-            `UPDATE users 
-             SET fraternity_member_id = NULL, 
-                 onboarding_status = 'ONBOARDING_STARTED',
-                 updated_at = CURRENT_TIMESTAMP 
-             WHERE id = $1`,
-            [user.id]
-          );
-          memberId = null;
-          user.fraternity_member_id = null;
-          user.onboarding_status = 'ONBOARDING_STARTED';
-        } catch (cleanupError) {
-          console.error('Error clearing orphaned fraternity_member_id in authenticateOptional:', cleanupError);
-        }
-      }
-    }
-
-    // Attach user to request
+    // Attach user to request (fraternity_member_id is looked up from role-specific tables when needed)
     req.user = {
       id: user.id,
       cognitoSub: user.cognito_sub,
       email: user.email,
       role: user.role,
-      memberId: memberId,
       sellerId: user.seller_id,
       promoterId: user.promoter_id,
       stewardId: user.steward_id || null,
@@ -261,12 +210,20 @@ export async function requireVerifiedMember(
       return;
     }
 
-    if (!req.user.memberId) {
+    // Get user from database to pass to getFraternityMemberId
+    const user = await getUserByCognitoSub(req.user.cognitoSub);
+    if (!user) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+
+    const fraternityMemberId = await getFraternityMemberId(user);
+    if (!fraternityMemberId) {
       res.status(403).json({ error: 'Member profile required' });
       return;
     }
 
-    const member = await getMemberById(req.user.memberId);
+    const member = await getMemberById(fraternityMemberId);
     if (!member) {
       // This shouldn't happen if authenticate middleware is working correctly,
       // but handle it gracefully

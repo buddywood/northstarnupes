@@ -20,10 +20,10 @@ async function fixUserConstraint() {
     
     console.log('Adding new check_role_foreign_key constraint...');
     
-    // Add the new constraint that allows CONSUMER with null member_id during onboarding
+    // Add the new constraint that allows GUEST with null member_id during onboarding
     await pool.query(`
       ALTER TABLE users ADD CONSTRAINT check_role_foreign_key CHECK (
-        (role = 'CONSUMER' AND seller_id IS NULL AND promoter_id IS NULL AND (
+        (role = 'GUEST' AND seller_id IS NULL AND promoter_id IS NULL AND (
           (member_id IS NOT NULL) OR 
           (member_id IS NULL AND onboarding_status != 'ONBOARDING_FINISHED')
         )) OR

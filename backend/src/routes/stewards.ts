@@ -45,27 +45,21 @@ const stewardListingSchema = z.object({
 });
 
 // Apply to become a steward
-router.post('/apply', authenticate, async (req: Request, res: Response) => {
+router.post('/apply', authenticate, requireVerifiedMember, async (req: Request, res: Response) => {
   try {
-    if (!req.user || !req.user.memberId) {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    // Get fraternity_member_id from role-specific tables
+    const { getFraternityMemberIdFromRequest } = await import('../utils/getFraternityMemberId');
+    const fraternityMemberId = await getFraternityMemberIdFromRequest(req);
+    if (!fraternityMemberId) {
       return res.status(403).json({ error: 'Member profile required' });
     }
 
-    // Check if member is verified
-    const member = await getMemberById(req.user.memberId);
-    if (!member) {
-      return res.status(404).json({ error: 'Member not found' });
-    }
-
-    if (member.verification_status !== 'VERIFIED') {
-      return res.status(403).json({ 
-        error: 'You must be a verified member to become a steward',
-        code: 'VERIFICATION_REQUIRED'
-      });
-    }
-
     // Check if steward already exists
-    const existingSteward = await getStewardByFraternityMemberId(req.user.memberId);
+    const existingSteward = await getStewardByFraternityMemberId(fraternityMemberId);
     if (existingSteward) {
       return res.status(400).json({ error: 'You have already applied to be a steward' });
     }
@@ -74,9 +68,15 @@ router.post('/apply', authenticate, async (req: Request, res: Response) => {
 
     // Create steward application
     const steward = await createSteward({
-      fraternity_member_id: req.user.memberId,
+      fraternity_member_id: fraternityMemberId,
       sponsoring_chapter_id: body.sponsoring_chapter_id,
     });
+
+    // Get member to check verification status
+    const member = await getMemberById(fraternityMemberId);
+    if (!member) {
+      return res.status(404).json({ error: 'Member not found' });
+    }
 
     // Auto-approve verified members (they're already verified, so we can auto-approve)
     if (member.verification_status === 'VERIFIED') {
@@ -577,7 +577,13 @@ router.get('/marketplace', authenticate, requireVerifiedMember, async (req: Requ
 // Claim a listing
 router.post('/listings/:id/claim', authenticate, requireVerifiedMember, async (req: Request, res: Response) => {
   try {
-    if (!req.user || !req.user.memberId) {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { getFraternityMemberIdFromRequest } = await import('../utils/getFraternityMemberId');
+    const fraternityMemberId = await getFraternityMemberIdFromRequest(req);
+    if (!fraternityMemberId) {
       return res.status(403).json({ error: 'Member profile required' });
     }
 
@@ -593,7 +599,7 @@ router.post('/listings/:id/claim', authenticate, requireVerifiedMember, async (r
     }
 
     // Mark listing as claimed (actual payment happens in checkout)
-    const claimedListing = await claimStewardListing(listingId, req.user.memberId);
+    const claimedListing = await claimStewardListing(listingId, fraternityMemberId);
     
     if (!claimedListing) {
       return res.status(400).json({ error: 'Failed to claim listing. It may have already been claimed.' });

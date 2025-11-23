@@ -199,7 +199,7 @@ router.post('/cognito/verify', async (req: Request, res: Response) => {
               await createUser({
                 cognito_sub: cognito_sub,
                 email: email,
-                role: 'CONSUMER',
+                role: 'GUEST',
                 onboarding_status: 'COGNITO_CONFIRMED',
               });
             } else {
@@ -329,7 +329,7 @@ router.post('/cognito/verify', async (req: Request, res: Response) => {
           await createUser({
             cognito_sub: cognito_sub,
             email: email,
-            role: 'CONSUMER',
+            role: 'GUEST',
             onboarding_status: 'COGNITO_CONFIRMED',
           });
         } else {
@@ -393,8 +393,9 @@ router.post('/cognito/signin', async (req: Request, res: Response) => {
     // Upsert user in database (create if doesn't exist, update last_login if exists)
     const user = await upsertUserOnLogin(cognitoSub, tokenEmail || email);
 
-    // Get user role flags
-    let memberId = user.fraternity_member_id || null;
+    // Get user role flags - fraternity_member_id comes from role-specific tables
+    const { getFraternityMemberId } = await import('../utils/getFraternityMemberId');
+    let memberId = await getFraternityMemberId(user);
     let sellerId = user.seller_id || null;
     let promoterId = user.promoter_id || null;
     let stewardId = user.steward_id || null;
@@ -415,6 +416,10 @@ router.post('/cognito/signin', async (req: Request, res: Response) => {
       }
     }
 
+    // Check if user is a verified fraternity member
+    const { isVerifiedMember } = await import('../utils/isVerifiedMember');
+    const is_fraternity_member = await isVerifiedMember(user);
+
     res.json({
       tokens: {
         idToken: IdToken,
@@ -432,7 +437,7 @@ router.post('/cognito/signin', async (req: Request, res: Response) => {
         stewardId,
         name,
         headshot_url: headshotUrl,
-        is_fraternity_member: !!memberId,
+        is_fraternity_member,
         is_seller: !!sellerId,
         is_promoter: !!promoterId,
         is_steward: !!stewardId,
@@ -497,8 +502,9 @@ router.post('/cognito/refresh', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // Get user role flags
-    let memberId = user.fraternity_member_id || null;
+    // Get user role flags - fraternity_member_id comes from role-specific tables
+    const { getFraternityMemberId } = await import('../utils/getFraternityMemberId');
+    let memberId = await getFraternityMemberId(user);
     let sellerId = user.seller_id || null;
     let promoterId = user.promoter_id || null;
     let stewardId = user.steward_id || null;
@@ -1400,8 +1406,8 @@ router.post('/register', upload.single('headshot'), async (req: Request, res: Re
         let user = await getUserByCognitoSub(body.cognito_sub);
         if (!user) {
           // Create new user record
-          // If user is a seller, create with SELLER role, otherwise CONSUMER
-          const userRole = existingSeller ? 'SELLER' : 'CONSUMER';
+          // If user is a seller, create with SELLER role, otherwise GUEST
+          const userRole = existingSeller ? 'SELLER' : 'GUEST';
           user = await createUser({
             cognito_sub: body.cognito_sub,
             email: body.email,
@@ -1419,7 +1425,7 @@ router.post('/register', upload.single('headshot'), async (req: Request, res: Re
             // but is set on the seller table (done above)
             await updateUserOnboardingStatusByCognitoSub(body.cognito_sub, 'ONBOARDING_FINISHED');
           } else {
-            // For non-sellers, link member normally
+            // For non-sellers, link member by setting fraternity_member_id on users table
             await linkUserToMember(user.id, member.id);
             await updateUserOnboardingStatusByCognitoSub(body.cognito_sub, 'ONBOARDING_FINISHED');
           }
@@ -1562,7 +1568,13 @@ router.get('/', authenticate, async (req: Request, res: Response) => {
 // Get current member profile
 router.get('/profile', authenticate, async (req: Request, res: Response) => {
   try {
-    if (!req.user || !req.user.memberId) {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { getFraternityMemberIdFromRequest } = await import('../utils/getFraternityMemberId');
+    const fraternityMemberId = await getFraternityMemberIdFromRequest(req);
+    if (!fraternityMemberId) {
       return res.status(404).json({ error: 'Member profile not found' });
     }
 
@@ -1572,25 +1584,10 @@ router.get('/profile', authenticate, async (req: Request, res: Response) => {
        LEFT JOIN chapters c ON m.initiated_chapter_id = c.id
        LEFT JOIN professions p ON m.profession_id = p.id
        WHERE m.id = $1`,
-      [req.user.memberId]
+      [fraternityMemberId]
     );
 
     if (result.rows.length === 0) {
-      // Member doesn't exist but user has fraternity_member_id set - this is an orphaned reference
-      // Clear it so user can complete registration
-      console.warn(`Orphaned fraternity_member_id detected: user ${req.user.id} has fraternity_member_id ${req.user.memberId} but fraternity_member doesn't exist`);
-      try {
-        await pool.query(
-          `UPDATE users 
-           SET fraternity_member_id = NULL, 
-               onboarding_status = 'ONBOARDING_STARTED',
-               updated_at = CURRENT_TIMESTAMP 
-           WHERE id = $1`,
-          [req.user.id]
-        );
-      } catch (cleanupError) {
-        console.error('Error clearing orphaned fraternity_member_id:', cleanupError);
-      }
       return res.status(404).json({ 
         error: 'Member profile not found',
         code: 'MEMBER_NOT_FOUND',
@@ -1633,7 +1630,13 @@ const memberUpdateSchema = z.object({
 
 router.put('/profile', authenticate, upload.single('headshot'), async (req: Request, res: Response) => {
   try {
-    if (!req.user || !req.user.memberId) {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { getFraternityMemberIdFromRequest } = await import('../utils/getFraternityMemberId');
+    const fraternityMemberId = await getFraternityMemberIdFromRequest(req);
+    if (!fraternityMemberId) {
       return res.status(404).json({ error: 'Member profile not found' });
     }
 
@@ -1801,7 +1804,7 @@ router.put('/profile', authenticate, upload.single('headshot'), async (req: Requ
 
     updateFields.push(`updated_at = CURRENT_TIMESTAMP`);
 
-    values.push(req.user.memberId);
+    values.push(fraternityMemberId);
     const whereClause = `WHERE id = $${paramCount}`;
 
     const result = await pool.query(
@@ -1839,7 +1842,13 @@ router.put('/profile', authenticate, upload.single('headshot'), async (req: Requ
 // Get member metrics (donations, claims, purchases)
 router.get('/me/metrics', authenticate, async (req: Request, res: Response) => {
   try {
-    if (!req.user || !req.user.memberId) {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { getFraternityMemberIdFromRequest } = await import('../utils/getFraternityMemberId');
+    const fraternityMemberId = await getFraternityMemberIdFromRequest(req);
+    if (!fraternityMemberId) {
       return res.status(404).json({ error: 'Member profile not found' });
     }
 
@@ -1851,7 +1860,7 @@ router.get('/me/metrics', authenticate, async (req: Request, res: Response) => {
         COALESCE(SUM(CASE WHEN status = 'PAID' THEN chapter_donation_cents ELSE 0 END), 0) as paid_donations_cents
        FROM steward_claims
        WHERE claimant_fraternity_member_id = $1`,
-      [req.user.memberId]
+      [fraternityMemberId]
     );
 
     // Get orders (purchases from sellers)
@@ -1864,7 +1873,7 @@ router.get('/me/metrics', authenticate, async (req: Request, res: Response) => {
        JOIN products p ON o.product_id = p.id
        JOIN sellers s ON p.seller_id = s.id
        WHERE s.fraternity_member_id = $1 OR o.buyer_email = $2`,
-      [req.user.memberId, req.user.email]
+      [fraternityMemberId, req.user.email]
     );
 
     const claims = claimsResult.rows[0];
@@ -1887,7 +1896,13 @@ router.get('/me/metrics', authenticate, async (req: Request, res: Response) => {
 // Get member recent activity (claims and purchases)
 router.get('/me/activity', authenticate, async (req: Request, res: Response) => {
   try {
-    if (!req.user || !req.user.memberId) {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { getFraternityMemberIdFromRequest } = await import('../utils/getFraternityMemberId');
+    const fraternityMemberId = await getFraternityMemberIdFromRequest(req);
+    if (!fraternityMemberId) {
       return res.status(404).json({ error: 'Member profile not found' });
     }
 
@@ -1907,7 +1922,7 @@ router.get('/me/activity', authenticate, async (req: Request, res: Response) => 
        WHERE sc.claimant_fraternity_member_id = $1
        ORDER BY sc.created_at DESC
        LIMIT 10`,
-      [req.user.memberId]
+      [fraternityMemberId]
     );
 
     // Get recent orders

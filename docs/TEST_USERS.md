@@ -37,13 +37,13 @@ The test users are prefixed with `buddy+` and use the `@ebilly.com` domain. All 
 ### 2. Buddy Member
 - **Email:** `buddy+member@ebilly.com`
 - **Name:** Buddy Member
-- **Role:** CONSUMER
+- **Role:** GUEST
 - **Membership Number:** `KAP-TEST-MEMBER`
 - **Status:** VERIFIED (member verification)
 - **Database Records:**
   - ✅ Fraternity Member (VERIFIED)
-  - ✅ User record with CONSUMER role
-  - ✅ `fraternity_member_id` is NOT NULL (required for CONSUMER role)
+  - ✅ User record with GUEST role
+  - ✅ `fraternity_member_id` is NOT NULL (required for GUEST role)
 
 **Access:**
 - Member Dashboard (`/member-dashboard`)
@@ -175,7 +175,7 @@ For each test user, the seed script creates:
 
 4. **User Record**
    - Links Cognito sub to database
-   - Sets appropriate role (SELLER, CONSUMER, STEWARD, PROMOTER)
+   - Sets appropriate role (SELLER, GUEST, STEWARD, PROMOTER)
    - Sets onboarding status to ONBOARDING_FINISHED
    - Links to role-specific records (seller_id, steward_id, promoter_id)
    - Sets `fraternity_member_id` according to role requirements
@@ -185,7 +185,7 @@ For each test user, the seed script creates:
 The database enforces specific constraints for each role:
 
 - **SELLER:** `fraternity_member_id` can be NULL (sellers don't need to be members)
-- **CONSUMER:** `fraternity_member_id` must NOT be NULL (must be a member)
+- **GUEST:** `fraternity_member_id` must NOT be NULL (must be a member)
 - **STEWARD:** `fraternity_member_id` must NOT be NULL (must be a member)
 - **PROMOTER:** `fraternity_member_id` must NOT be NULL (must be a member)
 

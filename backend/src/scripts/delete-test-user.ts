@@ -19,17 +19,21 @@ async function deleteTestUser(email: string) {
     }
     
     const user = userResult.rows[0];
+    
+    // Get fraternity_member_id from role-specific tables
+    const { getFraternityMemberId } = await import('../utils/getFraternityMemberId');
+    const memberId = await getFraternityMemberId(user);
+    
     console.log(`📋 Found user:`, {
       id: user.id,
       email: user.email,
       role: user.role,
-      fraternity_member_id: user.fraternity_member_id,
+      fraternity_member_id: memberId,
       seller_id: user.seller_id,
       promoter_id: user.promoter_id,
     });
     
     // Store IDs before deleting user
-    const memberId = user.fraternity_member_id;
     const sellerId = user.seller_id;
     const promoterId = user.promoter_id;
     

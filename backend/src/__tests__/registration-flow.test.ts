@@ -39,7 +39,7 @@ jest.mock('@aws-sdk/client-cognito-identity-provider', () => {
 
 // Mock the routes - we'll import them after mocking
 const mockAuthenticate = jest.fn((req: any, res: any, next: any) => {
-  req.user = { id: 1, email: 'test@example.com', memberId: 1 };
+  req.user = { id: 1, email: 'test@example.com', cognitoSub: 'test-sub', role: 'GUEST', sellerId: null, promoterId: null, stewardId: null, features: {} };
   next();
 });
 
@@ -89,7 +89,7 @@ describe('Registration Flow Tests', () => {
 
     // Reset middleware mocks
     mockAuthenticate.mockImplementation((req: any, res: any, next: any) => {
-      req.user = { id: 1, email: 'test@example.com', memberId: 1 };
+      req.user = { id: 1, email: 'test@example.com', cognitoSub: 'test-sub', role: 'GUEST', sellerId: null, promoterId: null, stewardId: null, features: {} };
       next();
     });
 
@@ -259,7 +259,7 @@ describe('Registration Flow Tests', () => {
         id: 1,
         email: verifyData.email,
         cognito_sub: verifyData.cognito_sub,
-        role: 'CONSUMER',
+        role: 'GUEST',
         onboarding_status: 'COGNITO_CONFIRMED',
       });
 
@@ -273,7 +273,7 @@ describe('Registration Flow Tests', () => {
         expect.objectContaining({
           cognito_sub: verifyData.cognito_sub,
           email: verifyData.email,
-          role: 'CONSUMER',
+          role: 'GUEST',
           onboarding_status: 'COGNITO_CONFIRMED',
         })
       );
@@ -324,7 +324,7 @@ describe('Registration Flow Tests', () => {
         id: 1,
         email: memberData.email,
         cognito_sub: memberData.cognito_sub,
-        role: 'CONSUMER',
+        role: 'GUEST',
         onboarding_status: 'COGNITO_CONFIRMED',
       });
 
@@ -343,6 +343,81 @@ describe('Registration Flow Tests', () => {
       expect(response.body.email).toBe(memberData.email);
       expect(response.body.registration_status).toBe('COMPLETE');
       expect(queries.linkUserToMember).toHaveBeenCalled();
+    });
+
+    it('should set fraternity_member_id in users table after successful member registration', async () => {
+      const memberData = {
+        name: 'Test Member',
+        email: 'test-member@example.com',
+        membership_number: '12345',
+        cognito_sub: 'test-sub',
+        initiated_chapter_id: '1', // Route expects string
+        initiated_year: '2020', // Route expects string
+      };
+
+      // Mock: No existing draft (check by cognito_sub)
+      (pool.query as jest.Mock).mockResolvedValueOnce({ rows: [] });
+
+      // Mock: Seller check (no existing seller)
+      (pool.query as jest.Mock).mockResolvedValueOnce({ rows: [] });
+
+      // Mock: No duplicate member (complex UNION query)
+      (pool.query as jest.Mock).mockResolvedValueOnce({ rows: [] });
+
+      // Mock: Create member (INSERT query)
+      const mockMember = {
+        id: 100,
+        email: memberData.email,
+        name: memberData.name,
+        membership_number: memberData.membership_number,
+        registration_status: 'COMPLETE',
+        verification_status: 'PENDING',
+        created_at: new Date(),
+        updated_at: new Date(),
+      };
+      (pool.query as jest.Mock).mockResolvedValueOnce({
+        rows: [mockMember],
+      });
+
+      // Mock: User exists
+      const mockUser = {
+        id: 1,
+        email: memberData.email,
+        cognito_sub: memberData.cognito_sub,
+        role: 'GUEST',
+        onboarding_status: 'COGNITO_CONFIRMED',
+        fraternity_member_id: null,
+      };
+      (queries.getUserByCognitoSub as jest.Mock).mockResolvedValue(mockUser);
+
+      // Mock: linkUserToMember should update the user with fraternity_member_id
+      // This simulates the actual database update that sets fraternity_member_id in users table
+      const updatedUserWithMemberId = {
+        ...mockUser,
+        fraternity_member_id: mockMember.id,
+        role: 'GUEST',
+      };
+      (queries.linkUserToMember as jest.Mock).mockResolvedValue(updatedUserWithMemberId);
+      (queries.updateUserOnboardingStatusByCognitoSub as jest.Mock).mockResolvedValue(undefined);
+
+      // Mock: Email service
+      (emailService.sendWelcomeEmail as jest.Mock) = jest.fn().mockResolvedValue(undefined);
+
+      const response = await request(app)
+        .post('/api/members/register')
+        .send(memberData);
+
+      expect(response.status).toBe(201);
+      expect(response.body.email).toBe(memberData.email);
+      expect(response.body.registration_status).toBe('COMPLETE');
+
+      // Verify linkUserToMember was called with correct parameters (userId, memberId)
+      expect(queries.linkUserToMember).toHaveBeenCalledWith(mockUser.id, mockMember.id);
+
+      // Verify the returned user has fraternity_member_id set
+      // This verifies that linkUserToMember correctly sets fraternity_member_id in the users table
+      expect(updatedUserWithMemberId.fraternity_member_id).toBe(mockMember.id);
+      expect(updatedUserWithMemberId.role).toBe('GUEST');
     });
   });
 
@@ -398,7 +473,7 @@ describe('Registration Flow Tests', () => {
       (queries.getUserByEmail as jest.Mock).mockResolvedValue({
         id: 1,
         email: sellerApplication.email,
-        role: 'CONSUMER',
+        role: 'GUEST',
         fraternity_member_id: 1,
       });
 
@@ -577,7 +652,39 @@ describe('Registration Flow Tests', () => {
 
       // Mock: Authenticated user with memberId
       mockAuthenticate.mockImplementation((req: any, res: any, next: any) => {
-        req.user = { id: 1, email: 'steward@example.com', memberId: 1 };
+        req.user = { id: 1, email: 'steward@example.com', cognitoSub: 'test-sub', role: 'GUEST', sellerId: null, promoterId: null, stewardId: null, features: {} };
+        next();
+      });
+
+      // Mock requireVerifiedMember to pass (verified member)
+      const authModule = require('../middleware/auth');
+      (authModule.requireVerifiedMember as jest.Mock).mockImplementation(async (req: any, res: any, next: any) => {
+        // Mock getUserByCognitoSub
+        (queries.getUserByCognitoSub as jest.Mock).mockResolvedValue({
+          id: 1,
+          email: 'steward@example.com',
+          cognito_sub: 'test-sub',
+          role: 'GUEST',
+          seller_id: null,
+          promoter_id: null,
+          steward_id: null,
+          features: {},
+        });
+
+        // Mock getFraternityMemberId to return member ID
+        const utilsModule = await import('../utils/getFraternityMemberId');
+        jest.spyOn(utilsModule, 'getFraternityMemberId').mockResolvedValue(1);
+        jest.spyOn(utilsModule, 'getFraternityMemberIdFromRequest').mockResolvedValue(1);
+
+        // Mock getMemberById to return verified member
+        (queries.getMemberById as jest.Mock).mockResolvedValue({
+          id: 1,
+          email: 'steward@example.com',
+          name: 'Member Steward',
+          verification_status: 'VERIFIED',
+        });
+
+        // Pass through
         next();
       });
 
@@ -641,15 +748,43 @@ describe('Registration Flow Tests', () => {
 
       // Mock: Authenticated user
       mockAuthenticate.mockImplementation((req, res, next) => {
-        req.user = { id: 1, email: 'steward@example.com', memberId: 1 };
+        req.user = { id: 1, email: 'steward@example.com', cognitoSub: 'test-sub', role: 'GUEST', sellerId: null, promoterId: null, stewardId: null, features: {} };
         next();
       });
 
-      // Mock: Member exists but is not verified
-      (queries.getMemberById as jest.Mock).mockResolvedValue({
-        id: 1,
-        email: 'steward@example.com',
-        verification_status: 'PENDING',
+      // Mock requireVerifiedMember to check verification status and reject
+      const authModule = require('../middleware/auth');
+      (authModule.requireVerifiedMember as jest.Mock).mockImplementation(async (req: any, res: any, next: any) => {
+        // Mock getUserByCognitoSub
+        (queries.getUserByCognitoSub as jest.Mock).mockResolvedValue({
+          id: 1,
+          email: 'steward@example.com',
+          cognito_sub: 'test-sub',
+          role: 'GUEST',
+          seller_id: null,
+          promoter_id: null,
+          steward_id: null,
+          features: {},
+        });
+
+        // Mock getFraternityMemberId to return member ID
+        jest.doMock('../utils/getFraternityMemberId', () => ({
+          getFraternityMemberId: jest.fn().mockResolvedValue(1),
+          getFraternityMemberIdFromRequest: jest.fn().mockResolvedValue(1),
+        }));
+
+        // Mock getMemberById to return unverified member
+        (queries.getMemberById as jest.Mock).mockResolvedValue({
+          id: 1,
+          email: 'steward@example.com',
+          verification_status: 'PENDING',
+        });
+
+        // Return 403 with VERIFICATION_REQUIRED code
+        res.status(403).json({ 
+          error: 'Verified member status required',
+          code: 'VERIFICATION_REQUIRED'
+        });
       });
 
       const response = await request(app)
@@ -667,8 +802,32 @@ describe('Registration Flow Tests', () => {
 
       // Mock: Authenticated user without memberId
       mockAuthenticate.mockImplementation((req: any, res: any, next: any) => {
-        req.user = { id: 1, email: 'user@example.com' }; // No memberId
+        req.user = { id: 1, email: 'user@example.com', cognitoSub: 'test-sub', role: 'GUEST', sellerId: null, promoterId: null, stewardId: null, features: {} };
         next();
+      });
+
+      // Mock requireVerifiedMember to reject because no member profile
+      const authModule = require('../middleware/auth');
+      (authModule.requireVerifiedMember as jest.Mock).mockImplementation(async (req: any, res: any, next: any) => {
+        // Mock getUserByCognitoSub
+        (queries.getUserByCognitoSub as jest.Mock).mockResolvedValue({
+          id: 1,
+          email: 'user@example.com',
+          cognito_sub: 'test-sub',
+          role: 'GUEST',
+          seller_id: null,
+          promoter_id: null,
+          steward_id: null,
+          features: {},
+        });
+
+        // Mock getFraternityMemberId to return null (no member profile)
+        const utilsModule = await import('../utils/getFraternityMemberId');
+        jest.spyOn(utilsModule, 'getFraternityMemberId').mockResolvedValue(null);
+        jest.spyOn(utilsModule, 'getFraternityMemberIdFromRequest').mockResolvedValue(null);
+
+        // Return 403 with member profile required error
+        res.status(403).json({ error: 'Member profile required' });
       });
 
       const response = await request(app)

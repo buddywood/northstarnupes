@@ -725,20 +725,19 @@ export async function getEventsByPromoter(promoterId: number): Promise<Event[]> 
 export async function createUser(user: {
   cognito_sub: string;
   email: string;
-  role: 'ADMIN' | 'SELLER' | 'PROMOTER' | 'CONSUMER';
+  role: 'ADMIN' | 'SELLER' | 'PROMOTER' | 'GUEST';
   onboarding_status?: 'PRE_COGNITO' | 'COGNITO_CONFIRMED' | 'ONBOARDING_STARTED' | 'ONBOARDING_FINISHED';
   fraternity_member_id?: number | null;
   seller_id?: number | null;
   promoter_id?: number | null;
+  steward_id?: number | null;
   features?: Record<string, any>;
 }): Promise<User> {
-  // Ensure onboarding_status is set properly for CONSUMER role with null fraternity_member_id
-  const onboardingStatus = user.onboarding_status || 
-    (user.role === 'CONSUMER' && !user.fraternity_member_id ? 'COGNITO_CONFIRMED' : 'COGNITO_CONFIRMED');
+  const onboardingStatus = user.onboarding_status || 'COGNITO_CONFIRMED';
   
   const result = await pool.query(
-    `INSERT INTO users (cognito_sub, email, role, onboarding_status, fraternity_member_id, seller_id, promoter_id, features)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+    `INSERT INTO users (cognito_sub, email, role, onboarding_status, fraternity_member_id, seller_id, promoter_id, steward_id, features)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
      RETURNING *`,
     [
       user.cognito_sub,
@@ -748,6 +747,7 @@ export async function createUser(user: {
       user.fraternity_member_id || null,
       user.seller_id || null,
       user.promoter_id || null,
+      user.steward_id || null,
       JSON.stringify(user.features || {}),
     ]
   );
@@ -793,7 +793,7 @@ export async function getUserById(id: number): Promise<User | null> {
 
 export async function updateUserRole(
   id: number,
-  role: 'ADMIN' | 'SELLER' | 'PROMOTER' | 'CONSUMER'
+  role: 'ADMIN' | 'SELLER' | 'PROMOTER' | 'GUEST'
 ): Promise<User> {
   const result = await pool.query(
     'UPDATE users SET role = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $1 RETURNING *',
@@ -807,9 +807,11 @@ export async function updateUserRole(
 }
 
 export async function linkUserToMember(userId: number, memberId: number): Promise<User> {
+  // Link user to fraternity member by setting fraternity_member_id on users table
+  // This is populated during member registration
   const result = await pool.query(
     `UPDATE users 
-     SET fraternity_member_id = $2, seller_id = NULL, promoter_id = NULL, role = 'CONSUMER', updated_at = CURRENT_TIMESTAMP 
+     SET fraternity_member_id = $2, seller_id = NULL, promoter_id = NULL, steward_id = NULL, role = 'GUEST', updated_at = CURRENT_TIMESTAMP 
      WHERE id = $1 
      RETURNING *`,
     [userId, memberId]
@@ -824,7 +826,7 @@ export async function linkUserToMember(userId: number, memberId: number): Promis
 export async function linkUserToSeller(userId: number, sellerId: number): Promise<User> {
   const result = await pool.query(
     `UPDATE users 
-     SET seller_id = $2, fraternity_member_id = NULL, promoter_id = NULL, role = 'SELLER', updated_at = CURRENT_TIMESTAMP 
+     SET seller_id = $2, promoter_id = NULL, steward_id = NULL, role = 'SELLER', updated_at = CURRENT_TIMESTAMP 
      WHERE id = $1 
      RETURNING *`,
     [userId, sellerId]
@@ -839,7 +841,7 @@ export async function linkUserToSeller(userId: number, sellerId: number): Promis
 export async function linkUserToPromoter(userId: number, promoterId: number): Promise<User> {
   const result = await pool.query(
     `UPDATE users 
-     SET promoter_id = $2, fraternity_member_id = NULL, seller_id = NULL, role = 'PROMOTER', updated_at = CURRENT_TIMESTAMP 
+     SET promoter_id = $2, seller_id = NULL, steward_id = NULL, role = 'PROMOTER', updated_at = CURRENT_TIMESTAMP 
      WHERE id = $1 
      RETURNING *`,
     [userId, promoterId]
@@ -852,15 +854,8 @@ export async function linkUserToPromoter(userId: number, promoterId: number): Pr
 }
 
 export async function linkUserToSteward(userId: number, stewardId: number): Promise<User> {
-  // For stewards, we keep fraternity_member_id (required) and can coexist with seller/promoter
-  // Get current user to preserve fraternity_member_id
-  const currentUser = await pool.query('SELECT fraternity_member_id, seller_id, promoter_id FROM users WHERE id = $1', [userId]);
-  const fraternityMemberId = currentUser.rows[0]?.fraternity_member_id;
-  
-  if (!fraternityMemberId) {
-    throw new Error('User must have a fraternity_member_id to become a steward');
-  }
-
+  // For stewards, fraternity_member_id is stored in the stewards table, not users table
+  // Stewards can coexist with seller/promoter roles
   const result = await pool.query(
     `UPDATE users 
      SET steward_id = $2, role = 'STEWARD', updated_at = CURRENT_TIMESTAMP 
@@ -955,7 +950,7 @@ export async function upsertUserOnLogin(cognitoSub: string, email: string): Prom
     `INSERT INTO users (cognito_sub, email, role, onboarding_status, last_login)
      VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
      RETURNING *`,
-    [cognitoSub, email, 'CONSUMER', 'COGNITO_CONFIRMED']
+    [cognitoSub, email, 'GUEST', 'COGNITO_CONFIRMED']
   );
   
   const row = insertResult.rows[0];

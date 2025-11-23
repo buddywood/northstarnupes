@@ -286,7 +286,7 @@ router.get('/stewards/pending', async (req: Request, res: Response) => {
     // Enrich with member and chapter info
     const enrichedStewards = await Promise.all(
       stewards.map(async (steward) => {
-        const memberResult = await pool.query('SELECT * FROM members WHERE id = $1', [steward.fraternity_member_id]);
+        const memberResult = await pool.query('SELECT * FROM fraternity_members WHERE id = $1', [steward.fraternity_member_id]);
         const chapterResult = await pool.query('SELECT * FROM chapters WHERE id = $1', [steward.sponsoring_chapter_id]);
         return {
           ...steward,
@@ -318,7 +318,7 @@ router.put('/stewards/:id', async (req: Request, res: Response) => {
     
     // If approving, link user to steward
     if (body.status === 'APPROVED') {
-      const memberResult = await pool.query('SELECT id FROM members WHERE id = $1', [steward.fraternity_member_id]);
+      const memberResult = await pool.query('SELECT id FROM fraternity_members WHERE id = $1', [steward.fraternity_member_id]);
       const member = memberResult.rows[0];
       
       if (member) {

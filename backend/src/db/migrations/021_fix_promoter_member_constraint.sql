@@ -33,7 +33,7 @@ BEGIN
              WHERE table_name = 'users' AND column_name = 'fraternity_member_id') THEN
     -- Use fraternity_member_id (after migration 016 or fresh schema)
     ALTER TABLE users ADD CONSTRAINT check_role_foreign_key CHECK (
-      (role = 'CONSUMER' AND seller_id IS NULL AND promoter_id IS NULL AND steward_id IS NULL AND (
+      (role = 'GUEST' AND seller_id IS NULL AND promoter_id IS NULL AND steward_id IS NULL AND (
         (fraternity_member_id IS NOT NULL) OR 
         (fraternity_member_id IS NULL AND onboarding_status != 'ONBOARDING_FINISHED')
       )) OR
@@ -51,7 +51,7 @@ BEGIN
                 WHERE table_name = 'users' AND column_name = 'member_id') THEN
     -- Use member_id (before migration 016)
     ALTER TABLE users ADD CONSTRAINT check_role_foreign_key CHECK (
-      (role = 'CONSUMER' AND seller_id IS NULL AND promoter_id IS NULL AND steward_id IS NULL AND (
+      (role = 'GUEST' AND seller_id IS NULL AND promoter_id IS NULL AND steward_id IS NULL AND (
         (member_id IS NOT NULL) OR 
         (member_id IS NULL AND onboarding_status != 'ONBOARDING_FINISHED')
       )) OR
