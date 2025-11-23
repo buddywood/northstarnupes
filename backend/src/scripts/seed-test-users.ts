@@ -417,21 +417,20 @@ async function seedTestUsers(): Promise<void> {
           // Note: For SELLER role, fraternity_member_id can be NULL (not all sellers are members)
           // For PROMOTER and SELLER, fraternity_member_id must be NULL (stored on role-specific tables)
           // For STEWARD and MEMBER (GUEST), fraternity_member_id can be set
-          const allowedMemberId = (userRole === 'SELLER' || userRole === 'PROMOTER') ? null : memberId;
+          // Note: fraternity_member_id was removed from users table (migration 026)
+          // It's stored on role-specific tables: sellers, promoters, stewards
           await pool.query(
             `UPDATE users 
              SET email = $1, 
                  role = $2, 
                  onboarding_status = 'ONBOARDING_FINISHED',
-                 fraternity_member_id = $3,
-                 seller_id = COALESCE(seller_id, $4),
-                 promoter_id = COALESCE(promoter_id, $5),
-                 steward_id = COALESCE(steward_id, $6)
-             WHERE id = $7`,
+                 seller_id = COALESCE(seller_id, $3),
+                 promoter_id = COALESCE(promoter_id, $4),
+                 steward_id = COALESCE(steward_id, $5)
+             WHERE id = $6`,
             [
               testUser.email,
               userRole,
-              allowedMemberId,
               sellerId,
               promoterId,
               stewardId,
@@ -442,16 +441,17 @@ async function seedTestUsers(): Promise<void> {
         } else {
           // For stewards, we need to insert directly since createUser doesn't support steward_id
           if (testUser.type === 'steward') {
+            // Note: fraternity_member_id was removed from users table (migration 026)
+            // It's stored on the stewards table
             await pool.query(
-              `INSERT INTO users (cognito_sub, email, role, onboarding_status, fraternity_member_id, steward_id, features)
-               VALUES ($1, $2, $3, $4, $5, $6, $7)
+              `INSERT INTO users (cognito_sub, email, role, onboarding_status, steward_id, features)
+               VALUES ($1, $2, $3, $4, $5, $6)
                RETURNING *`,
               [
                 finalCognitoSub,
                 testUser.email,
                 'STEWARD',
                 'ONBOARDING_FINISHED',
-                memberId,
                 stewardId,
                 JSON.stringify({}),
               ]
@@ -459,12 +459,9 @@ async function seedTestUsers(): Promise<void> {
             console.log(`  ✓ Created user record: ${testUser.name}`);
           } else {
             // Create new user record for other types
-            // Note: For SELLER role, fraternity_member_id can be NULL (not all sellers are members)
-            // For STEWARD and MEMBER (GUEST), fraternity_member_id must NOT be NULL
-            // For PROMOTER, fraternity_member_id is NULL on users table (stored on promoters table)
-            if ((userRole === 'STEWARD' || userRole === 'GUEST') && !memberId) {
-              throw new Error(`${userRole} role requires fraternity_member_id but memberId is null for ${testUser.name}`);
-            }
+            // Note: fraternity_member_id was removed from users table (migration 026)
+            // It's stored on role-specific tables: sellers, promoters, stewards
+            // For GUEST users who are members, link through email/cognito_sub matching
             
             // Type guard: createUser doesn't accept 'STEWARD' role
             if (userRole === 'STEWARD') {
@@ -476,7 +473,6 @@ async function seedTestUsers(): Promise<void> {
               email: testUser.email,
               role: userRole as 'ADMIN' | 'SELLER' | 'PROMOTER' | 'GUEST',
               onboarding_status: 'ONBOARDING_FINISHED',
-              fraternity_member_id: (userRole === 'SELLER' || userRole === 'PROMOTER') ? null : memberId, // SELLER and PROMOTER role constraints require null
               seller_id: sellerId,
               promoter_id: promoterId,
             });

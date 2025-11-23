@@ -596,7 +596,12 @@ async function seedStewardSellers(): Promise<void> {
               year,
             ]
           );
-          memberId = memberResult.rows[0].id;
+          memberId = memberResult.rows[0]?.id;
+        }
+
+        // Ensure memberId is defined before proceeding
+        if (!memberId) {
+          throw new Error(`Failed to get or create fraternity_member_id for steward ${stewardData.email}`);
         }
 
         // Check if steward already exists

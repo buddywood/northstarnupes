@@ -722,12 +722,15 @@ export async function getEventsByPromoter(promoterId: number): Promise<Event[]> 
 }
 
 // User queries
+// Note: fraternity_member_id was removed from users table (migration 026)
+// It's stored on role-specific tables: sellers, promoters, stewards
+// The fraternity_member_id parameter is accepted for backward compatibility but is ignored
 export async function createUser(user: {
   cognito_sub: string;
   email: string;
   role: 'ADMIN' | 'SELLER' | 'PROMOTER' | 'GUEST';
   onboarding_status?: 'PRE_COGNITO' | 'COGNITO_CONFIRMED' | 'ONBOARDING_STARTED' | 'ONBOARDING_FINISHED';
-  fraternity_member_id?: number | null;
+  fraternity_member_id?: number | null; // Deprecated: ignored, stored on role-specific tables
   seller_id?: number | null;
   promoter_id?: number | null;
   steward_id?: number | null;
@@ -736,15 +739,14 @@ export async function createUser(user: {
   const onboardingStatus = user.onboarding_status || 'COGNITO_CONFIRMED';
   
   const result = await pool.query(
-    `INSERT INTO users (cognito_sub, email, role, onboarding_status, fraternity_member_id, seller_id, promoter_id, steward_id, features)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+    `INSERT INTO users (cognito_sub, email, role, onboarding_status, seller_id, promoter_id, steward_id, features)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
      RETURNING *`,
     [
       user.cognito_sub,
       user.email,
       user.role,
       onboardingStatus,
-      user.fraternity_member_id || null,
       user.seller_id || null,
       user.promoter_id || null,
       user.steward_id || null,

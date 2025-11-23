@@ -318,13 +318,20 @@ router.put('/stewards/:id', async (req: Request, res: Response) => {
     
     // If approving, link user to steward
     if (body.status === 'APPROVED') {
-      const memberResult = await pool.query('SELECT id FROM fraternity_members WHERE id = $1', [steward.fraternity_member_id]);
+      const memberResult = await pool.query('SELECT id, email, cognito_sub FROM fraternity_members WHERE id = $1', [steward.fraternity_member_id]);
       const member = memberResult.rows[0];
       
       if (member) {
-        // Find user by member_id
-        const userResult = await pool.query('SELECT id FROM users WHERE member_id = $1', [steward.fraternity_member_id]);
-        const user = userResult.rows[0];
+        // Find user by email or cognito_sub (users table doesn't have member_id/fraternity_member_id)
+        // Try cognito_sub first, then email
+        let userResult;
+        if (member.cognito_sub) {
+          userResult = await pool.query('SELECT id FROM users WHERE cognito_sub = $1', [member.cognito_sub]);
+        } else if (member.email) {
+          userResult = await pool.query('SELECT id FROM users WHERE email = $1', [member.email]);
+        }
+        
+        const user = userResult?.rows[0];
         
         if (user) {
           await linkUserToSteward(user.id, stewardId);
