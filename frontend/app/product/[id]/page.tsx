@@ -13,7 +13,7 @@ import Footer from '../../components/Footer';
 import VerificationBadge from '../../components/VerificationBadge';
 import UserRoleBadges from '../../components/UserRoleBadges';
 import ProductAttributes from '../../components/ProductAttributes';
-import { SkeletonLoader } from '../../components/Skeleton';
+import { SkeletonLoader } from '../../components/SkeletonLoader';
 import {
   Dialog,
   DialogContent,

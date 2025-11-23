@@ -8,7 +8,8 @@ import Link from 'next/link';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import SearchableSelect from '../components/SearchableSelect';
-import Skeleton, { SkeletonLoader } from '../components/Skeleton';
+import { Skeleton } from '@/components/ui/skeleton';
+import { SkeletonLoader } from '../components/SkeletonLoader';
 import VerificationStatusBadge from '../components/VerificationStatusBadge';
 import Image from 'next/image';
 
@@ -389,10 +390,10 @@ function ProfilePageContent() {
       <div className="min-h-screen bg-cream">
         <Header />
         <main className="max-w-4xl mx-auto px-4 py-12">
-          <Skeleton variant="text" className="h-10 w-64 mb-8" />
-          <Skeleton variant="card" className="h-64 w-full mb-6" />
-          <Skeleton variant="text" className="h-6 w-full mb-4" />
-          <Skeleton variant="text" className="h-6 w-3/4" />
+          <Skeleton className="h-10 w-64 mb-8" />
+          <Skeleton className="h-64 w-full mb-6" />
+          <Skeleton className="h-6 w-full mb-4" />
+          <Skeleton className="h-6 w-3/4" />
         </main>
         <Footer />
       </div>

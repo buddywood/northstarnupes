@@ -10,7 +10,7 @@ import Header from '../components/Header';
 import Footer from '../components/Footer';
 import Image from 'next/image';
 import Link from 'next/link';
-import { SkeletonLoader } from '../components/Skeleton';
+import { SkeletonLoader } from '../components/SkeletonLoader';
 import VerificationBadge from '../components/VerificationBadge';
 import UserRoleBadges from '../components/UserRoleBadges';
 import ProductStatusBadge from '../components/ProductStatusBadge';

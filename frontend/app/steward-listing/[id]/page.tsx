@@ -11,7 +11,7 @@ import Header from '../../components/Header';
 import Footer from '../../components/Footer';
 import VerificationBadge from '../../components/VerificationBadge';
 import UserRoleBadges from '../../components/UserRoleBadges';
-import { SkeletonLoader } from '../../components/Skeleton';
+import { SkeletonLoader } from '../../components/SkeletonLoader';
 
 export default function StewardListingPage() {
   const router = useRouter();

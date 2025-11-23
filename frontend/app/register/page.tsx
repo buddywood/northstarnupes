@@ -13,7 +13,7 @@ import Image from 'next/image';
 import SearchableSelect from '../components/SearchableSelect';
 import PasswordStrengthIndicator from '../components/PasswordStrengthIndicator';
 import VerificationCodeInput from '../components/VerificationCodeInput';
-import { SkeletonLoader } from '../components/Skeleton';
+import { SkeletonLoader } from '../components/SkeletonLoader';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 

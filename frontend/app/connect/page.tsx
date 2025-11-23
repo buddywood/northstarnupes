@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
-import { SkeletonLoader } from '../components/Skeleton';
+import { SkeletonLoader } from '../components/SkeletonLoader';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import SearchableSelect from '../components/SearchableSelect';

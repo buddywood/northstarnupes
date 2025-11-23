@@ -13,6 +13,7 @@ import Header from '../components/Header';
 import Footer from '../components/Footer';
 import VerificationBadge from '../components/VerificationBadge';
 import StewardshipHowItWorksModal from '../components/StewardshipHowItWorksModal';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function StewardMarketplacePage() {
   const router = useRouter();
@@ -97,7 +98,32 @@ export default function StewardMarketplacePage() {
       <div className="min-h-screen bg-cream text-midnight-navy">
         <Header />
         <main className="max-w-7xl mx-auto px-4 py-12">
-          <div className="text-center py-12">Loading...</div>
+          {/* Hero Banner Skeleton */}
+          <div className="relative flex flex-col items-center justify-center text-center py-6 sm:py-8 md:py-10 lg:py-12 px-4 sm:px-6 bg-gradient-to-br from-crimson to-midnight-navy text-white overflow-hidden min-h-[200px] sm:min-h-[250px] md:min-h-[300px] mb-8">
+            <Skeleton className="h-12 w-64 mx-auto mb-4 bg-white/20" />
+            <Skeleton className="h-6 w-96 mx-auto mb-8 bg-white/20" />
+            <Skeleton className="h-10 w-48 mx-auto bg-white/20" />
+          </div>
+
+          {/* Filters Skeleton */}
+          <div className="mb-8 space-y-4">
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
+          </div>
+
+          {/* Listings Grid Skeleton */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+            {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+              <div key={i} className="bg-white rounded-xl overflow-hidden shadow">
+                <Skeleton className="w-full aspect-square" />
+                <div className="p-3 space-y-2">
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-3 w-1/2" />
+                  <Skeleton className="h-3 w-1/2" />
+                </div>
+              </div>
+            ))}
+          </div>
         </main>
         <Footer />
       </div>

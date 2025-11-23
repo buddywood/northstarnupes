@@ -18,7 +18,8 @@ import {
   TabsContent,
 } from '@/components/ui/tabs';
 import { useAuth } from '@/lib/auth';
-import Skeleton, { SkeletonLoader } from '../components/Skeleton';
+import { Skeleton } from '@/components/ui/skeleton';
+import { SkeletonLoader } from '../components/SkeletonLoader';
 import {
   fetchPendingSellers,
   updateSellerStatus,
@@ -380,9 +381,9 @@ export default function AdminDashboard() {
             <div className="p-6">
               {loading ? (
                 <div className="space-y-4 py-8">
-                  <Skeleton variant="card" className="h-24 w-full" />
-                  <Skeleton variant="card" className="h-24 w-full" />
-                  <Skeleton variant="card" className="h-24 w-full" />
+                  <Skeleton className="h-24 w-full" />
+                  <Skeleton className="h-24 w-full" />
+                  <Skeleton className="h-24 w-full" />
                 </div>
               ) : (
                 <>

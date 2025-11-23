@@ -12,7 +12,7 @@ import VerificationBadge from '../../components/VerificationBadge';
 import UserRoleBadges from '../../components/UserRoleBadges';
 import EventCountdown from '../../components/EventCountdown';
 import RSVPModal from '../../components/RSVPModal';
-import { SkeletonLoader } from '../../components/Skeleton';
+import { SkeletonLoader } from '../../components/SkeletonLoader';
 
 export default function EventPage() {
   const params = useParams();

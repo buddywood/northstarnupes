@@ -8,7 +8,7 @@ import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
-import { SkeletonLoader } from '../components/Skeleton';
+import { SkeletonLoader } from '../components/SkeletonLoader';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';

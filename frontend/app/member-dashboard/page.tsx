@@ -30,7 +30,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import VerificationStatusBadge from '../components/VerificationStatusBadge';
-import Skeleton, { SkeletonLoader } from '../components/Skeleton';
+import { Skeleton } from '@/components/ui/skeleton';
+import { SkeletonLoader } from '../components/SkeletonLoader';
 
 export default function MemberDashboardPage() {
   const router = useRouter();

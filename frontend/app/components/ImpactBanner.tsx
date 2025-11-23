@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { fetchTotalDonations } from "@/lib/api";
-import Skeleton from "./Skeleton";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function ImpactBanner() {
   const [totalDonations, setTotalDonations] = useState<number | null>(null);
@@ -117,7 +117,7 @@ export default function ImpactBanner() {
               </div>
             </div>
             {loading ? (
-              <Skeleton variant="text" className="w-32 h-6" />
+              <Skeleton className="w-32 h-6" />
             ) : (
               <div
                 className="inline-block text-center md:text-right"
