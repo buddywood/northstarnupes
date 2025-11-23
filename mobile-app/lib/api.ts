@@ -88,6 +88,8 @@ export interface Event {
   promoter_fraternity_member_id?: number | null;
   promoter_sponsoring_chapter_id?: number | null;
   promoter_initiated_chapter_id?: number | null;
+  promoter_initiated_season?: string | null;
+  promoter_initiated_year?: number | null;
   chapter_name?: string | null;
   is_fraternity_member?: boolean;
   is_promoter?: boolean;
@@ -185,6 +187,35 @@ export async function fetchUpcomingEvents(): Promise<Event[]> {
   } catch (error) {
     console.error('Error fetching upcoming events:', error);
     return [];
+  }
+}
+
+export async function fetchEvent(eventId: number): Promise<Event> {
+  try {
+    const res = await fetch(`${API_URL}/api/events/${eventId}`);
+    if (!res.ok) throw new Error('Failed to fetch event');
+    return res.json();
+  } catch (error) {
+    console.error('Error fetching event:', error);
+    throw error;
+  }
+}
+
+export async function getPromoterEvents(token: string): Promise<Event[]> {
+  try {
+    const res = await fetch(`${API_URL}/api/events/promoter/me`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.error || 'Failed to fetch promoter events');
+    }
+    return res.json();
+  } catch (error) {
+    console.error('Error fetching promoter events:', error);
+    throw error;
   }
 }
 

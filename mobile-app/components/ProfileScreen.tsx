@@ -25,11 +25,13 @@ const REMEMBER_ME_KEY = "@1kappa:remember_me";
 interface ProfileScreenProps {
   onBack: () => void;
   initialMode?: "login" | "register";
+  onMyEventsPress?: () => void;
 }
 
 export default function ProfileScreen({
   onBack,
   initialMode = "login",
+  onMyEventsPress,
 }: ProfileScreenProps) {
   const { isGuest, user, login, logout } = useAuth();
   const [email, setEmail] = React.useState("");
@@ -203,6 +205,9 @@ export default function ProfileScreen({
           </View>
 
           <View style={styles.menuSection}>
+            {user?.is_promoter && onMyEventsPress && (
+              <MenuItem label="My Events" onPress={onMyEventsPress} />
+            )}
             <MenuItem label="My Orders" onPress={() => {}} />
             <MenuItem label="Saved Items" onPress={() => {}} />
             <MenuItem label="Settings" onPress={() => {}} />

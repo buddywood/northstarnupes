@@ -1,6 +1,26 @@
 import { StyleSheet } from "react-native";
 import { COLORS } from "../lib/constants";
 
+const myEventsButton = {
+  flexDirection: "row" as const,
+  alignItems: "center" as const,
+  gap: 6,
+  paddingHorizontal: 12,
+  paddingVertical: 6,
+  backgroundColor: COLORS.white,
+  borderRadius: 20,
+  borderWidth: 1,
+  borderColor: COLORS.crimson,
+};
+
+const myEventsText = {
+  fontSize: 14,
+  fontWeight: "600" as const,
+  color: COLORS.crimson,
+};
+
+export { myEventsButton, myEventsText };
+
 export default StyleSheet.create({
   container: {
     flex: 1,

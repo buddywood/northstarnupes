@@ -16,6 +16,8 @@ import ProductDetail from "./components/ProductDetail";
 import StewardListingDetail from "./components/StewardListingDetail";
 import ShopScreen from "./components/ShopScreen";
 import EventsScreen from "./components/EventsScreen";
+import EventDetail from "./components/EventDetail";
+import MyEventsScreen from "./components/MyEventsScreen";
 import SellerStoreScreen from "./components/SellerStoreScreen";
 import StewardMarketplaceScreen from "./components/StewardMarketplaceScreen";
 import SellersScreen from "./components/SellersScreen";
@@ -33,6 +35,8 @@ type Screen =
   | "home"
   | "shop"
   | "events"
+  | "event-detail"
+  | "my-events"
   | "seller-store"
   | "steward-marketplace"
   | "profile"
@@ -48,6 +52,9 @@ export default function App() {
     null
   );
   const [selectedSellerId, setSelectedSellerId] = useState<number | null>(
+    null
+  );
+  const [selectedEventId, setSelectedEventId] = useState<number | null>(
     null
   );
   const [currentScreen, setCurrentScreen] = useState<Screen>("home");
@@ -108,7 +115,10 @@ export default function App() {
 
   const handleBackToHome = () => {
     setCurrentScreen("home");
+    setSelectedProductId(null);
+    setSelectedListingId(null);
     setSelectedSellerId(null);
+    setSelectedEventId(null);
   };
 
   const handleSearchPress = () => {
@@ -157,8 +167,8 @@ export default function App() {
   };
 
   const handleEventPress = (event: Event) => {
-    // Placeholder for event detail navigation
-    console.log("Event pressed:", event.id);
+    setSelectedEventId(event.id);
+    setCurrentScreen("event-detail");
   };
 
   const handleRSVPPress = (event: Event) => {
@@ -192,6 +202,26 @@ export default function App() {
             onUserPress={handleUserPress}
           />
         );
+      case "event-detail":
+        return selectedEventId ? (
+          <EventDetail
+            eventId={selectedEventId}
+            onClose={handleBackToHome}
+            onRSVP={(event) => {
+              // TODO: Implement RSVP functionality
+              console.log("RSVP for event:", event.id);
+            }}
+          />
+        ) : null;
+      case "my-events":
+        return (
+          <MyEventsScreen
+            onBack={handleBackToHome}
+            onEventPress={handleEventPress}
+            onSearchPress={handleSearchPress}
+            onUserPress={handleUserPress}
+          />
+        );
       case "seller-store":
         return selectedSellerId ? (
           <SellerStoreScreen
@@ -218,6 +248,7 @@ export default function App() {
           <ProfileScreen
             onBack={handleBackToHome}
             initialMode={profileInitialMode}
+            onMyEventsPress={() => setCurrentScreen("my-events")}
           />
         );
       case "member-setup":
