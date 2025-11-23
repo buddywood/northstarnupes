@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -6,10 +6,11 @@ import {
   ScrollView,
   ActivityIndicator,
   TouchableOpacity,
-} from 'react-native';
-import { COLORS } from '../lib/constants';
-import { API_URL } from '../lib/constants';
-import ScreenHeader from './ScreenHeader';
+} from "react-native";
+import { COLORS } from "../lib/constants";
+import { API_URL } from "../lib/constants";
+import ScreenHeader from "./ScreenHeader";
+import CollectionsScreenSkeleton from "./CollectionsScreenSkeleton";
 
 interface Seller {
   id: number;
@@ -41,7 +42,7 @@ export default function CollectionsScreen({
         setLoading(true);
         // Use the collections endpoint which works and includes product counts
         const res = await fetch(`${API_URL}/api/sellers/collections`);
-        if (!res.ok) throw new Error('Failed to fetch sellers');
+        if (!res.ok) throw new Error("Failed to fetch sellers");
         const data = await res.json();
         // Map the data to match our interface (collections endpoint includes products array)
         const sellersList = data.map((seller: any) => ({
@@ -49,11 +50,12 @@ export default function CollectionsScreen({
           business_name: seller.business_name,
           headshot_url: seller.headshot_url,
           social_links: seller.social_links,
-          product_count: seller.products?.length || parseInt(seller.product_count) || 0,
+          product_count:
+            seller.products?.length || parseInt(seller.product_count) || 0,
         }));
         setSellers(sellersList);
       } catch (error) {
-        console.error('Error loading sellers:', error);
+        console.error("Error loading sellers:", error);
       } finally {
         setLoading(false);
       }
@@ -64,19 +66,11 @@ export default function CollectionsScreen({
 
   if (loading) {
     return (
-      <View style={styles.container}>
-        <ScreenHeader
-          title="Seller Collections"
-          onBack={onBack}
-          showSearch={true}
-          onSearchPress={onSearchPress}
-          onUserPress={onUserPress}
-        />
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={COLORS.crimson} />
-          <Text style={styles.loadingText}>Loading collections...</Text>
-        </View>
-      </View>
+      <CollectionsScreenSkeleton
+        onBack={onBack}
+        onSearchPress={onSearchPress}
+        onUserPress={onUserPress}
+      />
     );
   }
 
@@ -113,7 +107,8 @@ export default function CollectionsScreen({
                   </Text>
                   {seller.product_count !== undefined && (
                     <Text style={styles.productCount}>
-                      {seller.product_count} {seller.product_count === 1 ? 'product' : 'products'}
+                      {seller.product_count}{" "}
+                      {seller.product_count === 1 ? "product" : "products"}
                     </Text>
                   )}
                 </View>
@@ -142,8 +137,8 @@ const styles = StyleSheet.create({
   },
   loadingContainer: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   loadingText: {
     marginTop: 16,
@@ -153,8 +148,8 @@ const styles = StyleSheet.create({
   },
   emptyContainer: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: 60,
   },
   emptyText: {
@@ -163,12 +158,12 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   collectionsContainer: {
-    width: '100%',
+    width: "100%",
   },
   collectionCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     backgroundColor: COLORS.white,
     padding: 16,
     borderRadius: 12,
@@ -184,7 +179,7 @@ const styles = StyleSheet.create({
   },
   collectionName: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     color: COLORS.midnightNavy,
     marginBottom: 4,
   },
@@ -196,7 +191,6 @@ const styles = StyleSheet.create({
   arrow: {
     fontSize: 20,
     color: COLORS.crimson,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 });
-

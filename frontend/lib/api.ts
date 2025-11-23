@@ -69,6 +69,8 @@ export interface Product {
   seller_fraternity_member_id?: number | null;
   seller_sponsoring_chapter_id?: number | null;
   seller_initiated_chapter_id?: number | null;
+  seller_initiated_season?: string | null;
+  seller_initiated_year?: number | null;
   seller_status?: 'PENDING' | 'APPROVED' | 'REJECTED';
   seller_stripe_account_id?: string | null;
   is_fraternity_member?: boolean;
@@ -105,6 +107,13 @@ export interface Seller {
   business_state?: string | null;
   business_postal_code?: string | null;
   business_country?: string | null;
+  initiated_chapter_id?: number | null;
+  initiated_season?: string | null;
+  initiated_year?: number | null;
+  is_fraternity_member?: boolean;
+  is_seller?: boolean;
+  is_promoter?: boolean;
+  is_steward?: boolean;
 }
 
 export interface Promoter {
@@ -137,6 +146,8 @@ export interface Event {
   promoter_fraternity_member_id?: number | null;
   promoter_sponsoring_chapter_id?: number | null;
   promoter_initiated_chapter_id?: number | null;
+  promoter_initiated_season?: string | null;
+  promoter_initiated_year?: number | null;
   chapter_name?: string | null;
   is_fraternity_member?: boolean;
   is_promoter?: boolean;

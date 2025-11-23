@@ -15,7 +15,8 @@ import EventsSection from "./components/EventsSection";
 import ProductDetail from "./components/ProductDetail";
 import StewardListingDetail from "./components/StewardListingDetail";
 import ShopScreen from "./components/ShopScreen";
-import CollectionsScreen from "./components/CollectionsScreen";
+import EventsScreen from "./components/EventsScreen";
+import SellerStoreScreen from "./components/SellerStoreScreen";
 import StewardMarketplaceScreen from "./components/StewardMarketplaceScreen";
 import SellersScreen from "./components/SellersScreen";
 import ProfileScreen from "./components/ProfileScreen";
@@ -31,7 +32,8 @@ SplashScreen.preventAutoHideAsync();
 type Screen =
   | "home"
   | "shop"
-  | "collections"
+  | "events"
+  | "seller-store"
   | "steward-marketplace"
   | "profile"
   | "member-setup"
@@ -43,6 +45,9 @@ export default function App() {
     null
   );
   const [selectedListingId, setSelectedListingId] = useState<number | null>(
+    null
+  );
+  const [selectedSellerId, setSelectedSellerId] = useState<number | null>(
     null
   );
   const [currentScreen, setCurrentScreen] = useState<Screen>("home");
@@ -93,8 +98,8 @@ export default function App() {
     setCurrentScreen("shop");
   };
 
-  const handleCollectionsPress = () => {
-    setCurrentScreen("collections");
+  const handleEventsPress = () => {
+    setCurrentScreen("events");
   };
 
   const handleStewardMarketplacePress = () => {
@@ -103,6 +108,7 @@ export default function App() {
 
   const handleBackToHome = () => {
     setCurrentScreen("home");
+    setSelectedSellerId(null);
   };
 
   const handleSearchPress = () => {
@@ -145,8 +151,9 @@ export default function App() {
   };
 
   const handleSellerPress = (sellerId: number) => {
-    // Placeholder for seller collection navigation
-    console.log("Seller pressed:", sellerId);
+    // Navigate to seller store screen
+    setSelectedSellerId(sellerId);
+    setCurrentScreen("seller-store");
   };
 
   const handleEventPress = (event: Event) => {
@@ -176,15 +183,25 @@ export default function App() {
             onUserPress={handleUserPress}
           />
         );
-      case "collections":
+      case "events":
         return (
-          <CollectionsScreen
+          <EventsScreen
             onBack={handleBackToHome}
-            onSellerPress={handleSellerPress}
+            onEventPress={handleEventPress}
             onSearchPress={handleSearchPress}
             onUserPress={handleUserPress}
           />
         );
+      case "seller-store":
+        return selectedSellerId ? (
+          <SellerStoreScreen
+            sellerId={selectedSellerId}
+            onBack={handleBackToHome}
+            onProductPress={handleProductPress}
+            onSearchPress={handleSearchPress}
+            onUserPress={handleUserPress}
+          />
+        ) : null;
       case "steward-marketplace":
         return (
           <StewardMarketplaceScreen
@@ -260,7 +277,7 @@ export default function App() {
               onBecomeStewardPress={handleBecomeStewardPress}
               onProductPress={handleProductPress}
               onEventPress={handleEventPress}
-              onCollectionsPress={handleCollectionsPress}
+              onEventsPress={handleEventsPress}
               onStewardMarketplacePress={handleStewardMarketplacePress}
               onShopPress={handleShopPress}
               onNotificationPress={handleNotificationPress}

@@ -25,6 +25,7 @@
     "seed:attributes": "tsx src/scripts/seed-product-attributes.ts",
     "seed:notifications": "tsx src/scripts/seed-notifications.ts",
     "seed:test-users": "tsx src/scripts/seed-test-users.ts",
+    "seed:steward-listings": "tsx src/scripts/seed-steward-listings.ts",
     "seed:verification-test": "tsx src/scripts/seed-verification-test.ts",
     "seed:verification-test:clear": "tsx src/scripts/seed-verification-test.ts --clear",
     "verify:members": "tsx src/scripts/verify-members.ts",

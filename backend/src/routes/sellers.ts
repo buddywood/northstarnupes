@@ -414,17 +414,25 @@ router.get("/collections", async (req: Request, res: Response) => {
         s.business_name,
         s.headshot_url,
         s.sponsoring_chapter_id,
+        s.fraternity_member_id,
         s.social_links,
-        COUNT(p.id) as product_count
+        s.email,
+        COUNT(p.id) as product_count,
+        CASE WHEN s.fraternity_member_id IS NOT NULL THEN true ELSE false END as is_fraternity_member,
+        CASE WHEN s.status = 'APPROVED' THEN true ELSE false END as is_seller,
+        CASE WHEN st.id IS NOT NULL THEN true ELSE false END as is_steward,
+        CASE WHEN pr.id IS NOT NULL THEN true ELSE false END as is_promoter
       FROM sellers s
       LEFT JOIN products p ON s.id = p.seller_id
+      LEFT JOIN stewards st ON s.fraternity_member_id = st.fraternity_member_id AND st.status = 'APPROVED'
+      LEFT JOIN promoters pr ON (s.fraternity_member_id = pr.fraternity_member_id OR s.email = pr.email) AND pr.status = 'APPROVED'
       WHERE s.status = 'APPROVED'
-      GROUP BY s.id, s.name, s.business_name, s.headshot_url, s.sponsoring_chapter_id, s.social_links
+      GROUP BY s.id, s.name, s.business_name, s.headshot_url, s.sponsoring_chapter_id, s.fraternity_member_id, s.social_links, s.email, st.id, pr.id
       HAVING COUNT(p.id) > 0
       ORDER BY s.name ASC`
     );
 
-    // For each seller, get their products
+    // For each seller, get their products and initiated chapter info
     const sellersWithProducts = await Promise.all(
       result.rows.map(async (seller) => {
         const productsResult = await pool.query(
@@ -437,10 +445,29 @@ router.get("/collections", async (req: Request, res: Response) => {
             ? JSON.parse(seller.social_links)
             : seller.social_links || {};
 
+        // Get initiated chapter, season, and year if seller is a fraternity member
+        let initiated_chapter_id = null;
+        let initiated_season = null;
+        let initiated_year = null;
+        if (seller.fraternity_member_id) {
+          const memberResult = await pool.query(
+            "SELECT initiated_chapter_id, initiated_season, initiated_year FROM fraternity_members WHERE id = $1",
+            [seller.fraternity_member_id]
+          );
+          if (memberResult.rows.length > 0) {
+            initiated_chapter_id = memberResult.rows[0].initiated_chapter_id;
+            initiated_season = memberResult.rows[0].initiated_season;
+            initiated_year = memberResult.rows[0].initiated_year;
+          }
+        }
+
         return {
           ...seller,
           social_links: socialLinks,
           products: productsResult.rows,
+          initiated_chapter_id,
+          initiated_season,
+          initiated_year,
         };
       })
     );
@@ -516,14 +543,47 @@ router.get("/:id/products", async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Invalid seller ID" });
     }
 
-    const seller = await getSellerById(sellerId);
-    if (!seller || seller.status !== "APPROVED") {
-      return res
-        .status(404)
-        .json({ error: "Seller not found or not approved" });
+    // Get seller with role flags
+    const sellerResult = await pool.query(
+      `SELECT 
+        s.*,
+        CASE WHEN s.fraternity_member_id IS NOT NULL THEN true ELSE false END as is_fraternity_member,
+        CASE WHEN s.status = 'APPROVED' THEN true ELSE false END as is_seller,
+        CASE WHEN st.id IS NOT NULL THEN true ELSE false END as is_steward,
+        CASE WHEN pr.id IS NOT NULL THEN true ELSE false END as is_promoter
+      FROM sellers s
+      LEFT JOIN stewards st ON s.fraternity_member_id = st.fraternity_member_id AND st.status = 'APPROVED'
+      LEFT JOIN promoters pr ON (s.fraternity_member_id = pr.fraternity_member_id OR s.email = pr.email) AND pr.status = 'APPROVED'
+      WHERE s.id = $1`,
+      [sellerId]
+    );
+
+    if (sellerResult.rows.length === 0) {
+      return res.status(404).json({ error: "Seller not found" });
+    }
+
+    const seller = sellerResult.rows[0];
+    if (seller.status !== "APPROVED") {
+      return res.status(404).json({ error: "Seller not approved" });
     }
 
     const products = await getProductsBySeller(sellerId);
+
+    // Get initiated chapter, season, and year if seller is a fraternity member
+    let initiated_chapter_id = null;
+    let initiated_season = null;
+    let initiated_year = null;
+    if (seller.fraternity_member_id) {
+      const memberResult = await pool.query(
+        "SELECT initiated_chapter_id, initiated_season, initiated_year FROM fraternity_members WHERE id = $1",
+        [seller.fraternity_member_id]
+      );
+      if (memberResult.rows.length > 0) {
+        initiated_chapter_id = memberResult.rows[0].initiated_chapter_id;
+        initiated_season = memberResult.rows[0].initiated_season;
+        initiated_year = memberResult.rows[0].initiated_year;
+      }
+    }
 
     // Parse social_links if it's a string
     const socialLinks =
@@ -536,6 +596,9 @@ router.get("/:id/products", async (req: Request, res: Response) => {
       social_links: socialLinks,
       product_count: products.length,
       products: products,
+      initiated_chapter_id,
+      initiated_season,
+      initiated_year,
     });
   } catch (error) {
     console.error("Error fetching seller with products:", error);

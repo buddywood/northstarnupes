@@ -25,6 +25,14 @@ export interface ProductAttributeValue {
   display_order?: number;
 }
 
+export interface ProductCategory {
+  id: number;
+  name: string;
+  display_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface CategoryAttributeDefinition {
   id: number;
   category_id: number;
@@ -52,6 +60,8 @@ export interface Product {
   seller_fraternity_member_id?: number | null;
   seller_sponsoring_chapter_id?: number | null;
   seller_initiated_chapter_id?: number | null;
+  seller_initiated_season?: string | null;
+  seller_initiated_year?: number | null;
   seller_status?: 'PENDING' | 'APPROVED' | 'REJECTED';
   is_fraternity_member?: boolean;
   is_seller?: boolean;
@@ -83,6 +93,28 @@ export interface Event {
   is_promoter?: boolean;
   is_steward?: boolean;
   is_seller?: boolean;
+}
+
+export interface Seller {
+  id: number;
+  name: string;
+  business_name?: string | null;
+  headshot_url?: string | null;
+  sponsoring_chapter_id: number;
+  social_links?: Record<string, string>;
+  fraternity_member_id?: number | null;
+  initiated_chapter_id?: number | null;
+  initiated_season?: string | null;
+  initiated_year?: number | null;
+  product_count: number;
+  is_fraternity_member?: boolean;
+  is_seller?: boolean;
+  is_promoter?: boolean;
+  is_steward?: boolean;
+}
+
+export interface SellerWithProducts extends Seller {
+  products: Product[];
 }
 
 export async function fetchChapters(): Promise<Chapter[]> {
@@ -267,6 +299,17 @@ export async function getStewardListingPublic(id: number): Promise<StewardListin
   }
 }
 
+export async function fetchProductCategories(): Promise<ProductCategory[]> {
+  try {
+    const res = await fetch(`${API_URL}/api/products/categories`);
+    if (!res.ok) throw new Error('Failed to fetch product categories');
+    return res.json();
+  } catch (error) {
+    console.error('Error fetching product categories:', error);
+    return [];
+  }
+}
+
 export async function fetchCategoryAttributeDefinitions(categoryId: number): Promise<CategoryAttributeDefinition[]> {
   try {
     const res = await fetch(`${API_URL}/api/products/categories/${categoryId}/attributes`);
@@ -275,6 +318,33 @@ export async function fetchCategoryAttributeDefinitions(categoryId: number): Pro
   } catch (error) {
     console.error('Error fetching category attributes:', error);
     return [];
+  }
+}
+
+export async function fetchSellersWithProducts(): Promise<SellerWithProducts[]> {
+  try {
+    const res = await fetch(`${API_URL}/api/sellers/collections`);
+    if (!res.ok) throw new Error('Failed to fetch sellers');
+    return res.json();
+  } catch (error) {
+    console.error('Error fetching sellers with products:', error);
+    return [];
+  }
+}
+
+export async function fetchSellerWithProducts(sellerId: number): Promise<SellerWithProducts | null> {
+  try {
+    const res = await fetch(`${API_URL}/api/sellers/${sellerId}/products`);
+    if (!res.ok) throw new Error('Failed to fetch seller with products');
+    const data = await res.json();
+    // The API returns seller data with products array
+    return {
+      ...data,
+      products: data.products || [],
+    };
+  } catch (error) {
+    console.error('Error fetching seller with products:', error);
+    return null;
   }
 }
 

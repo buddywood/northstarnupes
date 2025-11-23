@@ -39,6 +39,9 @@ export default function SellerStoreView({ seller, chapters, categories }: Seller
 
   const chapterName = chapters.find(c => c.id === seller.sponsoring_chapter_id)?.name || null;
   const displayName = seller.business_name || seller.name;
+  const initiatedChapterName = seller.initiated_chapter_id 
+    ? chapters.find(c => c.id === seller.initiated_chapter_id)?.name || null
+    : null;
 
   // Group products by category for shop sections
   const productsByCategory = useMemo(() => {
@@ -128,23 +131,38 @@ export default function SellerStoreView({ seller, chapters, categories }: Seller
 
             {/* Store Info */}
             <div className="flex-1 min-w-0">
-              <div className="flex flex-wrap items-center gap-2 mb-3">
+              <div className="flex flex-wrap items-center gap-2 mb-2">
                 <h1 className="text-3xl md:text-4xl font-display font-bold text-midnight-navy">
                   {displayName}
                 </h1>
-                <VerificationBadge type="brother" />
-                {chapterName && (
-                  <VerificationBadge 
-                    type="sponsored-chapter" 
-                    chapterName={chapterName}
-                  />
-                )}
+                <UserRoleBadges
+                  is_member={seller.is_fraternity_member}
+                  is_seller={seller.is_seller}
+                  is_promoter={seller.is_promoter}
+                  is_steward={seller.is_steward}
+                  size="md"
+                />
               </div>
 
               {seller.business_name && seller.business_name !== seller.name && (
-                <p className="text-lg text-midnight-navy/70 mb-3">
+                <p className="text-lg text-midnight-navy/70 mb-2">
                   by {seller.name}
                 </p>
+              )}
+
+              {/* Verification Badges */}
+              {seller.fraternity_member_id && (
+                <div className="flex flex-wrap items-center gap-2 mb-3">
+                  <VerificationBadge type="brother" />
+                  {initiatedChapterName && (
+                    <VerificationBadge 
+                      type="initiated-chapter" 
+                      chapterName={initiatedChapterName}
+                      season={seller.initiated_season || null}
+                      year={seller.initiated_year || null}
+                    />
+                  )}
+                </div>
               )}
 
               {/* Shop Stats */}
@@ -167,10 +185,10 @@ export default function SellerStoreView({ seller, chapters, categories }: Seller
                 )}
                 {chapterName && (
                   <div className="flex items-center gap-2 text-sm text-midnight-navy/70">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                    <svg className="w-5 h-5 text-crimson" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                     </svg>
-                    <span>Supports {chapterName}</span>
+                    <span>Support the <span className="font-semibold">{chapterName}</span> chapter</span>
                   </div>
                 )}
               </div>

@@ -224,8 +224,8 @@ function HeaderContent() {
 
   const navLinks = [
     { href: '/shop', label: 'Shop', matchPath: '/shop' },
+    { href: '/events', label: 'Events', matchPath: '/events' },
     { href: '/steward-marketplace', label: 'Stewards', matchPath: '/steward-marketplace' },
-    { href: '/events?role=promoter', label: 'Promoters', matchPath: '/events', matchQuery: 'role=promoter' },
     { href: '/connect', label: 'Connect', matchPath: '/connect' },
   ];
 

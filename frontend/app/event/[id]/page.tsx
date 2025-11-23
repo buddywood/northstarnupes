@@ -122,6 +122,8 @@ export default function EventPage() {
                         <VerificationBadge 
                           type="initiated-chapter" 
                           chapterName={initiatedChapterName || `Chapter ${event.promoter_initiated_chapter_id}`}
+                          season={event.promoter_initiated_season || null}
+                          year={event.promoter_initiated_year || null}
                         />
                       )}
                     </>

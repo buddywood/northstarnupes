@@ -12,6 +12,7 @@ import { useCart } from "../lib/CartContext";
 import { useAuth } from "../lib/auth";
 import ProductCard from "./ProductCard";
 import ScreenHeader from "./ScreenHeader";
+import ShopScreenSkeleton from "./ShopScreenSkeleton";
 
 interface ShopScreenProps {
   onBack: () => void;
@@ -64,19 +65,11 @@ export default function ShopScreen({
 
   if (loading) {
     return (
-      <View style={styles.container}>
-        <ScreenHeader
-          title="Shop"
-          onBack={onBack}
-          showSearch={true}
-          onSearchPress={onSearchPress}
-          onUserPress={onUserPress}
-        />
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={COLORS.crimson} />
-          <Text style={styles.loadingText}>Loading products...</Text>
-        </View>
-      </View>
+      <ShopScreenSkeleton
+        onBack={onBack}
+        onSearchPress={onSearchPress}
+        onUserPress={onUserPress}
+      />
     );
   }
 

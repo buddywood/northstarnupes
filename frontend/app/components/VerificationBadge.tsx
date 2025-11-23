@@ -1,12 +1,16 @@
 interface VerificationBadgeProps {
   type: 'brother' | 'sponsored-chapter' | 'initiated-chapter' | 'seller';
   chapterName?: string | null;
+  season?: string | null;
+  year?: number | null;
   className?: string;
 }
 
 export default function VerificationBadge({ 
   type, 
   chapterName, 
+  season,
+  year,
   className = '' 
 }: VerificationBadgeProps) {
   if (type === 'brother') {
@@ -21,7 +25,7 @@ export default function VerificationBadge({
           className="flex-shrink-0"
         >
           <path
-            d="M6 1 L7 4 L10 5 L7 6 L6 9 L5 6 L2 5 L5 4 Z"
+            d="M6 0 L12 6 L6 12 L0 6 Z"
             fill="currentColor"
           />
         </svg>
@@ -42,7 +46,7 @@ export default function VerificationBadge({
           className="flex-shrink-0"
         >
           <path
-            d="M6 0 L7.5 3 L11 3.5 L8.5 6 L9 9.5 L6 7.5 L3 9.5 L3.5 6 L1 3.5 L4.5 3 Z"
+            d="M6 0 L12 6 L6 12 L0 6 Z"
             fill="currentColor"
           />
         </svg>
@@ -53,8 +57,9 @@ export default function VerificationBadge({
 
   if (type === 'initiated-chapter') {
     // Show badge even if chapterName is not yet loaded (will show fallback from parent)
+    const seasonYear = season && year ? ` - ${season} ${year}` : '';
     return (
-      <div className={`inline-flex items-center gap-1.5 bg-crimson/15 text-crimson px-2.5 py-1 rounded-full text-xs font-semibold border border-crimson/25 ${className}`}>
+      <div className={`inline-flex items-center gap-1.5 bg-white text-crimson px-2.5 py-1 rounded-full text-xs font-semibold border border-frost-gray ${className}`}>
         <svg 
           width="12" 
           height="12" 
@@ -64,11 +69,11 @@ export default function VerificationBadge({
           className="flex-shrink-0"
         >
           <path
-            d="M6 0 L7.5 3 L11 3.5 L8.5 6 L9 9.5 L6 7.5 L3 9.5 L3.5 6 L1 3.5 L4.5 3 Z"
+            d="M6 0 L12 6 L6 12 L0 6 Z"
             fill="currentColor"
           />
         </svg>
-        <span>Initiated at {chapterName || 'Chapter'}</span>
+        <span>Initiated at <span className="font-bold">{chapterName || 'Chapter'}</span> chapter{seasonYear}</span>
       </div>
     );
   }
@@ -85,7 +90,7 @@ export default function VerificationBadge({
           className="flex-shrink-0"
         >
           <path
-            d="M6 0 L7.5 3 L11 3.5 L8.5 6 L9 9.5 L6 7.5 L3 9.5 L3.5 6 L1 3.5 L4.5 3 Z"
+            d="M6 0 L12 6 L6 12 L0 6 Z"
             fill="currentColor"
           />
         </svg>

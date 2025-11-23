@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../lib/constants';
 
-type Screen = 'home' | 'shop' | 'collections' | 'steward-marketplace' | 'profile';
+type Screen = 'home' | 'shop' | 'events' | 'steward-marketplace' | 'profile';
 
 interface BottomTabBarProps {
   currentScreen: Screen;
@@ -26,10 +26,10 @@ export default function BottomTabBar({
       isCenter: false
     },
     { 
-      id: 'collections' as Screen, 
-      label: 'Collections', 
-      iconName: 'storefront-outline' as keyof typeof Ionicons.glyphMap,
-      activeIconName: 'storefront' as keyof typeof Ionicons.glyphMap,
+      id: 'events' as Screen, 
+      label: 'Events', 
+      iconName: 'calendar-outline' as keyof typeof Ionicons.glyphMap,
+      activeIconName: 'calendar' as keyof typeof Ionicons.glyphMap,
       isCenter: false
     },
     { 

@@ -363,6 +363,8 @@ export default function ProductPage() {
                         <VerificationBadge 
                           type="initiated-chapter" 
                           chapterName={initiatedChapterName || `Chapter ${product.seller_initiated_chapter_id}`}
+                          season={product.seller_initiated_season || null}
+                          year={product.seller_initiated_year || null}
                         />
                       ) : (
                         // Fallback: if member_id exists but no initiated_chapter_id, still show badge

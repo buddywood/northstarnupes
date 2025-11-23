@@ -27,7 +27,7 @@ interface HeaderProps {
   onBecomeStewardPress?: () => void;
   onProductPress?: (product: Product) => void;
   onEventPress?: (event: Event) => void;
-  onCollectionsPress?: () => void;
+  onEventsPress?: () => void;
   onStewardMarketplacePress?: () => void;
   onShopPress?: () => void;
   onSellersPress?: () => void;
@@ -45,7 +45,7 @@ export default function Header({
   onBecomeStewardPress,
   onProductPress,
   onEventPress,
-  onCollectionsPress,
+  onEventsPress,
   onStewardMarketplacePress,
   onShopPress,
   onSellersPress,
@@ -683,16 +683,16 @@ export default function Header({
               </TouchableOpacity>
             )}
 
-            {onCollectionsPress && (
+            {onEventsPress && (
               <TouchableOpacity
                 onPress={() => {
                   setMenuVisible(false);
-                  onCollectionsPress();
+                  onEventsPress();
                 }}
                 style={styles.menuItem}
                 activeOpacity={0.7}
               >
-                <Text style={styles.menuItemText}>Seller Collections</Text>
+                <Text style={styles.menuItemText}>Events</Text>
                 <Text style={styles.menuItemArrow}>→</Text>
               </TouchableOpacity>
             )}

@@ -10,6 +10,7 @@ import {
   Modal,
   Dimensions,
 } from "react-native";
+import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as WebBrowser from "expo-web-browser";
 import {
@@ -17,12 +18,16 @@ import {
   createCheckoutSession,
   fetchCategoryAttributeDefinitions,
   CategoryAttributeDefinition,
+  fetchChapters,
+  Chapter,
 } from "../lib/api";
 import { COLORS } from "../lib/constants";
 import { useAuth } from "../lib/auth";
 import { fetchProduct } from "../lib/api";
 import ScreenHeader from "./ScreenHeader";
+import ProductDetailSkeleton from "./ProductDetailSkeleton";
 import PrimaryButton from "./ui/PrimaryButton";
+import UserRoleBadges from "./UserRoleBadges";
 
 interface ProductDetailProps {
   productId: number;
@@ -43,6 +48,7 @@ export default function ProductDetail({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [checkingOut, setCheckingOut] = useState(false);
+  const [chapters, setChapters] = useState<Chapter[]>([]);
   const [attributeDefinitions, setAttributeDefinitions] = useState<
     CategoryAttributeDefinition[]
   >([]);
@@ -52,14 +58,18 @@ export default function ProductDetail({
       try {
         setLoading(true);
         setError(null);
-        const data = await fetchProduct(productId);
-        setProduct(data);
+        const [productData, chaptersData] = await Promise.all([
+          fetchProduct(productId),
+          fetchChapters().catch(() => []),
+        ]);
+        setProduct(productData);
+        setChapters(chaptersData);
 
         // Load attribute definitions as fallback if attributes don't have attribute_name
-        if (data.category_id) {
+        if (productData.category_id) {
           try {
             const definitions = await fetchCategoryAttributeDefinitions(
-              data.category_id
+              productData.category_id
             );
             setAttributeDefinitions(definitions);
           } catch (err) {
@@ -77,18 +87,14 @@ export default function ProductDetail({
     loadProduct();
   }, [productId]);
 
+  const getChapterName = (chapterId: number | null) => {
+    if (!chapterId) return null;
+    const chapter = chapters.find((c) => c.id === chapterId);
+    return chapter?.name || null;
+  };
+
   if (loading) {
-    return (
-      <Modal visible={true} animationType="slide" onRequestClose={onClose}>
-        <View style={[styles.container, { paddingTop: insets.top }]}>
-          <ScreenHeader title="Product" onBack={onClose} showUser={false} />
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={COLORS.crimson} />
-            <Text style={styles.loadingText}>Loading product...</Text>
-          </View>
-        </View>
-      </Modal>
-    );
+    return <ProductDetailSkeleton onClose={onClose} />;
   }
 
   if (error || !product) {
@@ -226,8 +232,39 @@ export default function ProductDetail({
                 disabled={!onSellerPress || !product.seller_id}
                 activeOpacity={onSellerPress && product.seller_id ? 0.7 : 1}
               >
-                <Text style={styles.sellerLabel}>Sold by</Text>
-                <Text style={styles.sellerName}>{sellerName}</Text>
+                <View style={styles.sellerNameRow}>
+                  <Text style={styles.sellerLabel}>Sold by</Text>
+                  <Text style={styles.sellerName}>{sellerName}</Text>
+                  <UserRoleBadges
+                    is_member={product.is_fraternity_member}
+                    is_seller={product.is_seller}
+                    is_promoter={product.is_promoter}
+                    is_steward={product.is_steward}
+                    size="sm"
+                  />
+                </View>
+                
+                {/* Verification Badges */}
+                {product.seller_fraternity_member_id && (
+                  <View style={styles.badgesContainer}>
+                    <View style={styles.verificationBadge}>
+                      <View style={[styles.diamondIcon, { backgroundColor: COLORS.auroraGold }]} />
+                      <Text style={styles.verificationBadgeText}>Verified</Text>
+                    </View>
+                    {product.seller_initiated_chapter_id && getChapterName(product.seller_initiated_chapter_id) && (
+                      <View style={styles.initiatedBadge}>
+                        <View style={[styles.diamondIcon, { backgroundColor: COLORS.crimson }]} />
+                        <Text style={styles.initiatedBadgeText}>
+                          Initiated at <Text style={styles.chapterNameBold}>{getChapterName(product.seller_initiated_chapter_id)}</Text> chapter
+                          {product.seller_initiated_season && product.seller_initiated_year && (
+                            <> - {product.seller_initiated_season} {product.seller_initiated_year}</>
+                          )}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                )}
+                
                 {onSellerPress && product.seller_id && (
                   <Text style={styles.viewCollectionText}>
                     View Collection →
@@ -431,22 +468,90 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: COLORS.frostGray,
   },
+  sellerNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+    marginBottom: 4,
+  },
   sellerLabel: {
     fontSize: 12,
     color: COLORS.midnightNavy,
     opacity: 0.6,
-    marginBottom: 4,
   },
   sellerName: {
     fontSize: 16,
     fontWeight: "600",
     color: COLORS.midnightNavy,
-    marginBottom: 4,
   },
   viewCollectionText: {
     fontSize: 14,
     color: COLORS.crimson,
     fontWeight: "600",
+    marginTop: 8,
+  },
+  badgesContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 8,
+  },
+  verificationBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: COLORS.auroraGold + '33',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: COLORS.auroraGold + '4D',
+  },
+  diamondIcon: {
+    width: 12,
+    height: 12,
+    transform: [{ rotate: '45deg' }],
+  },
+  verificationBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.auroraGold,
+  },
+  chapterBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: COLORS.crimson + '26',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: COLORS.crimson + '40',
+  },
+  chapterBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.crimson,
+  },
+  initiatedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: COLORS.white,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: COLORS.frostGray,
+  },
+  initiatedBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.crimson,
+  },
+  chapterNameBold: {
+    fontWeight: '700',
   },
   priceContainer: {
     marginBottom: 20,

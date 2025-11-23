@@ -11,6 +11,7 @@ import {
 import { COLORS } from '../lib/constants';
 import { API_URL } from '../lib/constants';
 import ScreenHeader from './ScreenHeader';
+import SellersScreenSkeleton from './SellersScreenSkeleton';
 
 interface Seller {
   id: number;
@@ -73,19 +74,11 @@ export default function SellersScreen({
 
   if (loading) {
     return (
-      <View style={styles.container}>
-        <ScreenHeader
-          title="Sellers"
-          onBack={onBack}
-          showSearch={true}
-          onSearchPress={onSearchPress}
-          onUserPress={onUserPress}
-        />
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={COLORS.crimson} />
-          <Text style={styles.loadingText}>Loading sellers...</Text>
-        </View>
-      </View>
+      <SellersScreenSkeleton
+        onBack={onBack}
+        onSearchPress={onSearchPress}
+        onUserPress={onUserPress}
+      />
     );
   }
 
