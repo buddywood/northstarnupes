@@ -288,11 +288,6 @@ export default function EventPage() {
                 <EventCountdown eventDate={event.event_date} />
               </div>
 
-              {event.max_attendees && (
-                <div className="mb-6 text-sm text-midnight-navy/60 dark:text-gray-400">
-                  <span>Maximum attendees: {event.max_attendees}</span>
-                </div>
-              )}
 
               <button
                 onClick={() => setIsRSVPModalOpen(true)}

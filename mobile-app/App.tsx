@@ -18,6 +18,7 @@ import ShopScreen from "./components/ShopScreen";
 import EventsScreen from "./components/EventsScreen";
 import EventDetail from "./components/EventDetail";
 import MyEventsScreen from "./components/MyEventsScreen";
+import CreateEventScreen from "./components/CreateEventScreen";
 import SellerStoreScreen from "./components/SellerStoreScreen";
 import StewardMarketplaceScreen from "./components/StewardMarketplaceScreen";
 import SellersScreen from "./components/SellersScreen";
@@ -37,6 +38,7 @@ type Screen =
   | "events"
   | "event-detail"
   | "my-events"
+  | "create-event"
   | "seller-store"
   | "steward-marketplace"
   | "profile"
@@ -220,6 +222,18 @@ export default function App() {
             onEventPress={handleEventPress}
             onSearchPress={handleSearchPress}
             onUserPress={handleUserPress}
+            onCreateEventPress={() => {
+              setCurrentScreen("create-event");
+            }}
+          />
+        );
+      case "create-event":
+        return (
+          <CreateEventScreen
+            onBack={handleBackToHome}
+            onSuccess={() => {
+              setCurrentScreen("my-events");
+            }}
           />
         );
       case "seller-store":

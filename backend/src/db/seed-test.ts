@@ -352,7 +352,6 @@ const sampleEvents = [
     image_url:
       "https://images.unsplash.com/photo-1511578314322-379afb476865?w=800&h=600&fit=crop",
     ticket_price_cents: 7500, // $75.00
-    max_attendees: 200,
   },
   {
     title: "Spring Brotherhood Mixer",
@@ -1278,6 +1277,27 @@ async function seedEvents(): Promise<void> {
   const chapters = await getAllChapters();
   const availableChapters = chapters.length > 0 ? chapters : [];
 
+  // Get event types and audience types
+  const eventTypesResult = await pool.query(
+    "SELECT id FROM event_types WHERE is_active = true ORDER BY id LIMIT 1"
+  );
+  const eventAudienceTypesResult = await pool.query(
+    "SELECT id FROM event_audience_types WHERE is_active = true ORDER BY id LIMIT 1"
+  );
+
+  if (eventTypesResult.rows.length === 0) {
+    console.warn("  ⚠️  No event types found. Please seed event types first.");
+    return;
+  }
+
+  if (eventAudienceTypesResult.rows.length === 0) {
+    console.warn("  ⚠️  No event audience types found. Please seed event audience types first.");
+    return;
+  }
+
+  const eventTypeId = eventTypesResult.rows[0].id;
+  const eventAudienceTypeId = eventAudienceTypesResult.rows[0].id;
+
   // Get approved promoters
   const promotersResult = await pool.query(
     "SELECT id FROM promoters WHERE status = 'APPROVED' AND (email LIKE '%example.com' OR email LIKE 'test%@%')"
@@ -1316,7 +1336,14 @@ async function seedEvents(): Promise<void> {
           ? availableChapters[
               Math.floor(Math.random() * availableChapters.length)
             ].id
-          : undefined;
+          : availableChapters.length > 0
+          ? availableChapters[0].id
+          : null;
+
+      if (!sponsoredChapter) {
+        console.log(`  ⚠ Skipping event: ${eventData.title} (no chapters available)`);
+        continue;
+      }
 
       await createEvent({
         promoter_id: promoter.id,
@@ -1328,8 +1355,10 @@ async function seedEvents(): Promise<void> {
         state: eventData.state,
         image_url: eventData.image_url,
         sponsored_chapter_id: sponsoredChapter,
+        event_type_id: eventTypeId,
+        event_audience_type_id: eventAudienceTypeId,
+        dress_codes: ['business_casual'],
         ticket_price_cents: eventData.ticket_price_cents,
-        max_attendees: eventData.max_attendees,
       });
 
       inserted++;

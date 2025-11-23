@@ -258,12 +258,6 @@ export default function EventDetail({
             <EventCountdown eventDate={event.event_date} />
           </View>
 
-          {/* Max Attendees */}
-          {event.max_attendees && (
-            <Text style={styles.maxAttendeesText}>
-              Maximum attendees: {event.max_attendees}
-            </Text>
-          )}
 
           {/* RSVP Button */}
           <PrimaryButton

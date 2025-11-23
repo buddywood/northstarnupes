@@ -1,5 +1,5 @@
-import React from "react";
-import { View, Text, Image, TouchableOpacity } from "react-native";
+import React, { useState } from "react";
+import { View, Text, Image, TouchableOpacity, ActivityIndicator } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../lib/constants";
 import styles from "./EventsScreenStyles";
@@ -19,6 +19,7 @@ export default function EventCard({
   formatTime,
   distanceMiles,
 }: EventCardProps) {
+  const [imageLoading, setImageLoading] = useState(true);
   const date = new Date(event.event_date);
   const month = date.toLocaleString("en-US", { month: "short" }).toUpperCase();
   const day = date.getDate();
@@ -30,11 +31,18 @@ export default function EventCard({
       activeOpacity={0.85}
     >
       <View style={styles.eventImageWrapper}>
+        {imageLoading && event.image_url && (
+          <View style={[styles.eventImage, { position: 'absolute', backgroundColor: COLORS.frostGray, justifyContent: 'center', alignItems: 'center' }]}>
+            <ActivityIndicator size="large" color={COLORS.crimson} />
+          </View>
+        )}
         {event.image_url ? (
           <Image
             source={{ uri: event.image_url }}
             style={styles.eventImage}
             resizeMode="cover"
+            onLoad={() => setImageLoading(false)}
+            onError={() => setImageLoading(false)}
           />
         ) : (
           <View style={[styles.eventImage, styles.eventImagePlaceholder]}>
@@ -132,6 +140,9 @@ export default function EventCard({
           </Text>
         )}
 
+        {/* Divider */}
+        <View style={styles.eventDivider} />
+
         <View style={styles.eventFooterRow}>
           <View style={styles.eventTagPill}>
             <Ionicons
@@ -140,7 +151,7 @@ export default function EventCard({
               color={COLORS.midnightNavy}
             />
             <Text style={styles.eventTagText}>
-              {event.chapter_name ? "Hosted by chapter" : "Open to all members"}
+              {event.event_audience_type_description || (event.chapter_name ? "Hosted by chapter" : "Open to all members")}
             </Text>
           </View>
 

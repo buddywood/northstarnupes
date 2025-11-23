@@ -139,8 +139,18 @@ export interface Event {
   state: string | null;
   image_url: string | null;
   sponsored_chapter_id: number | null;
+  event_type_id: number | null;
+  event_audience_type_id: number | null;
+  all_day: boolean;
+  duration_minutes: number | null;
+  event_link: string | null;
+  is_featured: boolean;
+  featured_payment_status: 'UNPAID' | 'PENDING' | 'PAID' | 'FAILED' | 'REFUNDED';
+  stripe_payment_intent_id: string | null;
   ticket_price_cents: number;
-  max_attendees: number | null;
+  dress_codes: ('business' | 'business_casual' | 'formal' | 'semi_formal' | 'kappa_casual' | 'greek_encouraged' | 'greek_required' | 'outdoor' | 'athletic' | 'comfortable' | 'all_white')[];
+  dress_code_notes: string | null;
+  status: 'ACTIVE' | 'CLOSED' | 'CANCELLED';
   promoter_name?: string;
   promoter_email?: string;
   promoter_fraternity_member_id?: number | null;
@@ -153,6 +163,53 @@ export interface Event {
   is_promoter?: boolean;
   is_steward?: boolean;
   is_seller?: boolean;
+  event_audience_type_description?: string | null;
+}
+
+export interface EventType {
+  id: number;
+  enum: string;
+  description: string;
+  display_order: number;
+}
+
+export interface EventAudienceType {
+  id: number;
+  enum: string;
+  description: string;
+  display_order: number;
+}
+
+export async function fetchEventTypes(): Promise<EventType[]> {
+  const res = await fetch(`${API_URL}/api/events/types`);
+  if (!res.ok) {
+    try {
+      const error = await parseJsonResponse<{ error?: string }>(res);
+      throw new Error(error.error || 'Failed to fetch event types');
+    } catch (err: any) {
+      if (err.message && !err.message.includes('Unexpected token')) {
+        throw err;
+      }
+      throw new Error('Failed to load event types. Please try again.');
+    }
+  }
+  return parseJsonResponse<EventType[]>(res);
+}
+
+export async function fetchEventAudienceTypes(): Promise<EventAudienceType[]> {
+  const res = await fetch(`${API_URL}/api/events/audience-types`);
+  if (!res.ok) {
+    try {
+      const error = await parseJsonResponse<{ error?: string }>(res);
+      throw new Error(error.error || 'Failed to fetch event audience types');
+    } catch (err: any) {
+      if (err.message && !err.message.includes('Unexpected token')) {
+        throw err;
+      }
+      throw new Error('Failed to load event audience types. Please try again.');
+    }
+  }
+  return parseJsonResponse<EventAudienceType[]>(res);
 }
 
 export interface Order {
@@ -516,6 +573,40 @@ export async function completeSellerSetup(token: string, password: string): Prom
   }
 }
 
+/**
+ * Safely parse JSON response, handling HTML error pages
+ */
+async function parseJsonResponse<T>(response: Response): Promise<T> {
+  const contentType = response.headers.get('content-type') || '';
+  const text = await response.text();
+  
+  // Check if response is HTML (error page) instead of JSON
+  if (contentType.includes('text/html') || text.trim().startsWith('<!DOCTYPE') || text.trim().startsWith('<html')) {
+    // Try to extract error message from HTML if possible
+    const titleMatch = text.match(/<title[^>]*>([^<]+)<\/title>/i);
+    const errorMessage = titleMatch ? titleMatch[1] : 'Server error';
+    
+    throw new Error(
+      response.status === 500 
+        ? 'A server error occurred. Please try again later or contact support if the problem persists.'
+        : response.status === 404
+        ? 'The requested resource was not found. Please check your connection and try again.'
+        : response.status === 403
+        ? 'You do not have permission to perform this action.'
+        : response.status === 401
+        ? 'Your session has expired. Please log in again.'
+        : `An error occurred (${response.status}). ${errorMessage}`
+    );
+  }
+  
+  // Try to parse as JSON
+  try {
+    return JSON.parse(text) as T;
+  } catch (error) {
+    throw new Error('The server returned an invalid response. Please try again.');
+  }
+}
+
 export async function getAuthHeaders(): Promise<HeadersInit> {
   const session = await fetch('/api/auth/session').then(res => res.json());
   const idToken = (session as any)?.idToken;
@@ -598,18 +689,29 @@ export async function submitPromoterApplication(formData: FormData): Promise<Pro
   return res.json();
 }
 
-export async function createEvent(formData: FormData): Promise<Event> {
+export async function createEvent(formData: FormData): Promise<Event & { checkout_url?: string; requires_payment?: boolean; payment_error?: string }> {
   const headers = await getAuthHeaders();
+  // Remove Content-Type header when sending FormData - browser will set it automatically with boundary
+  const { 'Content-Type': _, ...headersWithoutContentType } = headers as Record<string, string>;
   const res = await fetch(`${API_URL}/api/events`, {
     method: 'POST',
-    headers,
+    headers: headersWithoutContentType,
     body: formData,
   });
   if (!res.ok) {
-    const error = await res.json();
-    throw new Error(error.error || 'Failed to create event');
+    try {
+      const error = await parseJsonResponse<{ error?: string }>(res);
+      throw new Error(error.error || 'Failed to create event');
+    } catch (err: any) {
+      // If it's already our friendly error, re-throw it
+      if (err.message && !err.message.includes('Unexpected token')) {
+        throw err;
+      }
+      // Otherwise provide a friendly message
+      throw new Error('Failed to create event. Please check your connection and try again.');
+    }
   }
-  return res.json();
+  return parseJsonResponse<Event & { checkout_url?: string; requires_payment?: boolean; payment_error?: string }>(res);
 }
 
 export async function fetchPendingPromoters(): Promise<Promoter[]> {
@@ -697,10 +799,17 @@ export async function getPromoterEvents(): Promise<Event[]> {
     headers,
   });
   if (!res.ok) {
-    const error = await res.json();
-    throw new Error(error.error || 'Failed to fetch promoter events');
+    try {
+      const error = await parseJsonResponse<{ error?: string }>(res);
+      throw new Error(error.error || 'Failed to fetch promoter events');
+    } catch (err: any) {
+      if (err.message && !err.message.includes('Unexpected token')) {
+        throw err;
+      }
+      throw new Error('Failed to load your events. Please try again.');
+    }
   }
-  return res.json();
+  return parseJsonResponse<Event[]>(res);
 }
 
 export async function getPromoterMetrics(): Promise<PromoterMetrics> {
@@ -709,10 +818,37 @@ export async function getPromoterMetrics(): Promise<PromoterMetrics> {
     headers,
   });
   if (!res.ok) {
-    const error = await res.json();
-    throw new Error(error.error || 'Failed to fetch promoter metrics');
+    try {
+      const error = await parseJsonResponse<{ error?: string }>(res);
+      throw new Error(error.error || 'Failed to fetch promoter metrics');
+    } catch (err: any) {
+      if (err.message && !err.message.includes('Unexpected token')) {
+        throw err;
+      }
+      throw new Error('Failed to load event metrics. Please try again.');
+    }
   }
-  return res.json();
+  return parseJsonResponse<PromoterMetrics>(res);
+}
+
+export async function closeEvent(eventId: number): Promise<Event> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_URL}/api/events/${eventId}/close`, {
+    method: 'PATCH',
+    headers,
+  });
+  if (!res.ok) {
+    try {
+      const error = await parseJsonResponse<{ error?: string }>(res);
+      throw new Error(error.error || 'Failed to close event');
+    } catch (err: any) {
+      if (err.message && !err.message.includes('Unexpected token')) {
+        throw err;
+      }
+      throw new Error('Failed to close event. Please try again.');
+    }
+  }
+  return parseJsonResponse<Event>(res);
 }
 
 export async function getPromoterProfile(): Promise<Promoter> {
@@ -721,16 +857,33 @@ export async function getPromoterProfile(): Promise<Promoter> {
     headers,
   });
   if (!res.ok) {
-    const error = await res.json();
-    throw new Error(error.error || 'Failed to fetch promoter profile');
+    try {
+      const error = await parseJsonResponse<{ error?: string }>(res);
+      throw new Error(error.error || 'Failed to fetch promoter profile');
+    } catch (err: any) {
+      if (err.message && !err.message.includes('Unexpected token')) {
+        throw err;
+      }
+      throw new Error('Failed to load your profile. Please try again.');
+    }
   }
-  return res.json();
+  return parseJsonResponse<Promoter>(res);
 }
 
 export async function fetchEvent(id: number): Promise<Event> {
   const res = await fetch(`${API_URL}/api/events/${id}`);
-  if (!res.ok) throw new Error('Failed to fetch event');
-  return res.json();
+  if (!res.ok) {
+    try {
+      const error = await parseJsonResponse<{ error?: string }>(res);
+      throw new Error(error.error || 'Failed to fetch event');
+    } catch (err: any) {
+      if (err.message && !err.message.includes('Unexpected token')) {
+        throw err;
+      }
+      throw new Error('Failed to load event. Please try again.');
+    }
+  }
+  return parseJsonResponse<Event>(res);
 }
 
 export interface MemberProfile {

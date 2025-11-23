@@ -61,7 +61,10 @@ export default function BottomTabBar({
       pointerEvents="box-none"
     >
       {tabs.map((tab) => {
-        const isActive = currentScreen === tab.id;
+        // Events tab should be active for events, my-events, and create-event screens
+        const isActive = tab.id === 'events' 
+          ? (currentScreen === 'events' || currentScreen === 'my-events' || currentScreen === 'create-event')
+          : currentScreen === tab.id;
         const isCenter = tab.isCenter;
         return (
           <TouchableOpacity

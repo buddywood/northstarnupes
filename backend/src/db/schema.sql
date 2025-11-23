@@ -163,8 +163,43 @@ CREATE TABLE IF NOT EXISTS events (
   state VARCHAR(100),
   image_url TEXT,
   sponsored_chapter_id INTEGER REFERENCES chapters(id),
+  event_type_id INTEGER REFERENCES event_types(id),
+  event_audience_type_id INTEGER REFERENCES event_audience_types(id),
+  all_day BOOLEAN NOT NULL DEFAULT false,
+  duration_minutes INTEGER,
+  event_link TEXT,
+  is_featured BOOLEAN NOT NULL DEFAULT false,
+  featured_payment_status VARCHAR(50) DEFAULT 'UNPAID',
+  stripe_payment_intent_id VARCHAR(255),
   ticket_price_cents INTEGER DEFAULT 0,
-  max_attendees INTEGER,
+  dress_codes JSONB NOT NULL DEFAULT '["business_casual"]'::jsonb CHECK (
+    jsonb_typeof(dress_codes) = 'array' AND
+    dress_codes <@ '["business", "business_casual", "formal", "semi_formal", "kappa_casual", "greek_encouraged", "greek_required", "outdoor", "athletic", "comfortable", "all_white"]'::jsonb
+  ),
+  dress_code_notes TEXT,
+  status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'CLOSED', 'CANCELLED')),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Event Types reference table
+CREATE TABLE IF NOT EXISTS event_types (
+  id SERIAL PRIMARY KEY,
+  enum VARCHAR(50) NOT NULL UNIQUE,
+  description VARCHAR(255) NOT NULL,
+  display_order INTEGER NOT NULL DEFAULT 0,
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Event Audience Types reference table
+CREATE TABLE IF NOT EXISTS event_audience_types (
+  id SERIAL PRIMARY KEY,
+  enum VARCHAR(50) NOT NULL UNIQUE,
+  description VARCHAR(255) NOT NULL,
+  display_order INTEGER NOT NULL DEFAULT 0,
+  is_active BOOLEAN NOT NULL DEFAULT true,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

@@ -222,7 +222,12 @@ function HeaderContent() {
     }
   }, [cartMenuOpen]);
 
-  const navLinks = [
+  const navLinks: Array<{
+    href: string;
+    label: string;
+    matchPath: string;
+    matchQuery?: string;
+  }> = [
     { href: '/shop', label: 'Shop', matchPath: '/shop' },
     { href: '/events', label: 'Events', matchPath: '/events' },
     { href: '/steward-marketplace', label: 'Stewards', matchPath: '/steward-marketplace' },
@@ -233,6 +238,11 @@ function HeaderContent() {
   const isLinkActive = (link: typeof navLinks[0]) => {
     if (link.matchPath) {
       const pathMatches = pathname === link.matchPath || pathname?.startsWith(link.matchPath + '/');
+      // Events link should also be active for promoter dashboard events pages
+      if (link.href === '/events') {
+        const isPromoterEventsPage = pathname?.startsWith('/promoter-dashboard/events');
+        return pathMatches || isPromoterEventsPage;
+      }
       if (link.matchQuery) {
         const currentRole = searchParams?.get('role');
         const linkRole = link.matchQuery.split('=')[1];

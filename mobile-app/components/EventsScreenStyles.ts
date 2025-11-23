@@ -271,11 +271,16 @@ export default StyleSheet.create({
     opacity: 0.75,
     flex: 1,
   },
+  eventDivider: {
+    height: 1,
+    backgroundColor: COLORS.frostGray,
+    marginTop: 12,
+    marginBottom: 8,
+  },
   eventFooterRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginTop: 4,
   },
   eventTagPill: {
     flexDirection: "row",

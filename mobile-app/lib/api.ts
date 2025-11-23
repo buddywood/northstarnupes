@@ -1,4 +1,5 @@
 import { API_URL } from './constants';
+import { authenticatedFetch } from './api-utils';
 
 export interface Chapter {
   id: number;
@@ -81,8 +82,18 @@ export interface Event {
   state: string | null;
   image_url: string | null;
   sponsored_chapter_id: number | null;
+  event_type_id: number | null;
+  event_audience_type_id: number | null;
+  all_day: boolean;
+  duration_minutes: number | null;
+  event_link: string | null;
+  is_featured: boolean;
+  featured_payment_status: 'UNPAID' | 'PENDING' | 'PAID' | 'FAILED' | 'REFUNDED';
+  stripe_payment_intent_id: string | null;
   ticket_price_cents: number;
-  max_attendees: number | null;
+  dress_codes: ('business' | 'business_casual' | 'formal' | 'semi_formal' | 'kappa_casual' | 'greek_encouraged' | 'greek_required' | 'outdoor' | 'athletic' | 'comfortable' | 'all_white')[];
+  dress_code_notes: string | null;
+  status: 'ACTIVE' | 'CLOSED' | 'CANCELLED';
   promoter_name?: string;
   promoter_email?: string;
   promoter_fraternity_member_id?: number | null;
@@ -95,6 +106,47 @@ export interface Event {
   is_promoter?: boolean;
   is_steward?: boolean;
   is_seller?: boolean;
+  event_audience_type_description?: string | null;
+}
+
+export interface EventType {
+  id: number;
+  enum: string;
+  description: string;
+  display_order: number;
+}
+
+export interface EventAudienceType {
+  id: number;
+  enum: string;
+  description: string;
+  display_order: number;
+}
+
+export async function fetchEventTypes(): Promise<EventType[]> {
+  try {
+    const res = await fetch(`${API_URL}/api/events/types`);
+    if (!res.ok) {
+      throw new Error('Failed to fetch event types');
+    }
+    return res.json();
+  } catch (error) {
+    console.error('Error fetching event types:', error);
+    throw error;
+  }
+}
+
+export async function fetchEventAudienceTypes(): Promise<EventAudienceType[]> {
+  try {
+    const res = await fetch(`${API_URL}/api/events/audience-types`);
+    if (!res.ok) {
+      throw new Error('Failed to fetch event audience types');
+    }
+    return res.json();
+  } catch (error) {
+    console.error('Error fetching event audience types:', error);
+    throw error;
+  }
 }
 
 export interface Seller {
@@ -203,7 +255,7 @@ export async function fetchEvent(eventId: number): Promise<Event> {
 
 export async function getPromoterEvents(token: string): Promise<Event[]> {
   try {
-    const res = await fetch(`${API_URL}/api/events/promoter/me`, {
+    const res = await authenticatedFetch(`${API_URL}/api/events/promoter/me`, {
       headers: {
         'Authorization': `Bearer ${token}`,
       },
@@ -213,8 +265,104 @@ export async function getPromoterEvents(token: string): Promise<Event[]> {
       throw new Error(error.error || 'Failed to fetch promoter events');
     }
     return res.json();
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching promoter events:', error);
+    // Re-throw session expired errors
+    if (error.code === 'SESSION_EXPIRED') {
+      throw error;
+    }
+    throw error;
+  }
+}
+
+export interface Promoter {
+  id: number;
+  fraternity_member_id: number | null;
+  sponsoring_chapter_id: number | null;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  stripe_account_id: string | null;
+  created_at: string;
+  updated_at: string;
+  email?: string;
+  name?: string;
+  membership_number?: string;
+  initiated_chapter_id?: number | null;
+  headshot_url?: string | null;
+  social_links?: Record<string, string>;
+}
+
+export async function getPromoterProfile(token: string): Promise<Promoter> {
+  try {
+    const res = await fetch(`${API_URL}/api/promoters/me`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.error || 'Failed to fetch promoter profile');
+    }
+    return res.json();
+  } catch (error) {
+    console.error('Error fetching promoter profile:', error);
+    throw error;
+  }
+}
+
+export async function promoteEvent(
+  eventId: number,
+  token: string
+): Promise<{ checkout_url: string; event_id: number; requires_payment: boolean }> {
+  const response = await fetch(`${API_URL}/api/events/${eventId}/promote`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: "Failed to promote event" }));
+    throw new Error(error.error || "Failed to promote event");
+  }
+
+  return response.json();
+}
+
+export async function closeEvent(eventId: number, token: string): Promise<Event> {
+  try {
+    const res = await fetch(`${API_URL}/api/events/${eventId}/close`, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.error || 'Failed to close event');
+    }
+    return res.json();
+  } catch (error) {
+    console.error('Error closing event:', error);
+    throw error;
+  }
+}
+
+export async function createEvent(token: string, formData: FormData): Promise<Event & { checkout_url?: string; requires_payment?: boolean; payment_error?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/api/events`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+      body: formData,
+    });
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.error || 'Failed to create event');
+    }
+    return res.json();
+  } catch (error) {
+    console.error('Error creating event:', error);
     throw error;
   }
 }

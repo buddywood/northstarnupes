@@ -72,9 +72,34 @@ app.use(cors({
 // Webhook route needs raw body for Stripe signature verification
 app.use('/api/webhook', express.raw({ type: 'application/json' }), webhookRouter);
 
-// Regular JSON middleware for other routes
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// Regular JSON middleware for other routes (only parse JSON, not multipart/form-data)
+// Increase body size limit to 10MB for image uploads
+// Only apply JSON parser to requests that are actually JSON (skip multipart/form-data)
+app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
+  const contentType = req.headers['content-type'] || '';
+  // Skip JSON parsing for multipart/form-data (handled by multer) and other non-JSON content types
+  if (contentType.includes('multipart/form-data') || contentType.includes('application/x-www-form-urlencoded')) {
+    return next();
+  }
+  if (contentType.includes('application/json')) {
+    express.json({ limit: '10mb' })(req, res, next);
+  } else {
+    next();
+  }
+});
+
+app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
+  const contentType = req.headers['content-type'] || '';
+  // Skip URL-encoded parsing for multipart/form-data
+  if (contentType.includes('multipart/form-data')) {
+    return next();
+  }
+  if (contentType.includes('application/x-www-form-urlencoded')) {
+    express.urlencoded({ extended: true, limit: '10mb' })(req, res, next);
+  } else {
+    next();
+  }
+});
 
 // Routes
 app.get('/', (req: Request, res: Response) => {

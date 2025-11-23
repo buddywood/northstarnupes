@@ -4,6 +4,7 @@ import { API_URL } from './constants';
 // Use actual AsyncStorage package
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { decode } from 'react-native-base64';
+import { setLogoutCallback, setRefreshTokenCallback } from './api-utils';
 
 export interface User {
   id?: number;
@@ -47,8 +48,63 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  const refreshToken = async (): Promise<boolean> => {
+    try {
+      const storedRefreshToken = await AsyncStorage.getItem(REFRESH_TOKEN_KEY);
+      const rememberMe = await AsyncStorage.getItem(REMEMBER_ME_KEY);
+      
+      if (!storedRefreshToken || rememberMe !== 'true') {
+        return false;
+      }
+
+      const refreshResponse = await fetch(`${API_URL}/api/members/cognito/refresh`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ refreshToken: storedRefreshToken }),
+      });
+
+      if (!refreshResponse.ok) {
+        return false;
+      }
+
+      const { tokens, user: refreshedUser } = await refreshResponse.json();
+      
+      // Store new tokens
+      await AsyncStorage.setItem(TOKEN_KEY, tokens.idToken);
+      await AsyncStorage.setItem(REFRESH_TOKEN_KEY, tokens.refreshToken || storedRefreshToken);
+      await AsyncStorage.setItem(USER_KEY, JSON.stringify({
+        ...refreshedUser,
+        is_fraternity_member: !!refreshedUser.memberId,
+        is_seller: !!refreshedUser.sellerId,
+        is_promoter: !!refreshedUser.promoterId,
+        is_steward: !!refreshedUser.stewardId,
+      }));
+
+      // Update state
+      setToken(tokens.idToken);
+      setUser({
+        ...refreshedUser,
+        is_fraternity_member: !!refreshedUser.memberId,
+        is_seller: !!refreshedUser.sellerId,
+        is_promoter: !!refreshedUser.promoterId,
+        is_steward: !!refreshedUser.stewardId,
+      });
+
+      return true;
+    } catch (error) {
+      console.error('Error refreshing token:', error);
+      return false;
+    }
+  };
+
   useEffect(() => {
     getSession();
+    // Register callbacks for API error handling
+    setLogoutCallback(logout);
+    setRefreshTokenCallback(refreshToken);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const getSession = async () => {

@@ -8,6 +8,7 @@ import EventCountdown from './EventCountdown';
 import RSVPModal from './RSVPModal';
 import VerificationBadge from './VerificationBadge';
 import UserRoleBadges from './UserRoleBadges';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface EventCardProps {
   event: Event;
@@ -16,6 +17,7 @@ interface EventCardProps {
 
 export default function EventCard({ event, chapterName }: EventCardProps) {
   const [isRSVPModalOpen, setIsRSVPModalOpen] = useState(false);
+  const [imageLoading, setImageLoading] = useState(true);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -39,12 +41,17 @@ export default function EventCard({ event, chapterName }: EventCardProps) {
       <div className="bg-white rounded-xl shadow overflow-hidden hover:shadow-md transition relative">
         <Link href={`/event/${event.id}`} className="block">
           <div className="w-full h-48 relative bg-gradient-to-br from-crimson/20 to-aurora-gold/20">
+            {imageLoading && event.image_url && (
+              <Skeleton className="absolute inset-0 w-full h-full" />
+            )}
             {event.image_url ? (
               <Image
                 src={event.image_url}
                 alt={event.title}
                 fill
                 className="object-cover"
+                onLoad={() => setImageLoading(false)}
+                onError={() => setImageLoading(false)}
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center">

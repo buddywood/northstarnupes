@@ -646,13 +646,23 @@ export async function createEvent(event: {
   city?: string;
   state?: string;
   image_url?: string;
-  sponsored_chapter_id?: number;
+  sponsored_chapter_id: number;
+  event_type_id: number;
+  event_audience_type_id: number;
+  all_day?: boolean;
+  duration_minutes?: number;
+  event_link?: string;
+  is_featured?: boolean;
+  featured_payment_status?: 'UNPAID' | 'PENDING' | 'PAID' | 'FAILED' | 'REFUNDED';
+  stripe_payment_intent_id?: string;
   ticket_price_cents?: number;
-  max_attendees?: number;
+  dress_codes: ('business' | 'business_casual' | 'formal' | 'semi_formal' | 'kappa_casual' | 'greek_encouraged' | 'greek_required' | 'outdoor' | 'athletic' | 'comfortable' | 'all_white')[];
+  dress_code_notes?: string;
+  status?: 'ACTIVE' | 'CLOSED' | 'CANCELLED';
 }): Promise<Event> {
   const result = await pool.query(
-    `INSERT INTO events (promoter_id, title, description, event_date, location, city, state, image_url, sponsored_chapter_id, ticket_price_cents, max_attendees)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+    `INSERT INTO events (promoter_id, title, description, event_date, location, city, state, image_url, sponsored_chapter_id, event_type_id, event_audience_type_id, all_day, duration_minutes, event_link, is_featured, featured_payment_status, stripe_payment_intent_id, ticket_price_cents, dress_codes, dress_code_notes, status)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
      RETURNING *`,
     [
       event.promoter_id,
@@ -663,12 +673,46 @@ export async function createEvent(event: {
       event.city || null,
       event.state || null,
       event.image_url || null,
-      event.sponsored_chapter_id || null,
+      event.sponsored_chapter_id,
+      event.event_type_id,
+      event.event_audience_type_id,
+      event.all_day || false,
+      event.duration_minutes || null,
+      event.event_link || null,
+      event.is_featured || false,
+      event.featured_payment_status || 'UNPAID',
+      event.stripe_payment_intent_id || null,
       event.ticket_price_cents || 0,
-      event.max_attendees || null,
+      JSON.stringify(event.dress_codes),
+      event.dress_code_notes || null,
+      event.status || 'ACTIVE',
     ]
   );
   return result.rows[0];
+}
+
+export async function getAllEventTypes(): Promise<Array<{
+  id: number;
+  enum: string;
+  description: string;
+  display_order: number;
+}>> {
+  const result = await pool.query(
+    'SELECT id, enum, description, display_order FROM event_types WHERE is_active = true ORDER BY display_order ASC'
+  );
+  return result.rows;
+}
+
+export async function getAllEventAudienceTypes(): Promise<Array<{
+  id: number;
+  enum: string;
+  description: string;
+  display_order: number;
+}>> {
+  const result = await pool.query(
+    'SELECT id, enum, description, display_order FROM event_audience_types WHERE is_active = true ORDER BY display_order ASC'
+  );
+  return result.rows;
 }
 
 export async function getEventById(id: number): Promise<Event | null> {
@@ -681,6 +725,7 @@ export async function getEventById(id: number): Promise<Event | null> {
             m.initiated_chapter_id as promoter_initiated_chapter_id,
             m.initiated_season as promoter_initiated_season,
             m.initiated_year as promoter_initiated_year,
+            eat.description as event_audience_type_description,
             CASE WHEN pr.fraternity_member_id IS NOT NULL THEN true ELSE false END as is_fraternity_member,
             CASE WHEN pr.status = 'APPROVED' THEN true ELSE false END as is_promoter,
             CASE WHEN st.id IS NOT NULL THEN true ELSE false END as is_steward,
@@ -690,6 +735,7 @@ export async function getEventById(id: number): Promise<Event | null> {
      LEFT JOIN fraternity_members m ON pr.fraternity_member_id = m.id
      LEFT JOIN stewards st ON pr.fraternity_member_id = st.fraternity_member_id AND st.status = 'APPROVED'
      LEFT JOIN sellers s ON pr.fraternity_member_id = s.fraternity_member_id AND s.status = 'APPROVED'
+     LEFT JOIN event_audience_types eat ON e.event_audience_type_id = eat.id
      WHERE e.id = $1`,
     [id]
   );
@@ -698,10 +744,14 @@ export async function getEventById(id: number): Promise<Event | null> {
 
 export async function getActiveEvents(): Promise<Event[]> {
   const result = await pool.query(
-    `SELECT e.*, p.name as promoter_name, p.status as promoter_status
+    `SELECT e.*, 
+            p.name as promoter_name, 
+            p.status as promoter_status,
+            eat.description as event_audience_type_description
      FROM events e
      JOIN promoters p ON e.promoter_id = p.id
-     WHERE p.status = 'APPROVED' AND e.event_date >= NOW()
+     LEFT JOIN event_audience_types eat ON e.event_audience_type_id = eat.id
+     WHERE p.status = 'APPROVED' AND e.status = 'ACTIVE' AND e.event_date >= NOW()
      ORDER BY e.event_date ASC`
   );
   return result.rows;
@@ -709,9 +759,13 @@ export async function getActiveEvents(): Promise<Event[]> {
 
 export async function getAllEvents(): Promise<Event[]> {
   const result = await pool.query(
-    `SELECT e.*, p.name as promoter_name, p.status as promoter_status
+    `SELECT e.*, 
+            p.name as promoter_name, 
+            p.status as promoter_status,
+            eat.description as event_audience_type_description
      FROM events e
      JOIN promoters p ON e.promoter_id = p.id
+     LEFT JOIN event_audience_types eat ON e.event_audience_type_id = eat.id
      WHERE p.status = 'APPROVED'
      ORDER BY e.event_date ASC`
   );
@@ -720,7 +774,12 @@ export async function getAllEvents(): Promise<Event[]> {
 
 export async function getEventsByPromoter(promoterId: number): Promise<Event[]> {
   const result = await pool.query(
-    'SELECT * FROM events WHERE promoter_id = $1 ORDER BY event_date DESC',
+    `SELECT e.*, 
+            eat.description as event_audience_type_description
+     FROM events e
+     LEFT JOIN event_audience_types eat ON e.event_audience_type_id = eat.id
+     WHERE e.promoter_id = $1 
+     ORDER BY e.event_date DESC`,
     [promoterId]
   );
   return result.rows;
@@ -1675,5 +1734,22 @@ export async function getFavoriteProductsByUser(userEmail: string): Promise<Prod
     [userEmail]
   );
   return result.rows;
+}
+
+export async function updateEventStatus(
+  eventId: number,
+  status: 'ACTIVE' | 'CLOSED' | 'CANCELLED'
+): Promise<Event> {
+  const result = await pool.query(
+    `UPDATE events
+     SET status = $1, updated_at = CURRENT_TIMESTAMP
+     WHERE id = $2
+     RETURNING *`,
+    [status, eventId]
+  );
+  if (result.rows.length === 0) {
+    throw new Error(`Event with ID ${eventId} not found`);
+  }
+  return result.rows[0];
 }
 

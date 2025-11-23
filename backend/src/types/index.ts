@@ -153,8 +153,38 @@ export interface Event {
   state: string | null;
   image_url: string | null;
   sponsored_chapter_id: number | null;
+  event_type_id: number | null;
+  event_audience_type_id: number | null;
+  all_day: boolean;
+  duration_minutes: number | null;
+  event_link: string | null;
+  is_featured: boolean;
+  featured_payment_status: 'UNPAID' | 'PENDING' | 'PAID' | 'FAILED' | 'REFUNDED';
+  stripe_payment_intent_id: string | null;
   ticket_price_cents: number;
-  max_attendees: number | null;
+  dress_codes: ('business' | 'business_casual' | 'formal' | 'semi_formal' | 'kappa_casual' | 'greek_encouraged' | 'greek_required' | 'outdoor' | 'athletic' | 'comfortable' | 'all_white')[];
+  dress_code_notes: string | null;
+  status: 'ACTIVE' | 'CLOSED' | 'CANCELLED';
+  created_at: Date;
+  updated_at: Date;
+}
+
+export interface EventType {
+  id: number;
+  enum: string;
+  description: string;
+  display_order: number;
+  is_active: boolean;
+  created_at: Date;
+  updated_at: Date;
+}
+
+export interface EventAudienceType {
+  id: number;
+  enum: string;
+  description: string;
+  display_order: number;
+  is_active: boolean;
   created_at: Date;
   updated_at: Date;
 }

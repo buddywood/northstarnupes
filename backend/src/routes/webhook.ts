@@ -37,11 +37,27 @@ router.post('/stripe', async (req: Request, res: Response) => {
     const session = event.data.object as any;
     
     try {
+      // Handle product orders
       const order = await getOrderByStripeSessionId(session.id);
       
       if (order && order.status === 'PENDING') {
         await updateOrderStatus(order.id, 'PAID');
         console.log(`Order ${order.id} marked as PAID`);
+      }
+
+      // Handle featured event promotion payments
+      if (session.metadata?.type === 'featured_event_promotion' && session.metadata?.event_id) {
+        const eventId = parseInt(session.metadata.event_id);
+        
+        await pool.query(
+          `UPDATE events 
+           SET featured_payment_status = 'PAID', 
+               stripe_payment_intent_id = $1,
+               is_featured = true
+           WHERE id = $2`,
+          [session.id, eventId]
+        );
+        console.log(`Event ${eventId} featured promotion payment completed`);
       }
     } catch (error) {
       console.error('Error processing checkout.session.completed:', error);
