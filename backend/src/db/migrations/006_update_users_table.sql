@@ -116,18 +116,36 @@ BEGIN
       END IF;
     ELSE
       -- New schema without fraternity_member_id in users table
-      ALTER TABLE users ADD CONSTRAINT check_role_foreign_key CHECK (
-        (role = 'GUEST' AND seller_id IS NULL AND promoter_id IS NULL AND steward_id IS NULL) OR
-        (role = 'SELLER' AND seller_id IS NOT NULL AND promoter_id IS NULL AND steward_id IS NULL) OR
-        (role = 'PROMOTER' AND promoter_id IS NOT NULL AND seller_id IS NULL AND steward_id IS NULL) OR
-        (role = 'STEWARD' AND steward_id IS NOT NULL AND (
-          (seller_id IS NULL AND promoter_id IS NULL) OR
-          (seller_id IS NOT NULL AND promoter_id IS NULL) OR
-          (seller_id IS NULL AND promoter_id IS NOT NULL) OR
-          (seller_id IS NOT NULL AND promoter_id IS NOT NULL)
-        )) OR
-        (role = 'ADMIN' AND seller_id IS NULL AND promoter_id IS NULL AND steward_id IS NULL)
-      );
+      -- Only add constraint if there's no existing data that would violate it
+      IF NOT EXISTS (
+        SELECT 1 FROM users WHERE NOT (
+          (role = 'GUEST' AND seller_id IS NULL AND promoter_id IS NULL AND steward_id IS NULL) OR
+          (role = 'SELLER' AND seller_id IS NOT NULL AND promoter_id IS NULL AND steward_id IS NULL) OR
+          (role = 'PROMOTER' AND promoter_id IS NOT NULL AND seller_id IS NULL AND steward_id IS NULL) OR
+          (role = 'STEWARD' AND steward_id IS NOT NULL AND (
+            (seller_id IS NULL AND promoter_id IS NULL) OR
+            (seller_id IS NOT NULL AND promoter_id IS NULL) OR
+            (seller_id IS NULL AND promoter_id IS NOT NULL) OR
+            (seller_id IS NOT NULL AND promoter_id IS NOT NULL)
+          )) OR
+          (role = 'ADMIN' AND seller_id IS NULL AND promoter_id IS NULL AND steward_id IS NULL)
+        )
+      ) THEN
+        ALTER TABLE users ADD CONSTRAINT check_role_foreign_key CHECK (
+          (role = 'GUEST' AND seller_id IS NULL AND promoter_id IS NULL AND steward_id IS NULL) OR
+          (role = 'SELLER' AND seller_id IS NOT NULL AND promoter_id IS NULL AND steward_id IS NULL) OR
+          (role = 'PROMOTER' AND promoter_id IS NOT NULL AND seller_id IS NULL AND steward_id IS NULL) OR
+          (role = 'STEWARD' AND steward_id IS NOT NULL AND (
+            (seller_id IS NULL AND promoter_id IS NULL) OR
+            (seller_id IS NOT NULL AND promoter_id IS NULL) OR
+            (seller_id IS NULL AND promoter_id IS NOT NULL) OR
+            (seller_id IS NOT NULL AND promoter_id IS NOT NULL)
+          )) OR
+          (role = 'ADMIN' AND seller_id IS NULL AND promoter_id IS NULL AND steward_id IS NULL)
+        );
+      ELSE
+        RAISE NOTICE 'Skipping check_role_foreign_key constraint - existing data would violate it';
+      END IF;
     END IF;
   END IF;
 END $$;

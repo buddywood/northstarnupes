@@ -37,12 +37,12 @@ BEGIN
     IF constraint_name_var IS NOT NULL THEN
       EXECUTE format('ALTER TABLE users DROP CONSTRAINT %I', constraint_name_var);
       ALTER TABLE users ADD CONSTRAINT users_member_id_fkey 
-        FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE SET NULL;
+        FOREIGN KEY (member_id) REFERENCES fraternity_members(id) ON DELETE SET NULL;
       RAISE NOTICE 'Updated users.member_id foreign key (%) with ON DELETE SET NULL', constraint_name_var;
     ELSE
       -- Constraint doesn't exist, add it
       ALTER TABLE users ADD CONSTRAINT users_member_id_fkey 
-        FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE SET NULL;
+        FOREIGN KEY (member_id) REFERENCES fraternity_members(id) ON DELETE SET NULL;
       RAISE NOTICE 'Added users.member_id foreign key with ON DELETE SET NULL';
     END IF;
   END IF;
