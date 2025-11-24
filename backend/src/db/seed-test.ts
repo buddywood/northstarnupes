@@ -1634,9 +1634,6 @@ async function main() {
     // Seed products and sellers
     await seedProducts();
 
-    // Seed steward sellers (must be after regular sellers)
-    await seedStewardSellers();
-
     // Seed promoters
     await seedPromoters();
 
