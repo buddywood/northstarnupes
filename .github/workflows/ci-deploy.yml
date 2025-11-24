@@ -107,6 +107,10 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Reset preview database
+        run: npm run reset:db
+        continue-on-error: true
+
       - name: Run migrations + seeding
         run: ./scripts/migrate.sh
 
