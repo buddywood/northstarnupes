@@ -344,7 +344,16 @@ CREATE INDEX IF NOT EXISTS idx_events_sponsored_chapter ON events(sponsored_chap
 CREATE INDEX IF NOT EXISTS idx_users_cognito_sub ON users(cognito_sub);
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
-CREATE INDEX IF NOT EXISTS idx_users_fraternity_member_id ON users(fraternity_member_id);
+-- Index for users.fraternity_member_id - created conditionally since column may be added by migration 028
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'users' AND column_name = 'fraternity_member_id'
+  ) THEN
+    CREATE INDEX IF NOT EXISTS idx_users_fraternity_member_id ON users(fraternity_member_id);
+  END IF;
+END $$;
 CREATE INDEX IF NOT EXISTS idx_users_seller_id ON users(seller_id);
 CREATE INDEX IF NOT EXISTS idx_users_promoter_id ON users(promoter_id);
 CREATE INDEX IF NOT EXISTS idx_users_steward_id ON users(steward_id);
