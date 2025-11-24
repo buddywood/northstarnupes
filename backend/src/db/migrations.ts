@@ -80,9 +80,9 @@ async function runMigrationFiles() {
         // Expected error - some objects already exist or deadlock (concurrent migrations), which is fine
         console.log(`✓ Migration ${file} completed (some objects already exist, which is expected)`);
       } else {
-        // Unexpected error - log it but continue with other migrations
+        // Unexpected error - log it and throw to stop migration process
         console.error(`✗ Error applying migration ${file}:`, errorMessage.substring(0, 200));
-        // Don't throw - continue with other migrations
+        throw error; // Stop migration process on unexpected errors
       }
     }
   }
