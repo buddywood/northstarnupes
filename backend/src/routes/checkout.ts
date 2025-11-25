@@ -264,16 +264,7 @@ router.post('/:productId', authenticateOptional, async (req: Request, res: Respo
       }
     }
 
-    // Require authentication - all purchasers must have user accounts
-    if (!user || !user.id) {
-      return res.status(401).json({ 
-        error: 'Authentication required',
-        message: 'You must be signed in to make a purchase. Please provide email and password for guest checkout.',
-        code: 'AUTH_REQUIRED'
-      });
-    }
-
-    // Get product
+    // Get product first to check if it's Kappa branded
     const product = await getProductById(productId);
     if (!product) {
       return res.status(404).json({ error: 'Product not found' });
@@ -286,13 +277,22 @@ router.post('/:productId', authenticateOptional, async (req: Request, res: Respo
 
     // Check if product is Kappa branded - if so, require authentication
     if (product.is_kappa_branded) {
-      if (!user) {
+      if (!user || !user.id) {
         return res.status(401).json({ 
           error: 'Authentication required',
           message: 'Kappa Alpha Psi branded merchandise can only be purchased by verified members. Please sign in to continue.',
           code: 'AUTH_REQUIRED_FOR_KAPPA_BRANDED'
         });
       }
+    }
+
+    // Require authentication for all purchases (non-Kappa products can use guest checkout with email/password)
+    if (!user || !user.id) {
+      return res.status(401).json({ 
+        error: 'Authentication required',
+        message: 'You must be signed in to make a purchase. Please provide email and password for guest checkout.',
+        code: 'AUTH_REQUIRED'
+      });
     }
 
     // Get seller to check status and get Stripe account

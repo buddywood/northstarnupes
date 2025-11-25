@@ -25,6 +25,7 @@ jest.mock('../db/queries', () => ({
   linkUserToSeller: jest.fn(),
   linkUserToPromoter: jest.fn(),
   linkUserToSteward: jest.fn(),
+  getUserByCognitoSub: jest.fn(),
 }));
 
 // Mock the auth middleware
@@ -132,16 +133,36 @@ describe('Member Role Integration Tests', () => {
       updateMemberVerification.mockResolvedValue(verifiedMember);
       getMemberById.mockResolvedValue(verifiedMember);
 
-      // Mock the profile query (members route queries pool directly)
-      (jest.spyOn(pool, 'query') as jest.Mock).mockResolvedValueOnce({
-        rows: [{
-          id: 1,
-          name: verifiedMember.name,
-          email: verifiedMember.email,
-          verification_status: 'VERIFIED',
-          headshot_url: null,
-        }],
+      // Mock getUserByCognitoSub to return user with member link
+      require('../db/queries').getUserByCognitoSub.mockResolvedValue({
+        id: 1,
+        cognito_sub: 'test-cognito-sub',
+        email: verifiedMember.email,
+        role: 'GUEST',
+        seller_id: null,
+        promoter_id: null,
+        steward_id: null,
+        features: {},
       });
+
+      // Mock the profile query (members route queries pool directly)
+      // First call is from getFraternityMemberId (GUEST role looks up by email)
+      // Second call is the profile query
+      (jest.spyOn(pool, 'query') as jest.Mock)
+        .mockResolvedValueOnce({
+          rows: [{ id: 1 }], // fraternity_member_id lookup
+        })
+        .mockResolvedValueOnce({
+          rows: [{
+            id: 1,
+            name: verifiedMember.name,
+            email: verifiedMember.email,
+            verification_status: 'VERIFIED',
+            headshot_url: null,
+            chapter_name: null,
+            profession_name: null,
+          }],
+        });
 
       // Step 3: Member can access profile
       const profileResponse = await request(app)
@@ -174,6 +195,23 @@ describe('Member Role Integration Tests', () => {
       getStewardListingById.mockResolvedValue(mockListing);
       claimStewardListing.mockResolvedValue({ ...mockListing, status: 'CLAIMED' });
 
+      // Mock getUserByCognitoSub and pool.query for getFraternityMemberIdFromRequest
+      require('../db/queries').getUserByCognitoSub.mockResolvedValue({
+        id: 1,
+        cognito_sub: 'test-cognito-sub',
+        email: 'test@example.com',
+        role: 'GUEST',
+        seller_id: null,
+        promoter_id: null,
+        steward_id: null,
+        features: {},
+      });
+
+      // Mock pool.query for getFraternityMemberId (GUEST role looks up by email)
+      (jest.spyOn(pool, 'query') as jest.Mock).mockResolvedValue({
+        rows: [{ id: 1 }], // fraternity_member_id
+      });
+
       const claimResponse = await request(app)
         .post('/api/stewards/listings/1/claim')
         .expect(200);
@@ -203,6 +241,23 @@ describe('Member Role Integration Tests', () => {
       getStewardListingById.mockResolvedValue(mockListing);
       getMemberById.mockResolvedValue(mockMember);
       claimStewardListing.mockResolvedValue({ ...mockListing, status: 'CLAIMED' });
+
+      // Mock getUserByCognitoSub and pool.query for getFraternityMemberIdFromRequest
+      require('../db/queries').getUserByCognitoSub.mockResolvedValue({
+        id: 1,
+        cognito_sub: 'test-cognito-sub',
+        email: 'test@example.com',
+        role: 'GUEST',
+        seller_id: null,
+        promoter_id: null,
+        steward_id: null,
+        features: {},
+      });
+
+      // Mock pool.query for getFraternityMemberId (GUEST role looks up by email)
+      (jest.spyOn(pool, 'query') as jest.Mock).mockResolvedValue({
+        rows: [{ id: 1 }], // fraternity_member_id
+      });
 
       const claimResponse = await request(app)
         .post('/api/stewards/listings/1/claim')
@@ -234,15 +289,19 @@ describe('Member Role Integration Tests', () => {
         .mockResolvedValueOnce({ rows: [{ id: 1, verification_status: 'VERIFIED' }] }) // Member lookup by email
         .mockResolvedValueOnce({ rows: [{ id: 1 }] }); // Other query
 
+      // Mock linkUserToSeller if user is authenticated
+      const { linkUserToSeller } = require('../db/queries');
+      linkUserToSeller.mockResolvedValue(undefined);
+
+      // Seller apply requires a store_logo file
       const response = await request(app)
         .post('/api/sellers/apply')
-        .send({
-          name: 'Test Seller',
-          email: 'seller@example.com',
-          sponsoring_chapter_id: 1,
-          kappa_vendor_id: 'V12345',
-          merchandise_type: 'KAPPA',
-        })
+        .field('name', 'Test Seller')
+        .field('email', 'seller@example.com')
+        .field('sponsoring_chapter_id', '1')
+        .field('kappa_vendor_id', 'V12345')
+        .field('merchandise_type', 'KAPPA')
+        .attach('store_logo', Buffer.from('fake image'), 'logo.jpg')
         .expect(201);
 
       expect(response.body).toHaveProperty('id');
@@ -302,9 +361,24 @@ describe('Member Role Integration Tests', () => {
       };
       getMemberById.mockResolvedValue(verifiedMember);
       createSteward.mockResolvedValue(mockSteward);
-      (jest.spyOn(pool, 'query') as jest.Mock).mockResolvedValue({
-        rows: [{ id: 1 }],
+      
+      // Mock getUserByCognitoSub and pool.query for getFraternityMemberIdFromRequest
+      require('../db/queries').getUserByCognitoSub.mockResolvedValue({
+        id: 1,
+        cognito_sub: 'test-cognito-sub',
+        email: 'test@example.com',
+        role: 'GUEST',
+        seller_id: null,
+        promoter_id: null,
+        steward_id: null,
+        features: {},
       });
+
+      // Mock pool.query for getFraternityMemberId (GUEST role looks up by email)
+      // Also mock the steward update query
+      (jest.spyOn(pool, 'query') as jest.Mock)
+        .mockResolvedValueOnce({ rows: [{ id: 1 }] }) // fraternity_member_id lookup
+        .mockResolvedValueOnce({ rows: [] }); // steward update
 
       const response = await request(app)
         .post('/api/stewards/apply')
@@ -365,6 +439,23 @@ describe('Member Role Integration Tests', () => {
         claimant_fraternity_member_id: 1,
         total_amount_cents: 2000,
         status: 'PENDING',
+      });
+
+      // Mock getUserByCognitoSub and pool.query for getFraternityMemberIdFromRequest
+      require('../db/queries').getUserByCognitoSub.mockResolvedValue({
+        id: 1,
+        cognito_sub: 'test-cognito-sub',
+        email: 'test@example.com',
+        role: 'GUEST',
+        seller_id: null,
+        promoter_id: null,
+        steward_id: null,
+        features: {},
+      });
+
+      // Mock pool.query for getFraternityMemberId (GUEST role looks up by email)
+      (jest.spyOn(pool, 'query') as jest.Mock).mockResolvedValue({
+        rows: [{ id: 1 }], // fraternity_member_id
       });
 
       // Step 1: Claim listing
